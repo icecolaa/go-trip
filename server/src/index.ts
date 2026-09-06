@@ -8,7 +8,8 @@ import { attachWs } from './ws.ts';
 import { json, ApiError } from './util.ts';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const PORT = Number(process.env.GOTRIP_PORT) || 8787;
+// PocketBay 等托管平台通过 PORT 注入端口；GOTRIP_PORT 为本地部署的备用变量
+const PORT = Number(process.env.PORT) || Number(process.env.GOTRIP_PORT) || 8787;
 
 initDb();
 
@@ -52,6 +53,10 @@ function serveStatic(req: http.IncomingMessage, res: http.ServerResponse): boole
 const server = http.createServer(async (req, res) => {
   const url = req.url || '/';
   try {
+    if (url === '/health' || url === '/healthz') {
+      json(res, 200, { ok: true });
+      return;
+    }
     if (url.startsWith('/api/')) {
       const handled = await handleApi(req, res);
       if (!handled) json(res, 404, { error: '接口不存在' });

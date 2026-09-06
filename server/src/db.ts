@@ -12,7 +12,10 @@ export function db(): DatabaseSync {
 }
 
 export function initDb(): DatabaseSync {
-  const dbPath = process.env.GOTRIP_DB || './data/gotrip.db';
+  // 托管平台（PocketBay）通过 POCKETBAY_DATA_DIR 指定持久卷；本地默认 ./data
+  const dbPath = process.env.GOTRIP_DB
+    || (process.env.POCKETBAY_DATA_DIR ? path.join(process.env.POCKETBAY_DATA_DIR, 'gotrip.db') : '')
+    || './data/gotrip.db';
   mkdirSync(path.dirname(path.resolve(dbPath)), { recursive: true });
   _db = new DatabaseSync(dbPath);
   _db.exec('PRAGMA journal_mode = WAL;');
