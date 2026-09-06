@@ -71,7 +71,7 @@ docker compose up -d --build
 
 ## ⚙️ 环境变量
 
-完整说明见 [.env.example](.env.example)：
+本地开发与生产启动都会自动加载仓库根目录的 `.env`（Node `--env-file-if-exists`，文件不存在时跳过）。复制 [.env.example](.env.example) 为 `.env` 按需填写；`.env` 已被 .gitignore 排除，不会提交。
 
 | 变量 | 说明 | 默认 |
 |---|---|---|

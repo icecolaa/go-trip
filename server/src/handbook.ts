@@ -1,4 +1,4 @@
-import type { GuideCard, GuideCategory, GuideItem } from '../../shared/types.ts';
+import type { GuideCategory, GuideItem } from '../../shared/types.ts';
 import { chat, aiConfigured } from './ai.ts';
 
 /* ============================================================
@@ -203,7 +203,7 @@ const CITY_HANDBOOKS: Record<string, BuiltinCard[]> = {
       ['抱罗粉/港门粉', '本地早餐粉，汤头清甜'],
     ]),
     tip('🌊', '海边安全与避坑', '玩海的前提是敬畏海。', [
-      ['游泳', '只在有救生员的湾区下水， flag 旗红/黄旗含义先弄清'],
+      ['游泳', '只在有救生员的湾区下水，下水前先弄清红/黄旗的含义'],
       ['水上项目', '明码标价签协议，拒接沙滩拉客的「低价体验」'],
       ['防晒', '防晒霜每 2 小时补一次，物理遮蔽最有效'],
       ['交通', '海棠湾-亚龙湾-市区距离远，住哪片就在哪片玩'],
@@ -224,7 +224,7 @@ const CITY_HANDBOOKS: Record<string, BuiltinCard[]> = {
     tip('🚄', '中转与玩法', '昆明多数时候是云南行的中转站，值得留一天。', [
       ['中转', '长水机场-昆明站/昆明南站地铁+高铁衔接顺畅'],
       ['市区', '翠湖+陆军讲武堂半天；滇池海埂大坝喂海鸥（11-3 月）'],
-      ['石林', '往返车程约 3 小时， interest 一般可换抚仙湖'],
+      ['石林', '往返车程约 3 小时，兴致一般可换抚仙湖'],
     ]),
   ],
   厦门: [
@@ -288,7 +288,7 @@ const CITY_HANDBOOKS: Record<string, BuiltinCard[]> = {
       ['寿司', '回转寿司（寿司郎/滨寿司）性价比高；筑地场外早餐体验'],
       ['拉面', '一兰/AFURI/二郎系各是一种流派，排队 30 分钟内合理'],
       ['居酒屋', '晚间套餐+饮品畅饮计划适合多人'],
-      ['便利店', '饭团、炸鸡、甜品闭眼买， Melonpan 值得一试'],
+      ['便利店', '饭团、炸鸡、甜品闭眼买，蜜瓜包值得一试'],
     ]),
     tip('🚇', '交通与门票', '东京交通复杂但极度准时。', [
       ['交通卡', 'Suica/ICOCA 手机开通，地铁/JR/便利店通用'],
@@ -338,7 +338,7 @@ const CITY_HANDBOOKS: Record<string, BuiltinCard[]> = {
     ]),
     tip('⛩️', '寺庙与礼仪', '京都的规矩感也是风景的一部分。', [
       ['寺庙', '多数 16:30-17:00 闭门，重要寺院（伏见稻荷/清水寺）清晨去'],
-      ['拍照', '艺伎/私有巷道禁止拍摄的地区遵守标识；monk 表演多为收费套路'],
+      ['拍照', '艺伎/私有巷道禁止拍摄的地区遵守标识；街头「僧人合影」多为收费套路'],
       ['交通', '巴士一日卡 700 日元，景点间短途最方便'],
       ['预约', ' popular 料亭与茶道体验提前 1-2 周订'],
     ]),
@@ -447,14 +447,13 @@ const CITY_HANDBOOKS: Record<string, BuiltinCard[]> = {
   ],
 };
 
-/* 目的地别名归一：substring 命中即认为匹配 */
-export function matchHandbookCity(destination: string): string | null {
+/* 目的地别名归一：子串命中即认为匹配，支持「大理 → 丽江」这类多目的地行程 */
+export function matchHandbookCities(destination: string): string[] {
   const d = (destination || '').trim();
-  if (!d) return null;
-  for (const key of Object.keys(CITY_HANDBOOKS)) {
-    if (d.includes(key)) return key;
-  }
-  return null;
+  if (!d) return [];
+  return Object.keys(CITY_HANDBOOKS)
+    .filter(key => d.includes(key))
+    .sort((a, b) => d.indexOf(a) - d.indexOf(b));
 }
 
 /** 出境目的地 → 返回语言卡（内置库已含 phrase 卡，这里仅用于判断是否出境） */
@@ -490,13 +489,27 @@ function genericCards(destination: string): BuiltinCard[] {
   ];
 }
 
-/** 组装某城市的锦囊卡片（内置库优先，通用模板兜底） */
-export function buildHandbook(city: string): BuiltinCard[] {
-  const hit = matchHandbookCity(city);
-  if (hit) return CITY_HANDBOOKS[hit].map(c => ({ ...c }));
-  const base = genericCards(city);
+/** 组装目的地的锦囊卡片：按目的地字符串中出现顺序合并所有命中城市（多城时标题加城市前缀），无命中时用通用模板兜底 */
+export function buildHandbook(destination: string): BuiltinCard[] {
+  const cities = matchHandbookCities(destination);
+  if (cities.length) {
+    const multi = cities.length > 1;
+    const seen = new Set<string>();
+    const cards: BuiltinCard[] = [];
+    for (const city of cities) {
+      for (const c of CITY_HANDBOOKS[city]) {
+        const title = multi ? `${city} · ${c.title}` : c.title;
+        const key = `${c.category}:${title}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        cards.push({ ...c, title });
+      }
+    }
+    return cards;
+  }
+  const base = genericCards(destination);
   // 若目的地疑似出境但没有语言卡，附一张通用外语应急卡
-  if (isOutbound(city)) {
+  if (isOutbound(destination)) {
     base.push(phrase('🗣️', '应急外语卡', '记住这几句，通关、问路、点餐都不慌。', [
       ['Excuse me', '不好意思/劳驾'],
       ['How much is it?', '多少钱？'],
@@ -549,14 +562,4 @@ export async function aiHandbook(city: string, days: number, interests: string[]
   } catch {
     return null;
   }
-}
-
-/** 供 db seed 与路由使用：把卡片写入 DB 时的行结构 */
-export interface HandbookRowInput {
-  category: GuideCategory;
-  icon: string;
-  title: string;
-  summary: string;
-  items: GuideItem[];
-  source: GuideCard['source'];
 }

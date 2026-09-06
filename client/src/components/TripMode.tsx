@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Activity, TripBundle, WeatherDay } from '@shared/types';
+import { useApp } from '../store';
 import { KIND_META, weekOf, fmtDate, yuan } from './ui';
 
 /* ============ 出发模式：当天行程全屏视图（参考旅行手册 Trip Mode） ============ */
@@ -19,10 +20,6 @@ function doneKey(tripId: number) { return `gotrip_done_${tripId}`; }
 
 function readDone(tripId: number): Record<string, boolean> {
   try { return JSON.parse(localStorage.getItem(doneKey(tripId)) || '{}') || {}; } catch { return {}; }
-}
-
-function esc(s: string): string {
-  return s.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c] as string));
 }
 
 /** 两点间球面距离（km） */
@@ -89,7 +86,7 @@ function HandMap({ stops }: { stops: Activity[] }) {
         <g key={i}>
           <circle cx={p.x} cy={p.y} r={25} className={'tm-map-dot' + (i === pts.length - 1 ? ' is-last' : '')} />
           <text x={p.x} y={p.y + 8} className="tm-map-number">{i + 1}</text>
-          <text x={p.x} y={p.y + (i % 2 === 0 ? -48 : 58)} className="tm-map-label">{esc(stops[i].place || stops[i].title).slice(0, 10)}</text>
+          <text x={p.x} y={p.y + (i % 2 === 0 ? -48 : 58)} className="tm-map-label">{(stops[i].place || stops[i].title).slice(0, 10)}</text>
         </g>
       ))}
       <text x="42" y="52" className="tm-map-caption">方位示意 · 非精确导航</text>
@@ -99,6 +96,7 @@ function HandMap({ stops }: { stops: Activity[] }) {
 }
 
 export default function TripMode({ bundle, weather, onClose }: Props) {
+  const { toast } = useApp();
   const saved = useMemo(() => {
     try { return Number(sessionStorage.getItem(`gotrip_tm_day_${bundle.trip.id}`) || 0); } catch { return 0; }
   }, [bundle.trip.id]);
@@ -149,7 +147,7 @@ export default function TripMode({ bundle, weather, onClose }: Props) {
     const text = lines.filter(Boolean).join('\n');
     try {
       await navigator.clipboard.writeText(text);
-      alert('今日路线已复制，去粘贴给同行伙伴吧');
+      toast('今日路线已复制');
     } catch {
       // 剪贴板不可用时降级
       const ta = document.createElement('textarea');
@@ -158,7 +156,7 @@ export default function TripMode({ bundle, weather, onClose }: Props) {
       ta.select();
       document.execCommand('copy');
       ta.remove();
-      alert('今日路线已复制');
+      toast('今日路线已复制');
     }
   };
 
@@ -170,7 +168,7 @@ export default function TripMode({ bundle, weather, onClose }: Props) {
         <header className="tm-header">
           <div className="tm-topline">
             <div>
-              <small>TRIP MODE · {esc(bundle.trip.destination || bundle.trip.title)}</small>
+              <small>TRIP MODE · {bundle.trip.destination || bundle.trip.title}</small>
               <strong>今天去哪里？</strong>
             </div>
             <button className="tm-close" onClick={onClose} aria-label="关闭">×</button>
@@ -244,7 +242,7 @@ export default function TripMode({ bundle, weather, onClose }: Props) {
                               {a.notes && <p>{a.notes}</p>}
                               <div className="tm-stop-meta">
                                 <span className={'act-icon kind-' + a.kind} title={KIND_META[a.kind]?.label || a.kind}>{KIND_META[a.kind]?.icon || '📌'}</span>
-                                {a.cost > 0 && <span className="tm-cost">¥{yuan(a.cost)}</span>}
+                                {a.cost > 0 && <span className="tm-cost">{yuan(a.cost)}</span>}
                               </div>
                             </div>
                             <div className="tm-stop-actions">

@@ -171,6 +171,12 @@ R=$(req GET /api/trips/$TRIP/handbook "$TB")
 check "成员可读锦囊" "$R" '我们的约定'
 R=$(req DELETE /api/handbook/$CUSTOM_ID "$TA")
 check "删除自定义卡片" "$R" '"ok":true'
+R=$(req PATCH /api/trips/$TRIP "$TA" '{"destination":"大理 → 丽江"}')
+check "改目的地为多城" "$R" '"ok":true'
+R=$(req POST /api/trips/$TRIP/handbook/generate "$TA" '{}')
+MULTI=$(jget "$R" "len(d)")
+check "多目的地锦囊合并(>=8张)" "$MULTI" '^((8|9)|1[0-9])$'
+echo "      (多城合并生成 $MULTI 张卡片)"
 
 echo "== 分享 =="
 R=$(req POST /api/trips/$TRIP/share "$TA" '{"enable":true}')

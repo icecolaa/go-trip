@@ -4,8 +4,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "node --watch --no-warnings src/index.ts",
-    "start": "node --no-warnings src/index.ts"
+    "dev": "node --watch --no-warnings --env-file-if-exists=../.env src/index.ts",
+    "start": "node --no-warnings --env-file-if-exists=../.env src/index.ts"
   },
   "dependencies": {
     "ws": "^8.18.0"
