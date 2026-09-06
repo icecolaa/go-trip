@@ -3,6 +3,7 @@ import { mkdirSync } from 'node:fs';
 import path from 'node:path';
 import { nowISO, addDays, todayStr } from './util.ts';
 import { hashPassword } from './auth.ts';
+import { buildHandbook } from './handbook.ts';
 
 let _db: DatabaseSync;
 
@@ -153,8 +154,21 @@ function migrate(d: DatabaseSync): void {
     detail TEXT NOT NULL DEFAULT '',
     created_at TEXT NOT NULL
   );
+  CREATE TABLE IF NOT EXISTS guide_cards (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    trip_id INTEGER NOT NULL REFERENCES trips(id) ON DELETE CASCADE,
+    category TEXT NOT NULL DEFAULT 'tip',
+    icon TEXT NOT NULL DEFAULT '📌',
+    title TEXT NOT NULL,
+    summary TEXT NOT NULL DEFAULT '',
+    items TEXT NOT NULL DEFAULT '[]',
+    source TEXT NOT NULL DEFAULT 'builtin',
+    sort INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL
+  );
   CREATE INDEX IF NOT EXISTS idx_activities_day ON activities(day_id);
   CREATE INDEX IF NOT EXISTS idx_members_trip ON trip_members(trip_id);
+  CREATE INDEX IF NOT EXISTS idx_guide_trip ON guide_cards(trip_id);
   `);
 }
 
@@ -268,4 +282,11 @@ function seedDemo(d: DatabaseSync): void {
   insLog.run(tripId, linId, '小方', '#b5543b', '加入了旅程', '受邀成为成员', nowISO());
   insLog.run(tripId, shuId, '阿树', '#3b6ea5', '加入了旅程', '受邀成为成员', nowISO());
   insLog.run(tripId, mShu as any, '阿树', '#3b6ea5', '添加了 5 笔记账', '门票与住宿', nowISO());
+
+  // 演示旅程内置锦囊（大理 + 丽江两站内容）
+  const insGuide = d.prepare('INSERT INTO guide_cards (trip_id, category, icon, title, summary, items, source, sort, created_at) VALUES (?,?,?,?,?,?,?,?,?)');
+  const cards = [...buildHandbook('大理'), ...buildHandbook('丽江')];
+  cards.forEach((c, i) => {
+    insGuide.run(tripId, c.category, c.icon, c.title, c.summary, JSON.stringify(c.items), 'builtin', i, nowISO());
+  });
 }

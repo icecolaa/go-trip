@@ -155,6 +155,23 @@ check "AI解析优雅降级或成功" "$R" 'days|"error"'
 R=$(req POST /api/trips/$TRIP/ai/generate "$TA" '{"city":"杭州","days":2}')
 check "AI生成优雅降级或成功" "$R" 'days|"error"'
 
+echo "== 旅行锦囊 =="
+R=$(req GET /api/trips/$TRIP/handbook "$TA")
+check "锦囊初始为空" "$R" '^\[\]$'
+R=$(req POST /api/trips/$TRIP/handbook/generate "$TA" '{"interests":["美食","自然"]}')
+check "按目的地生成锦囊" "$R" '"category"'
+GEN_COUNT=$(jget "$R" "len(d)")
+echo "      (生成 $GEN_COUNT 张卡片)"
+R=$(req POST /api/trips/$TRIP/handbook "$TA" '{"category":"tip","icon":"🧾","title":"我们的约定","summary":"团队内部","items":[{"label":"集合","text":"每天 9:00 大堂集合"}]}')
+check "添加自定义卡片" "$R" '"source":"custom"'
+CUSTOM_ID=$(jget "$R" "d['id']")
+R=$(req POST /api/trips/$TRIP/handbook "$TA" '{"category":"tip","title":"缺内容","items":[]}')
+check "空条目卡片被拒" "$R" '请至少写一条内容'
+R=$(req GET /api/trips/$TRIP/handbook "$TB")
+check "成员可读锦囊" "$R" '我们的约定'
+R=$(req DELETE /api/handbook/$CUSTOM_ID "$TA")
+check "删除自定义卡片" "$R" '"ok":true'
+
 echo "== 分享 =="
 R=$(req POST /api/trips/$TRIP/share "$TA" '{"enable":true}')
 check "开启分享链接" "$R" '"shareToken"'

@@ -9,8 +9,8 @@ export function aiConfigured(): boolean {
   return !!(AI_BASE && AI_KEY && AI_MODEL);
 }
 
-/** 调用 OpenAI 兼容接口（智谱/DeepSeek/通义/Moonshot 等） */
-async function chat(system: string, user: string, timeoutMs = 30000): Promise<string | null> {
+/** 调用 OpenAI 兼容接口（智谱/DeepSeek/通义/Moonshot 等），导出供锦囊模块复用 */
+export async function chat(system: string, user: string, timeoutMs = 30000): Promise<string | null> {
   if (!aiConfigured()) return null;
   try {
     const resp = await fetch(`${AI_BASE}/chat/completions`, {

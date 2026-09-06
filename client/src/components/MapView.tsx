@@ -31,11 +31,6 @@ const amapLayer = (satellite: boolean) =>
     }
   );
 
-const osmLayer = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-  maxZoom: 19,
-  attribution: '© OpenStreetMap',
-});
-
 function markerIcon(label: string, color: string): L.DivIcon {
   return L.divIcon({
     className: '',
@@ -76,7 +71,7 @@ export default function MapView({
     const amap = amapLayer(false);
     const sat = amapLayer(true);
     amap.addTo(map);
-    L.control.layers({ '高德地图': amap, '高德卫星': sat, 'OpenStreetMap': osmLayer }, {}, { position: 'topright' }).addTo(map);
+    L.control.layers({ '高德地图': amap, '高德卫星图': sat }, {}, { position: 'topright' }).addTo(map);
     mapRef.current = map;
     layerRef.current = L.layerGroup().addTo(map);
     return () => {

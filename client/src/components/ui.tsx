@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useApp } from '../store';
 
@@ -41,6 +41,32 @@ export function Toasts() {
   );
 }
 
+/* ---------- 主题（亮 / 暗） ---------- */
+export function currentTheme(): 'light' | 'dark' {
+  return document.documentElement.dataset.theme === 'dark' ? 'dark' : 'light';
+}
+export function applyTheme(t: 'light' | 'dark') {
+  document.documentElement.dataset.theme = t;
+  try { localStorage.setItem('gotrip_theme', t); } catch { /* ignore */ }
+}
+
+function ThemeToggle() {
+  const [theme, setTheme] = useState<'light' | 'dark'>(() => currentTheme());
+  return (
+    <button
+      className="btn sm ghost theme-toggle"
+      title={theme === 'dark' ? '切换到日间模式' : '切换到夜间模式'}
+      onClick={() => {
+        const next = theme === 'dark' ? 'light' : 'dark';
+        applyTheme(next);
+        setTheme(next);
+      }}
+    >
+      {theme === 'dark' ? '☀️' : '🌙'}
+    </button>
+  );
+}
+
 /* ---------- 顶栏 ---------- */
 export function TopBar({ me }: { me: { nickname: string; avatarColor: string; travelId: number } | null }) {
   const { logout } = useApp();
@@ -51,6 +77,7 @@ export function TopBar({ me }: { me: { nickname: string; avatarColor: string; tr
           <span className="mark">🧭</span>出发吧<small>GOTRIP</small>
         </Link>
         <div style={{ flex: 1 }} />
+        <ThemeToggle />
         {me && (
           <>
             <span className="muted" style={{ fontFamily: 'var(--mono)' }}>旅行ID {me.travelId}</span>

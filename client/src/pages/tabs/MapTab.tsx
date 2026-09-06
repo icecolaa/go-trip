@@ -12,6 +12,7 @@ export default function MapTab({ bundle, reload, canEdit }: TabCtx) {
   const [results, setResults] = useState<Poi[]>([]);
   const [busy, setBusy] = useState(false);
   const [attachAct, setAttachAct] = useState<Poi | null>(null);
+  const [dayFilter, setDayFilter] = useState<number | null>(null);
 
   const points = useMemo<MapPoint[]>(() => {
     const list = bundle.activities
@@ -21,9 +22,8 @@ export default function MapTab({ bundle, reload, canEdit }: TabCtx) {
         subtitle: `第 ${bundle.days.find(d => d.id === a.dayId)?.dayNumber || '?'} 天 · ${a.time || '时间待定'}${a.cost ? ` · ${yuan(a.cost)}` : ''}`,
         dayNumber: bundle.days.find(d => d.id === a.dayId)?.dayNumber,
       }));
-    // 没有坐标的活动没有点，保持空
-    return list;
-  }, [bundle.activities, bundle.days]);
+    return dayFilter == null ? list : list.filter(p => p.dayNumber === dayFilter);
+  }, [bundle.activities, bundle.days, dayFilter]);
 
   const hasNoGeo = bundle.activities.some(a => a.lat == null && a.place);
 
@@ -58,6 +58,14 @@ export default function MapTab({ bundle, reload, canEdit }: TabCtx) {
     <div>
       <div className="row-ops" style={{ marginBottom: 12 }}>
         <h2 className="section-title" style={{ margin: 0, flex: 1 }}>旅行地图</h2>
+        <div className="chips">
+          <button className={'chip' + (dayFilter == null ? ' on' : '')} onClick={() => setDayFilter(null)}>全部</button>
+          {bundle.days.map(d => (
+            <button key={d.id} className={'chip' + (dayFilter === d.dayNumber ? ' on' : '')} onClick={() => setDayFilter(dayFilter === d.dayNumber ? null : d.dayNumber)}>
+              D{d.dayNumber}
+            </button>
+          ))}
+        </div>
         <span className="muted">{points.length} 个已定位地点{hasNoGeo ? '（部分行程未定位，编辑行程时搜索地点即可定位）' : ''}</span>
       </div>
 

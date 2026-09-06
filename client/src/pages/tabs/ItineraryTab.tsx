@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { api } from '../../api';
 import { useApp } from '../../store';
 import { Modal, KIND_META, fmtDate, weekOf, yuan } from '../../components/ui';
+import TripMode from '../../components/TripMode';
 import type { TabCtx } from './tabCtx';
 import type { Activity, TripDay } from '@shared/types';
 import PoiSearch from '../../components/PoiSearch';
@@ -11,6 +12,7 @@ export default function ItineraryTab({ bundle, reload, weather, canEdit }: TabCt
   const [editing, setEditing] = useState<Activity | null>(null);
   const [addingToDay, setAddingToDay] = useState<TripDay | null>(null);
   const [aiOpen, setAiOpen] = useState(false);
+  const [tripMode, setTripMode] = useState(false);
   const [dragId, setDragId] = useState<number | null>(null);
 
   const { days, activities, members } = bundle;
@@ -61,6 +63,7 @@ export default function ItineraryTab({ bundle, reload, weather, canEdit }: TabCt
     <div>
       <div className="row-ops" style={{ marginBottom: 14 }}>
         <h2 className="section-title" style={{ margin: 0, flex: 1 }}>每日行程</h2>
+        <button className="btn sm launch-tm" onClick={() => setTripMode(true)} disabled={!days.length}>🧭 出发模式</button>
         {canEdit && (
           <>
             <button className="btn sm" onClick={() => setAiOpen(true)}>✨ AI 助手</button>
@@ -158,6 +161,7 @@ export default function ItineraryTab({ bundle, reload, weather, canEdit }: TabCt
         />
       )}
       {aiOpen && <AiPanel bundle={bundle} reload={reload} onClose={() => setAiOpen(false)} />}
+      {tripMode && <TripMode bundle={bundle} weather={weather} onClose={() => setTripMode(false)} />}
     </div>
   );
 }

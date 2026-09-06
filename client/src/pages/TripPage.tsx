@@ -10,12 +10,14 @@ import PackingTab from './tabs/PackingTab';
 import JournalTab from './tabs/JournalTab';
 import MembersTab from './tabs/MembersTab';
 import ActivityTab from './tabs/ActivityTab';
+import HandbookTab from './tabs/HandbookTab';
 
 const TABS = [
   { key: 'itinerary', label: '行程', ico: '🗓️' },
   { key: 'map', label: '地图', ico: '🗺️' },
   { key: 'budget', label: '预算', ico: '💰' },
   { key: 'packing', label: '清单', ico: '🎒' },
+  { key: 'handbook', label: '锦囊', ico: '📖' },
   { key: 'journal', label: '日志', ico: '✍️' },
   { key: 'members', label: '成员', ico: '👥' },
   { key: 'activity', label: '动态', ico: '📣' },
@@ -142,11 +144,12 @@ export default function TripPage() {
         </nav>
 
         {/* 内容区 */}
-        <div>
+        <div className="tab-pane" key={tab}>
           {tab === 'itinerary' && <ItineraryTab {...ctx} />}
           {tab === 'map' && <MapTab {...ctx} />}
           {tab === 'budget' && <BudgetTab {...ctx} />}
           {tab === 'packing' && <PackingTab {...ctx} />}
+          {tab === 'handbook' && <HandbookTab {...ctx} />}
           {tab === 'journal' && <JournalTab {...ctx} />}
           {tab === 'members' && <MembersTab {...ctx} />}
           {tab === 'activity' && <ActivityTab {...ctx} />}

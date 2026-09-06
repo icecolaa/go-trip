@@ -221,3 +221,23 @@ export interface Poi {
   desc?: string;
   source: 'builtin' | 'amap';
 }
+
+/* ======== 旅行锦囊（参考 personalized-travel-guide 手册模块） ======== */
+export type GuideCategory = 'food' | 'tip' | 'phrase' | 'photo';
+
+export interface GuideItem {
+  label?: string; // 短标签，如短语原文 / 菜名 / 时间边界
+  text: string;
+}
+
+export interface GuideCard {
+  id: number;
+  tripId: number;
+  category: GuideCategory;
+  icon: string;
+  title: string;
+  summary: string;
+  items: GuideItem[];
+  source: 'builtin' | 'ai' | 'custom';
+  sort: number;
+}

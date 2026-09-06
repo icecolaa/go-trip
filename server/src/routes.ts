@@ -6,8 +6,9 @@ import { calcBudget } from './budget.ts';
 import { searchPois } from './poi.ts';
 import { getWeather } from './weather.ts';
 import { parseGuide, generatePlan, aiConfigured } from './ai.ts';
+import { buildHandbook, aiHandbook } from './handbook.ts';
 import { onlineMemberIds, broadcastToTrip } from './ws.ts';
-import type { Trip, TripMember, Invite, TripDay, Activity, Expense, PackingItem, JournalNote, ActivityLogEntry, MemberRole, TripBundle, ParsedGuide } from '../../shared/types.ts';
+import type { Trip, TripMember, Invite, TripDay, Activity, Expense, PackingItem, JournalNote, ActivityLogEntry, MemberRole, TripBundle, ParsedGuide, GuideCard } from '../../shared/types.ts';
 
 const ROLE_RANK: Record<MemberRole, number> = { viewer: 0, editor: 1, admin: 2, owner: 3 };
 
@@ -817,6 +818,84 @@ route('DELETE', '/api/journal/:id', true, async (_req, res, p, user) => {
   if (note.author_member_id !== me.id && ROLE_RANK[me.role] < ROLE_RANK.admin) throw new ApiError(403, '只能删除自己的日志');
   db().prepare('DELETE FROM journal_notes WHERE id = ?').run(note.id);
   notify(Number(note.trip_id), 'journal', 'delete', me.id);
+  json(res, 200, { ok: true });
+});
+
+/* ======== 旅行锦囊 ======== */
+
+function rowToGuide(r: any): GuideCard {
+  return {
+    id: r.id, tripId: r.trip_id, category: r.category, icon: r.icon,
+    title: r.title, summary: r.summary, items: JSON.parse(r.items || '[]'),
+    source: r.source, sort: r.sort,
+  };
+}
+
+function parseGuideItems(items: any): { label?: string; text: string }[] {
+  return (Array.isArray(items) ? items : [])
+    .map((it: any) => typeof it === 'string'
+      ? { text: String(it).slice(0, 200) }
+      : { label: it?.label ? String(it.label).slice(0, 40) : undefined, text: String(it?.text || '').slice(0, 200) })
+    .filter((it: any) => it.text)
+    .slice(0, 10);
+}
+
+route('GET', '/api/trips/:id/handbook', true, async (_req, res, p, user) => {
+  const tripId = Number(p.id);
+  requireMember(tripId, user);
+  const rows = db().prepare('SELECT * FROM guide_cards WHERE trip_id = ? ORDER BY sort, id').all(tripId) as any[];
+  json(res, 200, rows.map(rowToGuide));
+});
+
+route('POST', '/api/trips/:id/handbook', true, async (_req, res, p, user, body) => {
+  const tripId = Number(p.id);
+  const me = requireMember(tripId, user, 'editor');
+  const title = String(body.title || '').trim().slice(0, 30);
+  if (!title) throw new ApiError(400, '请填写卡片标题');
+  const items = parseGuideItems(body.items);
+  if (!items.length) throw new ApiError(400, '请至少写一条内容');
+  const cat = ['food', 'tip', 'phrase', 'photo'].includes(body.category) ? body.category : 'tip';
+  const maxSort = db().prepare("SELECT COALESCE(MAX(sort),999) AS m FROM guide_cards WHERE trip_id = ? AND source = 'custom'").get(tripId) as any;
+  const r = db().prepare('INSERT INTO guide_cards (trip_id, category, icon, title, summary, items, source, sort, created_at) VALUES (?,?,?,?,?,?,?,?,?)')
+    .run(tripId, cat, String(body.icon || '📌').slice(0, 4), title, String(body.summary || '').slice(0, 120),
+      JSON.stringify(items), 'custom', Number(maxSort.m) + 1, nowISO());
+  logActivity(tripId, me, '添加了锦囊卡片', title);
+  notify(tripId, 'handbook', 'create', me.id);
+  json(res, 200, rowToGuide(db().prepare('SELECT * FROM guide_cards WHERE id = ?').get(Number(r.lastInsertRowid)) as any));
+});
+
+route('POST', '/api/trips/:id/handbook/generate', true, async (_req, res, p, user, body) => {
+  const tripId = Number(p.id);
+  const me = requireMember(tripId, user, 'editor');
+  const trip = requireTrip(tripId);
+  const interests = Array.isArray(body.interests) ? body.interests.map(String).slice(0, 6) : [];
+  const dayCount = db().prepare('SELECT COUNT(*) AS c FROM days WHERE trip_id = ?').get(tripId) as any;
+  let cards = await aiHandbook(trip.destination, Number(dayCount.c) || 3, interests);
+  let source: GuideCard['source'] = 'ai';
+  if (!cards) {
+    cards = buildHandbook(trip.destination);
+    source = 'builtin';
+  }
+  // 重新生成只替换 builtin/ai 卡片，成员自定义的 custom 卡保留
+  db().prepare("DELETE FROM guide_cards WHERE trip_id = ? AND source != 'custom'").run(tripId);
+  const ins = db().prepare('INSERT INTO guide_cards (trip_id, category, icon, title, summary, items, source, sort, created_at) VALUES (?,?,?,?,?,?,?,?,?)');
+  cards.forEach((c, i) => {
+    ins.run(tripId, c.category, c.icon, c.title, c.summary, JSON.stringify(c.items), source, i, nowISO());
+  });
+  // 自定义卡固定排在生成卡之后
+  db().prepare("UPDATE guide_cards SET sort = ? + id * 10 WHERE trip_id = ? AND source = 'custom'").run(cards.length, tripId);
+  logActivity(tripId, me, source === 'ai' ? '用 AI 生成了旅行锦囊' : '生成了旅行锦囊', `${cards.length} 张卡片`);
+  notify(tripId, 'handbook', 'generate', me.id);
+  const rows = db().prepare('SELECT * FROM guide_cards WHERE trip_id = ? ORDER BY sort, id').all(tripId) as any[];
+  json(res, 200, rows.map(rowToGuide));
+});
+
+route('DELETE', '/api/handbook/:id', true, async (_req, res, p, user) => {
+  const card = db().prepare('SELECT * FROM guide_cards WHERE id = ?').get(Number(p.id)) as any;
+  if (!card) throw new ApiError(404, '卡片不存在');
+  const me = requireMember(Number(card.trip_id), user, 'editor');
+  db().prepare('DELETE FROM guide_cards WHERE id = ?').run(card.id);
+  notify(Number(card.trip_id), 'handbook', 'delete', me.id);
   json(res, 200, { ok: true });
 });
 
