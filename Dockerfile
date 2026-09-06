@@ -31,4 +31,5 @@ ENV GOTRIP_PORT=8787 \
 VOLUME /app/server/data
 EXPOSE 8787
 
-CMD ["node", "--no-warnings", "server/src/index.ts"]
+# PocketBay 配置迁移会把批准的 .env 只读挂载到 /app/.env，启动时自动加载
+CMD ["node", "--no-warnings", "--env-file-if-exists=.env", "server/src/index.ts"]
