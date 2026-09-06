@@ -207,5 +207,11 @@ check "登出B" "$R" '"ok":true'
 R=$(req GET /api/me "$TB")
 check "登出后token失效" "$R" '请先登录'
 
+echo "== WebSocket 实时广播 =="
+NODE_BIN=$(command -v node || echo /d/nodeJs/node.exe)
+WS_OUT=$("$NODE_BIN" scripts/ws-test.mjs 2>&1 || true)
+check "WS 变更广播" "$WS_OUT" 'WS_CHANGE_OK'
+echo "      ($WS_OUT)"
+
 echo ""
 echo "结果: PASS=$PASS FAIL=$FAIL"

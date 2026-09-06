@@ -14,15 +14,15 @@ const ROLE_RANK: Record<MemberRole, number> = { viewer: 0, editor: 1, admin: 2, 
 
 /* ------------------------- 通用辅助 ------------------------- */
 
-function memberOf(tripId: number, userId: number): TripMember | null {
-  const row = db().prepare('SELECT * FROM trip_members WHERE trip_id = ? AND user_id = ?').get(tripId, userId) as any;
-  return row ? rowToMember(row) : null;
+async function memberOf(tripId: number, userId: number): Promise<TripMember | null> {
+  const row = await db().prepare('SELECT * FROM trip_members WHERE trip_id = ? AND user_id = ?').get(tripId, userId) as any;
+  return row ? await rowToMember(row) : null;
 }
 
-function rowToMember(r: any): TripMember {
+async function rowToMember(r: any): Promise<TripMember> {
   let user = null;
   if (r.user_id) {
-    const u = db().prepare('SELECT id, travel_id, username, nickname, avatar_color FROM users WHERE id = ?').get(r.user_id) as any;
+    const u = await db().prepare('SELECT id, travel_id, username, nickname, avatar_color FROM users WHERE id = ?').get(r.user_id) as any;
     if (u) user = { id: u.id, travelId: u.travel_id, username: u.username, nickname: u.nickname, avatarColor: u.avatar_color };
   }
   return {
@@ -32,15 +32,15 @@ function rowToMember(r: any): TripMember {
   };
 }
 
-function requireMember(tripId: number, user: SessionUser, minRole: MemberRole = 'viewer'): TripMember {
-  const m = memberOf(tripId, user.id);
+async function requireMember(tripId: number, user: SessionUser, minRole: MemberRole = 'viewer'): Promise<TripMember> {
+  const m = await memberOf(tripId, user.id);
   if (!m) throw new ApiError(403, '你还不是该旅程的成员');
   if (ROLE_RANK[m.role] < ROLE_RANK[minRole]) throw new ApiError(403, '权限不足');
   return m;
 }
 
-function requireTrip(tripId: number): Trip {
-  const t = db().prepare('SELECT * FROM trips WHERE id = ?').get(tripId) as any;
+async function requireTrip(tripId: number): Promise<Trip> {
+  const t = await db().prepare('SELECT * FROM trips WHERE id = ?').get(tripId) as any;
   if (!t) throw new ApiError(404, '旅程不存在');
   return rowToTrip(t);
 }
@@ -53,12 +53,12 @@ function rowToTrip(r: any): Trip {
   };
 }
 
-function touchTrip(tripId: number): void {
-  db().prepare('UPDATE trips SET updated_at = ? WHERE id = ?').run(nowISO(), tripId);
+async function touchTrip(tripId: number): Promise<void> {
+  await db().prepare('UPDATE trips SET updated_at = ? WHERE id = ?').run(nowISO(), tripId);
 }
 
-function logActivity(tripId: number, m: TripMember | null, action: string, detail: string): void {
-  db().prepare('INSERT INTO activity_log (trip_id, user_id, member_name, avatar_color, action, detail, created_at) VALUES (?,?,?,?,?,?,?)')
+async function logActivity(tripId: number, m: TripMember | null, action: string, detail: string): Promise<void> {
+  await db().prepare('INSERT INTO activity_log (trip_id, user_id, member_name, avatar_color, action, detail, created_at) VALUES (?,?,?,?,?,?,?)')
     .run(tripId, m?.userId ?? null, m?.displayName || '有人', m?.avatarColor || '#2f6e4f', action, detail, nowISO());
 }
 
@@ -67,10 +67,10 @@ function notify(tripId: number, entity: string, action: string, byMemberId: numb
 }
 
 /** 依据行程起止日期重建 days 表（保留已有天数内容） */
-function syncDays(trip: Trip): TripDay[] {
+async function syncDays(trip: Trip): Promise<TripDay[]> {
   const d = db();
   const total = daysBetween(trip.startDate, trip.endDate);
-  const existing = d.prepare('SELECT * FROM days WHERE trip_id = ? ORDER BY day_number').all(trip.id) as any[];
+  const existing = await d.prepare('SELECT * FROM days WHERE trip_id = ? ORDER BY day_number').all(trip.id) as any[];
   const byDate = new Map(existing.map(e => [e.date, e]));
   const keepIds = new Set<number>();
   const days: TripDay[] = [];
@@ -80,9 +80,9 @@ function syncDays(trip: Trip): TripDay[] {
     let row: any;
     if (hit) {
       row = hit;
-      if (row.day_number !== i + 1) d.prepare('UPDATE days SET day_number = ? WHERE id = ?').run(i + 1, row.id);
+      if (row.day_number !== i + 1) await d.prepare('UPDATE days SET day_number = ? WHERE id = ?').run(i + 1, row.id);
     } else {
-      const r = d.prepare('INSERT INTO days (trip_id, day_number, date, title, place) VALUES (?,?,?,?,?)')
+      const r = await d.prepare('INSERT INTO days (trip_id, day_number, date, title, place) VALUES (?,?,?,?,?)')
         .run(trip.id, i + 1, date, '', trip.destination || '');
       row = { id: Number(r.lastInsertRowid), trip_id: trip.id, day_number: i + 1, date, title: '', place: trip.destination || '' };
     }
@@ -90,24 +90,24 @@ function syncDays(trip: Trip): TripDay[] {
     days.push({ id: row.id, tripId: trip.id, dayNumber: i + 1, date, title: row.title || '', place: row.place || '' });
   }
   for (const e of existing) {
-    if (!keepIds.has(e.id)) d.prepare('DELETE FROM days WHERE id = ?').run(e.id);
+    if (!keepIds.has(e.id)) await d.prepare('DELETE FROM days WHERE id = ?').run(e.id);
   }
   return days;
 }
 
-function tripBundle(tripId: number, user: SessionUser | null): TripBundle {
-  const trip = requireTrip(tripId);
-  const memberRows = db().prepare('SELECT * FROM trip_members WHERE trip_id = ? ORDER BY id').all(tripId) as any[];
-  const members = memberRows.map(rowToMember);
+async function tripBundle(tripId: number, user: SessionUser | null): Promise<TripBundle> {
+  const trip = await requireTrip(tripId);
+  const memberRows = await db().prepare('SELECT * FROM trip_members WHERE trip_id = ? ORDER BY id').all(tripId) as any[];
+  const members = await Promise.all(memberRows.map(rowToMember));
   const my = user ? members.find(m => m.userId === user.id) : null;
-  const days = db().prepare('SELECT * FROM days WHERE trip_id = ? ORDER BY day_number').all(tripId) as any[];
-  const activities = db().prepare('SELECT * FROM activities WHERE trip_id = ? ORDER BY day_id, sort, id').all(tripId) as any[];
-  const expenses = db().prepare('SELECT * FROM expenses WHERE trip_id = ? ORDER BY date DESC, id DESC').all(tripId) as any[];
-  const packing = db().prepare('SELECT * FROM packing_items WHERE trip_id = ? ORDER BY id').all(tripId) as any[];
-  const journal = db().prepare('SELECT * FROM journal_notes WHERE trip_id = ? ORDER BY created_at DESC').all(tripId) as any[];
-  const feedRows = db().prepare('SELECT * FROM activity_log WHERE trip_id = ? ORDER BY id DESC LIMIT 60').all(tripId) as any[];
+  const days = await db().prepare('SELECT * FROM days WHERE trip_id = ? ORDER BY day_number').all(tripId) as any[];
+  const activities = await db().prepare('SELECT * FROM activities WHERE trip_id = ? ORDER BY day_id, sort, id').all(tripId) as any[];
+  const expenses = await db().prepare('SELECT * FROM expenses WHERE trip_id = ? ORDER BY date DESC, id DESC').all(tripId) as any[];
+  const packing = await db().prepare('SELECT * FROM packing_items WHERE trip_id = ? ORDER BY id').all(tripId) as any[];
+  const journal = await db().prepare('SELECT * FROM journal_notes WHERE trip_id = ? ORDER BY created_at DESC').all(tripId) as any[];
+  const feedRows = await db().prepare('SELECT * FROM activity_log WHERE trip_id = ? ORDER BY id DESC LIMIT 60').all(tripId) as any[];
   const invites = my && ROLE_RANK[my.role] >= ROLE_RANK.admin
-    ? (db().prepare('SELECT * FROM invites WHERE trip_id = ? AND revoked = 0 ORDER BY id DESC').all(tripId) as any[]).map(rowToInvite)
+    ? (await db().prepare('SELECT * FROM invites WHERE trip_id = ? AND revoked = 0 ORDER BY id DESC').all(tripId) as any[]).map(rowToInvite)
     : [];
 
   const dayList: TripDay[] = days.map(r => ({ id: r.id, tripId: r.trip_id, dayNumber: r.day_number, date: r.date, title: r.title || '', place: r.place || '' }));
@@ -243,24 +243,24 @@ route('POST', '/api/auth/register', false, async (_req, res, _p, _u, body) => {
   const nickname = String(body.nickname || '').trim() || username;
   if (!/^[a-zA-Z0-9_]{3,24}$/.test(username)) throw new ApiError(400, '用户名需为 3-24 位字母、数字或下划线');
   if (password.length < 6) throw new ApiError(400, '密码至少 6 位');
-  const exists = db().prepare('SELECT 1 FROM users WHERE username = ?').get(username);
+  const exists = await db().prepare('SELECT 1 FROM users WHERE username = ?').get(username);
   if (exists) throw new ApiError(409, '用户名已被占用');
-  const travelId = allocateTravelId();
-  const r = db().prepare('INSERT INTO users (travel_id, username, password_hash, nickname, avatar_color, bio, created_at) VALUES (?,?,?,?,?,?,?)')
+  const travelId = await allocateTravelId();
+  const r = await db().prepare('INSERT INTO users (travel_id, username, password_hash, nickname, avatar_color, bio, created_at) VALUES (?,?,?,?,?,?,?)')
     .run(travelId, username, hashPassword(password), nickname, '#2f6e4f', '', nowISO());
   const userId = Number(r.lastInsertRowid);
-  const token = createSession(userId);
+  const token = await createSession(userId);
   setAuthCookie(res, token);
   json(res, 200, { token, user: { id: userId, travelId, username, nickname, avatarColor: '#2f6e4f', bio: '' } });
 });
 
 route('POST', '/api/auth/login', false, async (_req, res, _p, _u, body) => {
   const username = String(body.username || '').trim().toLowerCase();
-  const user = db().prepare('SELECT * FROM users WHERE username = ?').get(username) as any;
+  const user = await db().prepare('SELECT * FROM users WHERE username = ?').get(username) as any;
   if (!user || !verifyPassword(String(body.password || ''), user.password_hash)) {
     throw new ApiError(401, '用户名或密码错误');
   }
-  const token = createSession(user.id);
+  const token = await createSession(user.id);
   setAuthCookie(res, token);
   json(res, 200, {
     token,
@@ -270,7 +270,7 @@ route('POST', '/api/auth/login', false, async (_req, res, _p, _u, body) => {
 
 route('POST', '/api/auth/logout', false, async (req, res) => {
   const t = tokenFromRequest(req);
-  if (t) destroySession(t);
+  if (t) await destroySession(t);
   clearAuthCookie(res);
   json(res, 200, { ok: true });
 });
@@ -283,12 +283,12 @@ route('PATCH', '/api/me', true, async (_req, res, _p, user, body) => {
   const nickname = body.nickname != null ? String(body.nickname).trim().slice(0, 20) : user.nickname;
   const avatarColor = body.avatarColor != null ? String(body.avatarColor).slice(0, 20) : user.avatarColor;
   const bio = body.bio != null ? String(body.bio).slice(0, 120) : user.bio;
-  db().prepare('UPDATE users SET nickname = ?, avatar_color = ?, bio = ? WHERE id = ?').run(nickname || user.nickname, avatarColor, bio, user.id);
+  await db().prepare('UPDATE users SET nickname = ?, avatar_color = ?, bio = ? WHERE id = ?').run(nickname || user.nickname, avatarColor, bio, user.id);
   if (body.newPassword) {
     if (String(body.newPassword).length < 6) throw new ApiError(400, '新密码至少 6 位');
-    const row = db().prepare('SELECT password_hash FROM users WHERE id = ?').get(user.id) as any;
+    const row = await db().prepare('SELECT password_hash FROM users WHERE id = ?').get(user.id) as any;
     if (!verifyPassword(String(body.oldPassword || ''), row.password_hash)) throw new ApiError(400, '原密码不正确');
-    db().prepare('UPDATE users SET password_hash = ? WHERE id = ?').run(hashPassword(String(body.newPassword)), user.id);
+    await db().prepare('UPDATE users SET password_hash = ? WHERE id = ?').run(hashPassword(String(body.newPassword)), user.id);
   }
   json(res, 200, { id: user.id, travelId: user.travelId, username: user.username, nickname: nickname || user.nickname, avatarColor, bio });
 });
@@ -296,22 +296,23 @@ route('PATCH', '/api/me', true, async (_req, res, _p, user, body) => {
 /* ======== 旅程 ======== */
 
 route('GET', '/api/trips', true, async (_req, res, _p, user) => {
-  const rows = db().prepare(
+  const rows = await db().prepare(
     `SELECT t.*, tm.role AS my_role FROM trips t JOIN trip_members tm ON tm.trip_id = t.id AND tm.user_id = ? ORDER BY t.start_date ASC`
   ).all(user.id) as any[];
-  const trips = rows.map(r => {
+  const trips = [];
+  for (const r of rows) {
     const trip = rowToTrip(r);
-    const mems = db().prepare('SELECT display_name, avatar_color, user_id FROM trip_members WHERE trip_id = ? ORDER BY id').all(trip.id) as any[];
-    const spent = db().prepare('SELECT COALESCE(SUM(amount),0) AS s FROM expenses WHERE trip_id = ?').get(trip.id) as any;
-    const actCount = db().prepare('SELECT COUNT(*) AS c FROM activities WHERE trip_id = ?').get(trip.id) as any;
-    return {
+    const mems = await db().prepare('SELECT display_name, avatar_color, user_id FROM trip_members WHERE trip_id = ? ORDER BY id').all(trip.id) as any[];
+    const spent = await db().prepare('SELECT COALESCE(SUM(amount),0) AS s FROM expenses WHERE trip_id = ?').get(trip.id) as any;
+    const actCount = await db().prepare('SELECT COUNT(*) AS c FROM activities WHERE trip_id = ?').get(trip.id) as any;
+    trips.push({
       ...trip,
       myRole: r.my_role,
       memberPreview: mems.map(m => ({ displayName: m.display_name, avatarColor: m.avatar_color, userId: m.user_id })),
       totalSpent: Number(spent.s),
       activityCount: Number(actCount.c),
-    };
-  });
+    });
+  }
   json(res, 200, trips);
 });
 
@@ -325,28 +326,28 @@ route('POST', '/api/trips', true, async (_req, res, _p, user, body) => {
   const coverColor = String(body.coverColor || '#2f6e4f').slice(0, 20);
   const budget = Math.max(0, Number(body.budget) || 0);
   const now = nowISO();
-  const r = db().prepare('INSERT INTO trips (owner_id, title, destination, description, start_date, end_date, cover_emoji, cover_color, budget, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)')
+  const r = await db().prepare('INSERT INTO trips (owner_id, title, destination, description, start_date, end_date, cover_emoji, cover_color, budget, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)')
     .run(user.id, title, destination, description, startDate, endDate, coverEmoji, coverColor, budget, now, now);
   const tripId = Number(r.lastInsertRowid);
-  db().prepare('INSERT INTO trip_members (trip_id, user_id, role, display_name, avatar_color, joined_at) VALUES (?,?,?,?,?,?)')
+  await db().prepare('INSERT INTO trip_members (trip_id, user_id, role, display_name, avatar_color, joined_at) VALUES (?,?,?,?,?,?)')
     .run(tripId, user.id, 'owner', user.nickname, user.avatarColor, now);
-  const trip = requireTrip(tripId);
-  syncDays(trip);
-  const me = memberOf(tripId, user.id)!;
-  logActivity(tripId, me, '创建了旅程', title);
+  const trip = await requireTrip(tripId);
+  await syncDays(trip);
+  const me = (await memberOf(tripId, user.id))!
+  await logActivity(tripId, me, '创建了旅程', title);
   notify(tripId, 'trip', 'create', me.id);
   json(res, 200, { id: tripId });
 });
 
 route('GET', '/api/trips/:id', true, async (_req, res, p, user) => {
-  requireMember(Number(p.id), user);
-  json(res, 200, tripBundle(Number(p.id), user));
+  await requireMember(Number(p.id), user);
+  json(res, 200, await tripBundle(Number(p.id), user));
 });
 
 route('PATCH', '/api/trips/:id', true, async (_req, res, p, user, body) => {
   const tripId = Number(p.id);
-  const me = requireMember(tripId, user, 'admin');
-  const trip = requireTrip(tripId);
+  const me = await requireMember(tripId, user, 'admin');
+  const trip = await requireTrip(tripId);
   const fields: string[] = [];
   const vals: any[] = [];
   const map: Record<string, string> = {
@@ -367,90 +368,90 @@ route('PATCH', '/api/trips/:id', true, async (_req, res, p, user, body) => {
     fields.push('updated_at = ?');
     vals.push(nowISO());
     vals.push(tripId);
-    db().prepare(`UPDATE trips SET ${fields.join(', ')} WHERE id = ?`).run(...vals);
+    await db().prepare(`UPDATE trips SET ${fields.join(', ')} WHERE id = ?`).run(...vals);
   }
-  const updated = requireTrip(tripId);
-  const days = syncDays(updated);
-  logActivity(tripId, me, '更新了旅程信息', updated.title);
+  const updated = await requireTrip(tripId);
+  const days = await syncDays(updated);
+  await logActivity(tripId, me, '更新了旅程信息', updated.title);
   notify(tripId, 'trip', 'update', me.id);
   json(res, 200, { ok: true, days });
 });
 
 route('DELETE', '/api/trips/:id', true, async (_req, res, p, user) => {
   const tripId = Number(p.id);
-  requireMember(tripId, user, 'owner');
-  db().prepare('DELETE FROM trips WHERE id = ?').run(tripId);
+  await requireMember(tripId, user, 'owner');
+  await db().prepare('DELETE FROM trips WHERE id = ?').run(tripId);
   json(res, 200, { ok: true });
 });
 
 route('POST', '/api/trips/:id/transfer', true, async (_req, res, p, user, body) => {
   const tripId = Number(p.id);
-  requireMember(tripId, user, 'owner');
-  const target = db().prepare('SELECT * FROM trip_members WHERE id = ? AND trip_id = ?').get(Number(body.memberId), tripId) as any;
+  await requireMember(tripId, user, 'owner');
+  const target = await db().prepare('SELECT * FROM trip_members WHERE id = ? AND trip_id = ?').get(Number(body.memberId), tripId) as any;
   if (!target) throw new ApiError(404, '目标成员不存在');
-  db().prepare("UPDATE trips SET owner_id = ? WHERE id = ?").run(target.user_id, tripId);
-  db().prepare("UPDATE trip_members SET role = 'owner' WHERE id = ?").run(target.id);
-  db().prepare("UPDATE trip_members SET role = 'admin' WHERE user_id = ? AND trip_id = ?").run(user.id, tripId);
-  const me = memberOf(tripId, user.id)!;
-  logActivity(tripId, me, '转让了发起人', `新的发起人：${target.display_name}`);
+  await db().prepare("UPDATE trips SET owner_id = ? WHERE id = ?").run(target.user_id, tripId);
+  await db().prepare("UPDATE trip_members SET role = 'owner' WHERE id = ?").run(target.id);
+  await db().prepare("UPDATE trip_members SET role = 'admin' WHERE user_id = ? AND trip_id = ?").run(user.id, tripId);
+  const me = (await memberOf(tripId, user.id))!
+  await logActivity(tripId, me, '转让了发起人', `新的发起人：${target.display_name}`);
   notify(tripId, 'member', 'transfer', me.id);
   json(res, 200, { ok: true });
 });
 
 route('POST', '/api/trips/:id/share', true, async (_req, res, p, user, body) => {
   const tripId = Number(p.id);
-  const me = requireMember(tripId, user, 'admin');
+  const me = await requireMember(tripId, user, 'admin');
   if (body.enable === false) {
-    db().prepare("UPDATE trips SET share_token = NULL, visibility = 'private', updated_at = ? WHERE id = ?").run(nowISO(), tripId);
+    await db().prepare("UPDATE trips SET share_token = NULL, visibility = 'private', updated_at = ? WHERE id = ?").run(nowISO(), tripId);
   } else {
     const token = randomCode(12);
-    db().prepare("UPDATE trips SET share_token = ?, visibility = 'link', updated_at = ? WHERE id = ?").run(token, nowISO(), tripId);
-    logActivity(tripId, me, '开启了分享链接', '任何人可通过链接只读访问');
+    await db().prepare("UPDATE trips SET share_token = ?, visibility = 'link', updated_at = ? WHERE id = ?").run(token, nowISO(), tripId);
+    await logActivity(tripId, me, '开启了分享链接', '任何人可通过链接只读访问');
   }
   notify(tripId, 'trip', 'share', me.id);
-  json(res, 200, { shareToken: requireTrip(tripId).shareToken });
+  json(res, 200, { shareToken: (await requireTrip(tripId)).shareToken });
 });
 
 /* ======== 成员 ======== */
 
 route('GET', '/api/trips/:id/members', true, async (_req, res, p, user) => {
   const tripId = Number(p.id);
-  requireMember(tripId, user);
-  const rows = db().prepare('SELECT * FROM trip_members WHERE trip_id = ? ORDER BY id').all(tripId) as any[];
-  json(res, 200, rows.map(rowToMember));
+  await requireMember(tripId, user);
+  const rows = await db().prepare('SELECT * FROM trip_members WHERE trip_id = ? ORDER BY id').all(tripId) as any[];
+  json(res, 200, await Promise.all(rows.map(rowToMember)));
 });
 
 route('POST', '/api/trips/:id/members', true, async (_req, res, p, user, body) => {
   const tripId = Number(p.id);
-  const me = requireMember(tripId, user, 'admin');
-  requireTrip(tripId);
+  const me = await requireMember(tripId, user, 'admin');
+  await requireTrip(tripId);
   const online = onlineMemberIds(tripId);
   let created: TripMember;
   if (body.travelId) {
-    const target = db().prepare('SELECT * FROM users WHERE travel_id = ?').get(Number(body.travelId)) as any;
+    const target = await db().prepare('SELECT * FROM users WHERE travel_id = ?').get(Number(body.travelId)) as any;
     if (!target) throw new ApiError(404, '没有找到该旅行 ID 对应的用户');
-    const dup = db().prepare('SELECT 1 FROM trip_members WHERE trip_id = ? AND user_id = ?').get(tripId, target.id);
+    const dup = await db().prepare('SELECT 1 FROM trip_members WHERE trip_id = ? AND user_id = ?').get(tripId, target.id);
     if (dup) throw new ApiError(409, '对方已经在旅程中');
-    const r = db().prepare('INSERT INTO trip_members (trip_id, user_id, role, display_name, avatar_color, joined_at) VALUES (?,?,?,?,?,?)')
+    const r = await db().prepare('INSERT INTO trip_members (trip_id, user_id, role, display_name, avatar_color, joined_at) VALUES (?,?,?,?,?,?)')
       .run(tripId, target.id, 'editor', target.nickname, target.avatar_color, nowISO());
-    created = rowToMember(db().prepare('SELECT * FROM trip_members WHERE id = ?').get(Number(r.lastInsertRowid)) as any);
+    created = await rowToMember(await db().prepare('SELECT * FROM trip_members WHERE id = ?').get(Number(r.lastInsertRowid)) as any);
   } else {
     const displayName = String(body.displayName || '').trim().slice(0, 20);
     if (!displayName) throw new ApiError(400, '请填写成员名称');
     const color = String(body.avatarColor || '#8a6d3b');
-    const r = db().prepare('INSERT INTO trip_members (trip_id, user_id, role, display_name, avatar_color, joined_at) VALUES (?,?,?,?,?,?)')
+    const r = await db().prepare('INSERT INTO trip_members (trip_id, user_id, role, display_name, avatar_color, joined_at) VALUES (?,?,?,?,?,?)')
       .run(tripId, null, 'editor', displayName, color, nowISO());
-    created = rowToMember(db().prepare('SELECT * FROM trip_members WHERE id = ?').get(Number(r.lastInsertRowid)) as any);
+    created = await rowToMember(await db().prepare('SELECT * FROM trip_members WHERE id = ?').get(Number(r.lastInsertRowid)) as any);
   }
-  logActivity(tripId, me, '添加了成员', created.displayName);
+  await logActivity(tripId, me, '添加了成员', created.displayName);
   notify(tripId, 'member', 'add', me.id);
   json(res, 200, created);
 });
 
 route('PATCH', '/api/trips/:id/members/:mid', true, async (_req, res, p, user, body) => {
   const tripId = Number(p.id);
-  const me = requireMember(tripId, user, 'admin');
-  const target = db().prepare('SELECT * FROM trip_members WHERE id = ? AND trip_id = ?').get(Number(p.mid), tripId) as any;
+  const me = await requireMember(tripId, user, 'admin');
+  const target = await db().prepare('SELECT * FROM trip_members WHERE id = ? AND trip_id = ?').get(Number(p.mid), tripId) as any;
   if (!target) throw new ApiError(404, '成员不存在');
   if (target.role === 'owner' && body.role && body.role !== 'owner') throw new ApiError(400, '发起人角色不可直接修改，请使用转让');
   if (body.role != null && ROLE_RANK[body.role as MemberRole] >= ROLE_RANK[me.role] && me.role !== 'owner') {
@@ -458,29 +459,29 @@ route('PATCH', '/api/trips/:id/members/:mid', true, async (_req, res, p, user, b
   }
   const role = body.role != null ? body.role : target.role;
   const displayName = body.displayName != null ? String(body.displayName).trim().slice(0, 20) || target.display_name : target.display_name;
-  db().prepare('UPDATE trip_members SET role = ?, display_name = ? WHERE id = ?').run(role, displayName, target.id);
+  await db().prepare('UPDATE trip_members SET role = ?, display_name = ? WHERE id = ?').run(role, displayName, target.id);
   notify(tripId, 'member', 'update', me.id);
-  json(res, 200, rowToMember(db().prepare('SELECT * FROM trip_members WHERE id = ?').get(target.id) as any));
+  json(res, 200, await rowToMember(await db().prepare('SELECT * FROM trip_members WHERE id = ?').get(target.id) as any));
 });
 
 route('DELETE', '/api/trips/:id/members/:mid', true, async (_req, res, p, user) => {
   const tripId = Number(p.id);
-  const me = requireMember(tripId, user, 'admin');
-  const target = db().prepare('SELECT * FROM trip_members WHERE id = ? AND trip_id = ?').get(Number(p.mid), tripId) as any;
+  const me = await requireMember(tripId, user, 'admin');
+  const target = await db().prepare('SELECT * FROM trip_members WHERE id = ? AND trip_id = ?').get(Number(p.mid), tripId) as any;
   if (!target) throw new ApiError(404, '成员不存在');
   if (target.role === 'owner') throw new ApiError(400, '发起人不能被移除');
-  db().prepare('DELETE FROM trip_members WHERE id = ?').run(target.id);
-  logActivity(tripId, me, '移除了成员', target.display_name);
+  await db().prepare('DELETE FROM trip_members WHERE id = ?').run(target.id);
+  await logActivity(tripId, me, '移除了成员', target.display_name);
   notify(tripId, 'member', 'remove', me.id);
   json(res, 200, { ok: true });
 });
 
 route('POST', '/api/trips/:id/location', true, async (_req, res, p, user, body) => {
   const tripId = Number(p.id);
-  requireMember(tripId, user);
-  db().prepare('UPDATE trip_members SET location_lat = ?, location_lng = ?, location = ?, location_at = ? WHERE trip_id = ? AND user_id = ?')
+  await requireMember(tripId, user);
+  await db().prepare('UPDATE trip_members SET location_lat = ?, location_lng = ?, location = ?, location_at = ? WHERE trip_id = ? AND user_id = ?')
     .run(Number(body.lat) || null, Number(body.lng) || null, String(body.city || '').slice(0, 80) || null, nowISO(), tripId, user.id);
-  notify(tripId, 'member', 'location', (memberOf(tripId, user.id))?.id || 0);
+  notify(tripId, 'member', 'location', (await memberOf(tripId, user.id))?.id || 0);
   json(res, 200, { ok: true });
 });
 
@@ -488,69 +489,69 @@ route('POST', '/api/trips/:id/location', true, async (_req, res, p, user, body) 
 
 route('GET', '/api/trips/:id/invites', true, async (_req, res, p, user) => {
   const tripId = Number(p.id);
-  requireMember(tripId, user, 'admin');
-  const rows = db().prepare('SELECT * FROM invites WHERE trip_id = ? AND revoked = 0 ORDER BY id DESC').all(tripId) as any[];
+  await requireMember(tripId, user, 'admin');
+  const rows = await db().prepare('SELECT * FROM invites WHERE trip_id = ? AND revoked = 0 ORDER BY id DESC').all(tripId) as any[];
   json(res, 200, rows.map(rowToInvite));
 });
 
 route('POST', '/api/trips/:id/invites', true, async (_req, res, p, user, body) => {
   const tripId = Number(p.id);
-  const me = requireMember(tripId, user, 'admin');
+  const me = await requireMember(tripId, user, 'admin');
   const maxUses = Math.max(0, Number(body.maxUses) || 0);
   const expiresDays = Math.min(30, Math.max(0, Number(body.expiresDays) || 0));
   const expiresAt = expiresDays > 0 ? new Date(Date.now() + expiresDays * 86400000).toISOString() : null;
   let code = randomCode(8);
-  while (db().prepare('SELECT 1 FROM invites WHERE code = ?').get(code)) code = randomCode(8);
-  const r = db().prepare('INSERT INTO invites (trip_id, code, created_by, max_uses, uses, expires_at, revoked, created_at) VALUES (?,?,?,?,0,?,0,?)')
+  while (await db().prepare('SELECT 1 FROM invites WHERE code = ?').get(code)) code = randomCode(8);
+  const r = await db().prepare('INSERT INTO invites (trip_id, code, created_by, max_uses, uses, expires_at, revoked, created_at) VALUES (?,?,?,?,0,?,0,?)')
     .run(tripId, code, user.id, maxUses, expiresAt, nowISO());
-  logActivity(tripId, me, '创建了邀请', `邀请码 ${code}`);
+  await logActivity(tripId, me, '创建了邀请', `邀请码 ${code}`);
   notify(tripId, 'invite', 'create', me.id);
-  json(res, 200, rowToInvite(db().prepare('SELECT * FROM invites WHERE id = ?').get(Number(r.lastInsertRowid)) as any));
+  json(res, 200, rowToInvite(await db().prepare('SELECT * FROM invites WHERE id = ?').get(Number(r.lastInsertRowid)) as any));
 });
 
 route('DELETE', '/api/invites/:id', true, async (_req, res, p, user) => {
-  const inv = db().prepare('SELECT * FROM invites WHERE id = ?').get(Number(p.id)) as any;
+  const inv = await db().prepare('SELECT * FROM invites WHERE id = ?').get(Number(p.id)) as any;
   if (!inv) throw new ApiError(404, '邀请不存在');
-  requireMember(Number(inv.trip_id), user, 'admin');
-  db().prepare('UPDATE invites SET revoked = 1 WHERE id = ?').run(inv.id);
-  notify(Number(inv.trip_id), 'invite', 'revoke', (memberOf(Number(inv.trip_id), user.id))?.id || 0);
+  await requireMember(Number(inv.trip_id), user, 'admin');
+  await db().prepare('UPDATE invites SET revoked = 1 WHERE id = ?').run(inv.id);
+  notify(Number(inv.trip_id), 'invite', 'revoke', (await memberOf(Number(inv.trip_id), user.id))?.id || 0);
   json(res, 200, { ok: true });
 });
 
 route('GET', '/api/invites/:code', false, async (_req, res, p) => {
-  const inv = db().prepare('SELECT * FROM invites WHERE code = ? AND revoked = 0').get(String(p.code)) as any;
+  const inv = await db().prepare('SELECT * FROM invites WHERE code = ? AND revoked = 0').get(String(p.code)) as any;
   if (!inv) throw new ApiError(404, '邀请不存在或已失效');
   if (inv.expires_at && new Date(inv.expires_at).getTime() < Date.now()) throw new ApiError(410, '邀请已过期');
   if (inv.max_uses > 0 && inv.uses >= inv.max_uses) throw new ApiError(410, '邀请次数已用完');
-  const trip = requireTrip(Number(inv.trip_id));
-  const members = db().prepare('SELECT display_name, avatar_color FROM trip_members WHERE trip_id = ? ORDER BY id').all(trip.id) as any[];
+  const trip = await requireTrip(Number(inv.trip_id));
+  const members = await db().prepare('SELECT display_name, avatar_color FROM trip_members WHERE trip_id = ? ORDER BY id').all(trip.id) as any[];
   json(res, 200, {
     trip: { id: trip.id, title: trip.title, destination: trip.destination, startDate: trip.startDate, endDate: trip.endDate, coverEmoji: trip.coverEmoji, coverColor: trip.coverColor },
-    inviter: (db().prepare('SELECT nickname FROM users WHERE id = ?').get(inv.created_by) as any)?.nickname || '旅伴',
+    inviter: (await db().prepare('SELECT nickname FROM users WHERE id = ?').get(inv.created_by) as any)?.nickname || '旅伴',
     members: members.map(m => ({ displayName: m.display_name, avatarColor: m.avatar_color })),
     memberCount: members.length,
   });
 });
 
 route('POST', '/api/invites/:code/join', true, async (_req, res, p, user) => {
-  const inv = db().prepare('SELECT * FROM invites WHERE code = ? AND revoked = 0').get(String(p.code)) as any;
+  const inv = await db().prepare('SELECT * FROM invites WHERE code = ? AND revoked = 0').get(String(p.code)) as any;
   if (!inv) throw new ApiError(404, '邀请不存在或已失效');
   if (inv.expires_at && new Date(inv.expires_at).getTime() < Date.now()) throw new ApiError(410, '邀请已过期');
   if (inv.max_uses > 0 && inv.uses >= inv.max_uses) throw new ApiError(410, '邀请次数已用完');
   const tripId = Number(inv.trip_id);
-  const dup = db().prepare('SELECT 1 FROM trip_members WHERE trip_id = ? AND user_id = ?').get(tripId, user.id);
+  const dup = await db().prepare('SELECT 1 FROM trip_members WHERE trip_id = ? AND user_id = ?').get(tripId, user.id);
   if (!dup) {
     // 若已有同名占位成员则绑定
-    const placeholder = db().prepare('SELECT * FROM trip_members WHERE trip_id = ? AND user_id IS NULL AND display_name = ?').get(tripId, user.nickname) as any;
+    const placeholder = await db().prepare('SELECT * FROM trip_members WHERE trip_id = ? AND user_id IS NULL AND display_name = ?').get(tripId, user.nickname) as any;
     if (placeholder) {
-      db().prepare('UPDATE trip_members SET user_id = ?, avatar_color = ? WHERE id = ?').run(user.id, user.avatarColor, placeholder.id);
+      await db().prepare('UPDATE trip_members SET user_id = ?, avatar_color = ? WHERE id = ?').run(user.id, user.avatarColor, placeholder.id);
     } else {
-      db().prepare('INSERT INTO trip_members (trip_id, user_id, role, display_name, avatar_color, joined_at) VALUES (?,?,?,?,?,?)')
+      await db().prepare('INSERT INTO trip_members (trip_id, user_id, role, display_name, avatar_color, joined_at) VALUES (?,?,?,?,?,?)')
         .run(tripId, user.id, 'editor', user.nickname, user.avatarColor, nowISO());
     }
-    db().prepare('UPDATE invites SET uses = uses + 1 WHERE id = ?').run(inv.id);
-    const me = memberOf(tripId, user.id)!;
-    logActivity(tripId, me, '加入了旅程', '通过邀请链接');
+    await db().prepare('UPDATE invites SET uses = uses + 1 WHERE id = ?').run(inv.id);
+    const me = (await memberOf(tripId, user.id))!
+    await logActivity(tripId, me, '加入了旅程', '通过邀请链接');
     notify(tripId, 'member', 'join', me.id);
   }
   json(res, 200, { tripId });
@@ -560,65 +561,65 @@ route('POST', '/api/invites/:code/join', true, async (_req, res, p, user) => {
 
 route('POST', '/api/trips/:id/days', true, async (_req, res, p, user, body) => {
   const tripId = Number(p.id);
-  const me = requireMember(tripId, user, 'editor');
-  const trip = requireTrip(tripId);
-  const last = db().prepare('SELECT MAX(day_number) AS m, MAX(date) AS d FROM days WHERE trip_id = ?').get(tripId) as any;
+  const me = await requireMember(tripId, user, 'editor');
+  const trip = await requireTrip(tripId);
+  const last = await db().prepare('SELECT MAX(day_number) AS m, MAX(date) AS d FROM days WHERE trip_id = ?').get(tripId) as any;
   const nextNum = Number(last.m || 0) + 1;
   const date = /^\d{4}-\d{2}-\d{2}$/.test(body.date || '') ? body.date : addDays(last.d || trip.startDate, 1);
-  const r = db().prepare('INSERT INTO days (trip_id, day_number, date, title, place) VALUES (?,?,?,?,?)')
+  const r = await db().prepare('INSERT INTO days (trip_id, day_number, date, title, place) VALUES (?,?,?,?,?)')
     .run(tripId, nextNum, date, String(body.title || '').slice(0, 40), String(body.place || trip.destination || '').slice(0, 40));
-  logActivity(tripId, me, '新增了行程日', String(body.title || `第 ${nextNum} 天`));
+  await logActivity(tripId, me, '新增了行程日', String(body.title || `第 ${nextNum} 天`));
   notify(tripId, 'day', 'create', me.id);
   json(res, 200, { id: Number(r.lastInsertRowid) });
 });
 
 route('PATCH', '/api/days/:id', true, async (_req, res, p, user, body) => {
-  const day = db().prepare('SELECT * FROM days WHERE id = ?').get(Number(p.id)) as any;
+  const day = await db().prepare('SELECT * FROM days WHERE id = ?').get(Number(p.id)) as any;
   if (!day) throw new ApiError(404, '行程日不存在');
-  const me = requireMember(Number(day.trip_id), user, 'editor');
+  const me = await requireMember(Number(day.trip_id), user, 'editor');
   const title = body.title != null ? String(body.title).slice(0, 40) : day.title;
   const place = body.place != null ? String(body.place).slice(0, 40) : day.place;
   const date = /^\d{4}-\d{2}-\d{2}$/.test(body.date || '') ? body.date : day.date;
-  db().prepare('UPDATE days SET title = ?, place = ?, date = ? WHERE id = ?').run(title, place, date, day.id);
-  logActivity(Number(day.trip_id), me, '更新了行程日', title || date);
+  await db().prepare('UPDATE days SET title = ?, place = ?, date = ? WHERE id = ?').run(title, place, date, day.id);
+  await logActivity(Number(day.trip_id), me, '更新了行程日', title || date);
   notify(Number(day.trip_id), 'day', 'update', me.id);
   json(res, 200, { ok: true });
 });
 
 route('DELETE', '/api/days/:id', true, async (_req, res, p, user) => {
-  const day = db().prepare('SELECT * FROM days WHERE id = ?').get(Number(p.id)) as any;
+  const day = await db().prepare('SELECT * FROM days WHERE id = ?').get(Number(p.id)) as any;
   if (!day) throw new ApiError(404, '行程日不存在');
-  const me = requireMember(Number(day.trip_id), user, 'admin');
-  db().prepare('DELETE FROM activities WHERE day_id = ?').run(day.id);
-  db().prepare('DELETE FROM days WHERE id = ?').run(day.id);
-  logActivity(Number(day.trip_id), me, '删除了行程日', day.title || day.date);
+  const me = await requireMember(Number(day.trip_id), user, 'admin');
+  await db().prepare('DELETE FROM activities WHERE day_id = ?').run(day.id);
+  await db().prepare('DELETE FROM days WHERE id = ?').run(day.id);
+  await logActivity(Number(day.trip_id), me, '删除了行程日', day.title || day.date);
   notify(Number(day.trip_id), 'day', 'delete', me.id);
   json(res, 200, { ok: true });
 });
 
 route('POST', '/api/days/:id/activities', true, async (_req, res, p, user, body) => {
-  const day = db().prepare('SELECT * FROM days WHERE id = ?').get(Number(p.id)) as any;
+  const day = await db().prepare('SELECT * FROM days WHERE id = ?').get(Number(p.id)) as any;
   if (!day) throw new ApiError(404, '行程日不存在');
-  const me = requireMember(Number(day.trip_id), user, 'editor');
+  const me = await requireMember(Number(day.trip_id), user, 'editor');
   const title = String(body.title || '').trim().slice(0, 100);
   if (!title) throw new ApiError(400, '请填写行程内容');
-  const maxSort = db().prepare('SELECT MAX(sort) AS m FROM activities WHERE day_id = ?').get(day.id) as any;
+  const maxSort = await db().prepare('SELECT MAX(sort) AS m FROM activities WHERE day_id = ?').get(day.id) as any;
   const time = /^([01]?\d|2[0-3])[:：][0-5]\d$/.test(String(body.time || '')) ? String(body.time).replace('：', ':') : null;
   const lat = body.lat != null && isFinite(Number(body.lat)) ? Number(body.lat) : null;
   const lng = body.lng != null && isFinite(Number(body.lng)) ? Number(body.lng) : null;
-  const r = db().prepare('INSERT INTO activities (trip_id, day_id, sort, time, end_time, kind, title, place, lat, lng, cost, notes, assignee_id, created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)')
+  const r = await db().prepare('INSERT INTO activities (trip_id, day_id, sort, time, end_time, kind, title, place, lat, lng, cost, notes, assignee_id, created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)')
     .run(day.trip_id, day.id, Number(maxSort.m || 0) + 1, time, null, String(body.kind || 'sight'), title,
       String(body.place || '').slice(0, 60), lat, lng, Math.max(0, Number(body.cost) || 0),
       String(body.notes || '').slice(0, 300), body.assigneeId != null ? Number(body.assigneeId) : null, nowISO());
-  logActivity(Number(day.trip_id), me, '添加了行程', title);
+  await logActivity(Number(day.trip_id), me, '添加了行程', title);
   notify(Number(day.trip_id), 'activity', 'create', me.id);
   json(res, 200, { id: Number(r.lastInsertRowid) });
 });
 
 route('PATCH', '/api/activities/:id', true, async (_req, res, p, user, body) => {
-  const act = db().prepare('SELECT * FROM activities WHERE id = ?').get(Number(p.id)) as any;
+  const act = await db().prepare('SELECT * FROM activities WHERE id = ?').get(Number(p.id)) as any;
   if (!act) throw new ApiError(404, '行程不存在');
-  const me = requireMember(Number(act.trip_id), user, 'editor');
+  const me = await requireMember(Number(act.trip_id), user, 'editor');
   const time = body.time !== undefined ? (/^([01]?\d|2[0-3])[:：][0-5]\d$/.test(String(body.time || '')) ? String(body.time).replace('：', ':') : null) : act.time;
   const title = body.title != null ? String(body.title).trim().slice(0, 100) || act.title : act.title;
   const kind = body.kind != null ? String(body.kind) : act.kind;
@@ -630,30 +631,30 @@ route('PATCH', '/api/activities/:id', true, async (_req, res, p, user, body) => 
   const assigneeId = body.assigneeId !== undefined ? (body.assigneeId === null ? null : Number(body.assigneeId)) : act.assignee_id;
   const dayId = body.dayId != null ? Number(body.dayId) : act.day_id;
   const sort = body.sort != null ? Number(body.sort) : act.sort;
-  db().prepare('UPDATE activities SET time=?, title=?, kind=?, place=?, cost=?, notes=?, lat=?, lng=?, assignee_id=?, day_id=?, sort=? WHERE id = ?')
+  await db().prepare('UPDATE activities SET time=?, title=?, kind=?, place=?, cost=?, notes=?, lat=?, lng=?, assignee_id=?, day_id=?, sort=? WHERE id = ?')
     .run(time, title, kind, place, cost, notes, lat, lng, assigneeId, dayId, sort, act.id);
-  logActivity(Number(act.trip_id), me, '更新了行程', title);
+  await logActivity(Number(act.trip_id), me, '更新了行程', title);
   notify(Number(act.trip_id), 'activity', 'update', me.id);
   json(res, 200, { ok: true });
 });
 
 route('DELETE', '/api/activities/:id', true, async (_req, res, p, user) => {
-  const act = db().prepare('SELECT * FROM activities WHERE id = ?').get(Number(p.id)) as any;
+  const act = await db().prepare('SELECT * FROM activities WHERE id = ?').get(Number(p.id)) as any;
   if (!act) throw new ApiError(404, '行程不存在');
-  const me = requireMember(Number(act.trip_id), user, 'editor');
-  db().prepare('DELETE FROM activities WHERE id = ?').run(act.id);
-  logActivity(Number(act.trip_id), me, '删除了行程', act.title);
+  const me = await requireMember(Number(act.trip_id), user, 'editor');
+  await db().prepare('DELETE FROM activities WHERE id = ?').run(act.id);
+  await logActivity(Number(act.trip_id), me, '删除了行程', act.title);
   notify(Number(act.trip_id), 'activity', 'delete', me.id);
   json(res, 200, { ok: true });
 });
 
 route('POST', '/api/trips/:id/activities/reorder', true, async (_req, res, p, user, body) => {
   const tripId = Number(p.id);
-  const me = requireMember(tripId, user, 'editor');
+  const me = await requireMember(tripId, user, 'editor');
   const items = Array.isArray(body.items) ? body.items : [];
-  const upd = db().prepare('UPDATE activities SET day_id = ?, sort = ? WHERE id = ? AND trip_id = ?');
+  const upd = await db().prepare('UPDATE activities SET day_id = ?, sort = ? WHERE id = ? AND trip_id = ?');
   for (const it of items) {
-    if (it.id != null && it.dayId != null && it.sort != null) upd.run(Number(it.dayId), Number(it.sort), Number(it.id), tripId);
+    if (it.id != null && it.dayId != null && it.sort != null) await upd.run(Number(it.dayId), Number(it.sort), Number(it.id), tripId);
   }
   notify(tripId, 'activity', 'reorder', me.id);
   json(res, 200, { ok: true });
@@ -672,24 +673,24 @@ route('GET', '/api/poi/search', true, async (req, res, _p, _user) => {
 
 route('POST', '/api/trips/:id/expenses', true, async (_req, res, p, user, body) => {
   const tripId = Number(p.id);
-  const me = requireMember(tripId, user, 'editor');
+  const me = await requireMember(tripId, user, 'editor');
   const amount = Number(body.amount);
   if (!isFinite(amount) || amount <= 0) throw new ApiError(400, '请填写正确的金额');
   const title = String(body.title || '').trim().slice(0, 60) || '未命名支出';
   const payerMemberId = Number(body.payerMemberId) || me.id;
-  const r = db().prepare('INSERT INTO expenses (trip_id, payer_member_id, amount, category, title, date, split_mode, participants, created_by, created_at) VALUES (?,?,?,?,?,?,?,?,?,?)')
+  const r = await db().prepare('INSERT INTO expenses (trip_id, payer_member_id, amount, category, title, date, split_mode, participants, created_by, created_at) VALUES (?,?,?,?,?,?,?,?,?,?)')
     .run(tripId, payerMemberId, amount, String(body.category || '其他'), title,
       /^\d{4}-\d{2}-\d{2}$/.test(body.date || '') ? body.date : todayStr(),
       body.splitMode === 'payer' ? 'payer' : 'equal', JSON.stringify(Array.isArray(body.participants) ? body.participants : []), user.id, nowISO());
-  logActivity(tripId, me, '记了一笔账', `${title} ¥${amount}`);
+  await logActivity(tripId, me, '记了一笔账', `${title} ¥${amount}`);
   notify(tripId, 'expense', 'create', me.id);
   json(res, 200, { id: Number(r.lastInsertRowid) });
 });
 
 route('PATCH', '/api/expenses/:id', true, async (_req, res, p, user, body) => {
-  const exp = db().prepare('SELECT * FROM expenses WHERE id = ?').get(Number(p.id)) as any;
+  const exp = await db().prepare('SELECT * FROM expenses WHERE id = ?').get(Number(p.id)) as any;
   if (!exp) throw new ApiError(404, '账目不存在');
-  const me = requireMember(Number(exp.trip_id), user, 'editor');
+  const me = await requireMember(Number(exp.trip_id), user, 'editor');
   const amount = body.amount != null ? Math.max(0, Number(body.amount) || 0) : exp.amount;
   const title = body.title != null ? String(body.title).trim().slice(0, 60) || exp.title : exp.title;
   const category = body.category != null ? String(body.category) : exp.category;
@@ -697,18 +698,18 @@ route('PATCH', '/api/expenses/:id', true, async (_req, res, p, user, body) => {
   const payerMemberId = body.payerMemberId != null ? Number(body.payerMemberId) : exp.payer_member_id;
   const splitMode = body.splitMode != null ? (body.splitMode === 'payer' ? 'payer' : 'equal') : exp.split_mode;
   const participants = body.participants != null ? JSON.stringify(Array.isArray(body.participants) ? body.participants : []) : exp.participants;
-  db().prepare('UPDATE expenses SET amount=?, title=?, category=?, date=?, payer_member_id=?, split_mode=?, participants=? WHERE id=?')
+  await db().prepare('UPDATE expenses SET amount=?, title=?, category=?, date=?, payer_member_id=?, split_mode=?, participants=? WHERE id=?')
     .run(amount, title, category, date, payerMemberId, splitMode, participants, exp.id);
   notify(Number(exp.trip_id), 'expense', 'update', me.id);
   json(res, 200, { ok: true });
 });
 
 route('DELETE', '/api/expenses/:id', true, async (_req, res, p, user) => {
-  const exp = db().prepare('SELECT * FROM expenses WHERE id = ?').get(Number(p.id)) as any;
+  const exp = await db().prepare('SELECT * FROM expenses WHERE id = ?').get(Number(p.id)) as any;
   if (!exp) throw new ApiError(404, '账目不存在');
-  const me = requireMember(Number(exp.trip_id), user, 'editor');
-  db().prepare('DELETE FROM expenses WHERE id = ?').run(exp.id);
-  logActivity(Number(exp.trip_id), me, '删除了账目', exp.title);
+  const me = await requireMember(Number(exp.trip_id), user, 'editor');
+  await db().prepare('DELETE FROM expenses WHERE id = ?').run(exp.id);
+  await logActivity(Number(exp.trip_id), me, '删除了账目', exp.title);
   notify(Number(exp.trip_id), 'expense', 'delete', me.id);
   json(res, 200, { ok: true });
 });
@@ -717,68 +718,68 @@ route('DELETE', '/api/expenses/:id', true, async (_req, res, p, user) => {
 
 route('POST', '/api/trips/:id/packing', true, async (_req, res, p, user, body) => {
   const tripId = Number(p.id);
-  const me = requireMember(tripId, user, 'editor');
-  const ins = db().prepare('INSERT INTO packing_items (trip_id, category, title, done, assignee_member_id, quantity, note, created_at) VALUES (?,?,?,0,?,?,?,?)');
+  const me = await requireMember(tripId, user, 'editor');
+  const ins = await db().prepare('INSERT INTO packing_items (trip_id, category, title, done, assignee_member_id, quantity, note, created_at) VALUES (?,?,?,0,?,?,?,?)');
   const ids: number[] = [];
   if (Array.isArray(body.items)) {
     for (const it of body.items.slice(0, 80)) {
       const title = String(it.title || '').trim().slice(0, 60);
       if (!title) continue;
-      const r = ins.run(tripId, String(it.category || '其他'), title, it.assigneeMemberId != null ? Number(it.assigneeMemberId) : null,
+      const r = await ins.run(tripId, String(it.category || '其他'), title, it.assigneeMemberId != null ? Number(it.assigneeMemberId) : null,
         Math.max(1, Number(it.quantity) || 1), String(it.note || '').slice(0, 100), nowISO());
       ids.push(Number(r.lastInsertRowid));
     }
   } else {
     const title = String(body.title || '').trim().slice(0, 60);
     if (!title) throw new ApiError(400, '请填写物品名称');
-    const r = ins.run(tripId, String(body.category || '其他'), title, body.assigneeMemberId != null ? Number(body.assigneeMemberId) : null,
+    const r = await ins.run(tripId, String(body.category || '其他'), title, body.assigneeMemberId != null ? Number(body.assigneeMemberId) : null,
       Math.max(1, Number(body.quantity) || 1), String(body.note || '').slice(0, 100), nowISO());
     ids.push(Number(r.lastInsertRowid));
   }
-  logActivity(tripId, me, '添加了打包物品', `${ids.length} 件`);
+  await logActivity(tripId, me, '添加了打包物品', `${ids.length} 件`);
   notify(tripId, 'packing', 'create', me.id);
   json(res, 200, { ids });
 });
 
 route('POST', '/api/trips/:id/packing/template', true, async (_req, res, p, user, body) => {
   const tripId = Number(p.id);
-  const me = requireMember(tripId, user, 'editor');
+  const me = await requireMember(tripId, user, 'editor');
   const tpl = PACKING_TEMPLATES[String(body.template || 'basic')];
   if (!tpl) throw new ApiError(400, '模板不存在');
-  const ins = db().prepare('INSERT INTO packing_items (trip_id, category, title, done, assignee_member_id, quantity, note, created_at) VALUES (?,?,?,0,NULL,1,?,?)');
-  const existing = new Set((db().prepare('SELECT title FROM packing_items WHERE trip_id = ?').all(tripId) as any[]).map(r => r.title));
+  const ins = await db().prepare('INSERT INTO packing_items (trip_id, category, title, done, assignee_member_id, quantity, note, created_at) VALUES (?,?,?,0,NULL,1,?,?)');
+  const existing = new Set((await db().prepare('SELECT title FROM packing_items WHERE trip_id = ?').all(tripId) as any[]).map(r => r.title));
   let n = 0;
   for (const [cat, title] of tpl.items) {
     if (existing.has(title)) continue;
-    ins.run(tripId, cat, title, '', nowISO());
+    await ins.run(tripId, cat, title, '', nowISO());
     n++;
   }
-  logActivity(tripId, me, '导入打包模板', `${tpl.name} · ${n} 件`);
+  await logActivity(tripId, me, '导入打包模板', `${tpl.name} · ${n} 件`);
   notify(tripId, 'packing', 'template', me.id);
   json(res, 200, { added: n });
 });
 
 route('PATCH', '/api/packing/:id', true, async (_req, res, p, user, body) => {
-  const item = db().prepare('SELECT * FROM packing_items WHERE id = ?').get(Number(p.id)) as any;
+  const item = await db().prepare('SELECT * FROM packing_items WHERE id = ?').get(Number(p.id)) as any;
   if (!item) throw new ApiError(404, '物品不存在');
-  const me = requireMember(Number(item.trip_id), user, 'editor');
+  const me = await requireMember(Number(item.trip_id), user, 'editor');
   const done = body.done != null ? (body.done ? 1 : 0) : item.done;
   const title = body.title != null ? String(body.title).trim().slice(0, 60) || item.title : item.title;
   const category = body.category != null ? String(body.category) : item.category;
   const assigneeMemberId = body.assigneeMemberId !== undefined ? (body.assigneeMemberId === null ? null : Number(body.assigneeMemberId)) : item.assignee_member_id;
   const note = body.note != null ? String(body.note).slice(0, 100) : item.note;
   const quantity = body.quantity != null ? Math.max(1, Number(body.quantity) || 1) : item.quantity;
-  db().prepare('UPDATE packing_items SET done=?, title=?, category=?, assignee_member_id=?, note=?, quantity=? WHERE id=?')
+  await db().prepare('UPDATE packing_items SET done=?, title=?, category=?, assignee_member_id=?, note=?, quantity=? WHERE id=?')
     .run(done, title, category, assigneeMemberId, note, quantity, item.id);
   notify(Number(item.trip_id), 'packing', 'update', me.id);
   json(res, 200, { ok: true });
 });
 
 route('DELETE', '/api/packing/:id', true, async (_req, res, p, user) => {
-  const item = db().prepare('SELECT * FROM packing_items WHERE id = ?').get(Number(p.id)) as any;
+  const item = await db().prepare('SELECT * FROM packing_items WHERE id = ?').get(Number(p.id)) as any;
   if (!item) throw new ApiError(404, '物品不存在');
-  const me = requireMember(Number(item.trip_id), user, 'editor');
-  db().prepare('DELETE FROM packing_items WHERE id = ?').run(item.id);
+  const me = await requireMember(Number(item.trip_id), user, 'editor');
+  await db().prepare('DELETE FROM packing_items WHERE id = ?').run(item.id);
   notify(Number(item.trip_id), 'packing', 'delete', me.id);
   json(res, 200, { ok: true });
 });
@@ -787,36 +788,36 @@ route('DELETE', '/api/packing/:id', true, async (_req, res, p, user) => {
 
 route('POST', '/api/trips/:id/journal', true, async (_req, res, p, user, body) => {
   const tripId = Number(p.id);
-  const me = requireMember(tripId, user, 'editor');
+  const me = await requireMember(tripId, user, 'editor');
   const content = String(body.content || '').trim().slice(0, 3000);
   if (!content) throw new ApiError(400, '写点什么再发布吧');
   const dayId = body.dayId != null && Number(body.dayId) > 0 ? Number(body.dayId) : null;
   const mood = String(body.mood || '🙂').slice(0, 8);
-  const r = db().prepare('INSERT INTO journal_notes (trip_id, day_id, author_member_id, content, mood, created_at, updated_at) VALUES (?,?,?,?,?,?,?)')
+  const r = await db().prepare('INSERT INTO journal_notes (trip_id, day_id, author_member_id, content, mood, created_at, updated_at) VALUES (?,?,?,?,?,?,?)')
     .run(tripId, dayId, me.id, content, mood, nowISO(), nowISO());
-  logActivity(tripId, me, '写了旅行日志', content.slice(0, 20) + '…');
+  await logActivity(tripId, me, '写了旅行日志', content.slice(0, 20) + '…');
   notify(tripId, 'journal', 'create', me.id);
   json(res, 200, { id: Number(r.lastInsertRowid) });
 });
 
 route('PATCH', '/api/journal/:id', true, async (_req, res, p, user, body) => {
-  const note = db().prepare('SELECT * FROM journal_notes WHERE id = ?').get(Number(p.id)) as any;
+  const note = await db().prepare('SELECT * FROM journal_notes WHERE id = ?').get(Number(p.id)) as any;
   if (!note) throw new ApiError(404, '日志不存在');
-  const me = requireMember(Number(note.trip_id), user, 'editor');
+  const me = await requireMember(Number(note.trip_id), user, 'editor');
   if (note.author_member_id !== me.id && ROLE_RANK[me.role] < ROLE_RANK.admin) throw new ApiError(403, '只能编辑自己的日志');
   const content = body.content != null ? String(body.content).trim().slice(0, 3000) || note.content : note.content;
   const mood = body.mood != null ? String(body.mood).slice(0, 8) : note.mood;
-  db().prepare('UPDATE journal_notes SET content = ?, mood = ?, updated_at = ? WHERE id = ?').run(content, mood, nowISO(), note.id);
+  await db().prepare('UPDATE journal_notes SET content = ?, mood = ?, updated_at = ? WHERE id = ?').run(content, mood, nowISO(), note.id);
   notify(Number(note.trip_id), 'journal', 'update', me.id);
   json(res, 200, { ok: true });
 });
 
 route('DELETE', '/api/journal/:id', true, async (_req, res, p, user) => {
-  const note = db().prepare('SELECT * FROM journal_notes WHERE id = ?').get(Number(p.id)) as any;
+  const note = await db().prepare('SELECT * FROM journal_notes WHERE id = ?').get(Number(p.id)) as any;
   if (!note) throw new ApiError(404, '日志不存在');
-  const me = requireMember(Number(note.trip_id), user, 'editor');
+  const me = await requireMember(Number(note.trip_id), user, 'editor');
   if (note.author_member_id !== me.id && ROLE_RANK[me.role] < ROLE_RANK.admin) throw new ApiError(403, '只能删除自己的日志');
-  db().prepare('DELETE FROM journal_notes WHERE id = ?').run(note.id);
+  await db().prepare('DELETE FROM journal_notes WHERE id = ?').run(note.id);
   notify(Number(note.trip_id), 'journal', 'delete', me.id);
   json(res, 200, { ok: true });
 });
@@ -842,34 +843,34 @@ function parseGuideItems(items: any): { label?: string; text: string }[] {
 
 route('GET', '/api/trips/:id/handbook', true, async (_req, res, p, user) => {
   const tripId = Number(p.id);
-  requireMember(tripId, user);
-  const rows = db().prepare('SELECT * FROM guide_cards WHERE trip_id = ? ORDER BY sort, id').all(tripId) as any[];
+  await requireMember(tripId, user);
+  const rows = await db().prepare('SELECT * FROM guide_cards WHERE trip_id = ? ORDER BY sort, id').all(tripId) as any[];
   json(res, 200, rows.map(rowToGuide));
 });
 
 route('POST', '/api/trips/:id/handbook', true, async (_req, res, p, user, body) => {
   const tripId = Number(p.id);
-  const me = requireMember(tripId, user, 'editor');
+  const me = await requireMember(tripId, user, 'editor');
   const title = String(body.title || '').trim().slice(0, 30);
   if (!title) throw new ApiError(400, '请填写卡片标题');
   const items = parseGuideItems(body.items);
   if (!items.length) throw new ApiError(400, '请至少写一条内容');
   const cat = ['food', 'tip', 'phrase', 'photo'].includes(body.category) ? body.category : 'tip';
-  const maxSort = db().prepare("SELECT COALESCE(MAX(sort),999) AS m FROM guide_cards WHERE trip_id = ? AND source = 'custom'").get(tripId) as any;
-  const r = db().prepare('INSERT INTO guide_cards (trip_id, category, icon, title, summary, items, source, sort, created_at) VALUES (?,?,?,?,?,?,?,?,?)')
+  const maxSort = await db().prepare("SELECT COALESCE(MAX(sort),999) AS m FROM guide_cards WHERE trip_id = ? AND source = 'custom'").get(tripId) as any;
+  const r = await db().prepare('INSERT INTO guide_cards (trip_id, category, icon, title, summary, items, source, sort, created_at) VALUES (?,?,?,?,?,?,?,?,?)')
     .run(tripId, cat, String(body.icon || '📌').slice(0, 4), title, String(body.summary || '').slice(0, 120),
       JSON.stringify(items), 'custom', Number(maxSort.m) + 1, nowISO());
-  logActivity(tripId, me, '添加了锦囊卡片', title);
+  await logActivity(tripId, me, '添加了锦囊卡片', title);
   notify(tripId, 'handbook', 'create', me.id);
-  json(res, 200, rowToGuide(db().prepare('SELECT * FROM guide_cards WHERE id = ?').get(Number(r.lastInsertRowid)) as any));
+  json(res, 200, rowToGuide(await db().prepare('SELECT * FROM guide_cards WHERE id = ?').get(Number(r.lastInsertRowid)) as any));
 });
 
 route('POST', '/api/trips/:id/handbook/generate', true, async (_req, res, p, user, body) => {
   const tripId = Number(p.id);
-  const me = requireMember(tripId, user, 'editor');
-  const trip = requireTrip(tripId);
+  const me = await requireMember(tripId, user, 'editor');
+  const trip = await requireTrip(tripId);
   const interests = Array.isArray(body.interests) ? body.interests.map(String).slice(0, 6) : [];
-  const dayCount = db().prepare('SELECT COUNT(*) AS c FROM days WHERE trip_id = ?').get(tripId) as any;
+  const dayCount = await db().prepare('SELECT COUNT(*) AS c FROM days WHERE trip_id = ?').get(tripId) as any;
   let cards = await aiHandbook(trip.destination, Number(dayCount.c) || 3, interests);
   let source: GuideCard['source'] = 'ai';
   if (!cards) {
@@ -877,24 +878,25 @@ route('POST', '/api/trips/:id/handbook/generate', true, async (_req, res, p, use
     source = 'builtin';
   }
   // 重新生成只替换 builtin/ai 卡片，成员自定义的 custom 卡保留
-  db().prepare("DELETE FROM guide_cards WHERE trip_id = ? AND source != 'custom'").run(tripId);
-  const ins = db().prepare('INSERT INTO guide_cards (trip_id, category, icon, title, summary, items, source, sort, created_at) VALUES (?,?,?,?,?,?,?,?,?)');
-  cards.forEach((c, i) => {
-    ins.run(tripId, c.category, c.icon, c.title, c.summary, JSON.stringify(c.items), source, i, nowISO());
-  });
+  await db().prepare("DELETE FROM guide_cards WHERE trip_id = ? AND source != 'custom'").run(tripId);
+  const ins = await db().prepare('INSERT INTO guide_cards (trip_id, category, icon, title, summary, items, source, sort, created_at) VALUES (?,?,?,?,?,?,?,?,?)');
+  for (let i = 0; i < cards.length; i++) {
+    const c = cards[i];
+    await ins.run(tripId, c.category, c.icon, c.title, c.summary, JSON.stringify(c.items), source, i, nowISO());
+  }
   // 自定义卡固定排在生成卡之后
-  db().prepare("UPDATE guide_cards SET sort = ? + id * 10 WHERE trip_id = ? AND source = 'custom'").run(cards.length, tripId);
-  logActivity(tripId, me, source === 'ai' ? '用 AI 生成了旅行锦囊' : '生成了旅行锦囊', `${cards.length} 张卡片`);
+  await db().prepare("UPDATE guide_cards SET sort = ? + id * 10 WHERE trip_id = ? AND source = 'custom'").run(cards.length, tripId);
+  await logActivity(tripId, me, source === 'ai' ? '用 AI 生成了旅行锦囊' : '生成了旅行锦囊', `${cards.length} 张卡片`);
   notify(tripId, 'handbook', 'generate', me.id);
-  const rows = db().prepare('SELECT * FROM guide_cards WHERE trip_id = ? ORDER BY sort, id').all(tripId) as any[];
+  const rows = await db().prepare('SELECT * FROM guide_cards WHERE trip_id = ? ORDER BY sort, id').all(tripId) as any[];
   json(res, 200, rows.map(rowToGuide));
 });
 
 route('DELETE', '/api/handbook/:id', true, async (_req, res, p, user) => {
-  const card = db().prepare('SELECT * FROM guide_cards WHERE id = ?').get(Number(p.id)) as any;
+  const card = await db().prepare('SELECT * FROM guide_cards WHERE id = ?').get(Number(p.id)) as any;
   if (!card) throw new ApiError(404, '卡片不存在');
-  const me = requireMember(Number(card.trip_id), user, 'editor');
-  db().prepare('DELETE FROM guide_cards WHERE id = ?').run(card.id);
+  const me = await requireMember(Number(card.trip_id), user, 'editor');
+  await db().prepare('DELETE FROM guide_cards WHERE id = ?').run(card.id);
   notify(Number(card.trip_id), 'handbook', 'delete', me.id);
   json(res, 200, { ok: true });
 });
@@ -907,7 +909,7 @@ route('GET', '/api/ai/status', true, async (_req, res) => {
 
 route('POST', '/api/trips/:id/ai/parse-guide', true, async (_req, res, p, user, body) => {
   const tripId = Number(p.id);
-  requireMember(tripId, user, 'editor');
+  await requireMember(tripId, user, 'editor');
   const text = String(body.text || '');
   if (!text.trim()) throw new ApiError(400, '请粘贴攻略文本');
   json(res, 200, await parseGuide(text));
@@ -915,7 +917,7 @@ route('POST', '/api/trips/:id/ai/parse-guide', true, async (_req, res, p, user, 
 
 route('POST', '/api/trips/:id/ai/generate', true, async (_req, res, p, user, body) => {
   const tripId = Number(p.id);
-  requireMember(tripId, user, 'editor');
+  await requireMember(tripId, user, 'editor');
   const city = String(body.city || '').trim().slice(0, 40);
   if (!city) throw new ApiError(400, '请填写目的地');
   json(res, 200, await generatePlan({
@@ -928,35 +930,35 @@ route('POST', '/api/trips/:id/ai/generate', true, async (_req, res, p, user, bod
 
 route('POST', '/api/trips/:id/ai/apply', true, async (_req, res, p, user, body) => {
   const tripId = Number(p.id);
-  const me = requireMember(tripId, user, 'editor');
+  const me = await requireMember(tripId, user, 'editor');
   const guide = body.guide as ParsedGuide;
   if (!guide?.days?.length) throw new ApiError(400, '行程数据为空');
-  const trip = requireTrip(tripId);
+  const trip = await requireTrip(tripId);
   const replace = body.replaceDays !== false;
   if (replace) {
-    db().prepare('DELETE FROM activities WHERE trip_id = ?').run(tripId);
-    db().prepare('DELETE FROM days WHERE trip_id = ?').run(tripId);
+    await db().prepare('DELETE FROM activities WHERE trip_id = ?').run(tripId);
+    await db().prepare('DELETE FROM days WHERE trip_id = ?').run(tripId);
   }
-  let baseNum = replace ? 0 : (db().prepare('SELECT MAX(day_number) AS m FROM days WHERE trip_id = ?').get(tripId) as any).m || 0;
-  const insDay = db().prepare('INSERT INTO days (trip_id, day_number, date, title, place) VALUES (?,?,?,?,?)');
-  const insAct = db().prepare('INSERT INTO activities (trip_id, day_id, sort, time, kind, title, place, lat, lng, cost, notes, created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)');
+  let baseNum = replace ? 0 : (await db().prepare('SELECT MAX(day_number) AS m FROM days WHERE trip_id = ?').get(tripId) as any).m || 0;
+  const insDay = await db().prepare('INSERT INTO days (trip_id, day_number, date, title, place) VALUES (?,?,?,?,?)');
+  const insAct = await db().prepare('INSERT INTO activities (trip_id, day_id, sort, time, kind, title, place, lat, lng, cost, notes, created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)');
   let actCount = 0;
   for (const gd of guide.days) {
     baseNum += 1;
     const date = gd.dayNumber && !replace ? addDays(trip.startDate, baseNum - 1) : addDays(trip.startDate, baseNum - 1);
-    const r = insDay.run(tripId, baseNum, date, String(gd.title || '').slice(0, 40), String(gd.place || trip.destination || '').slice(0, 40));
+    const r = await insDay.run(tripId, baseNum, date, String(gd.title || '').slice(0, 40), String(gd.place || trip.destination || '').slice(0, 40));
     const dayId = Number(r.lastInsertRowid);
     let sort = 0;
     for (const ga of gd.activities || []) {
       const title = String(ga.title || '').trim().slice(0, 100);
       if (!title) continue;
-      insAct.run(tripId, dayId, sort++, ga.time ? String(ga.time).replace('：', ':').slice(0, 5) : null,
+      await insAct.run(tripId, dayId, sort++, ga.time ? String(ga.time).replace('：', ':').slice(0, 5) : null,
         String(ga.kind || 'sight'), title, String(ga.place || gd.place || '').slice(0, 60), null, null, 0,
         String(ga.notes || '').slice(0, 200), nowISO());
       actCount++;
     }
   }
-  logActivity(tripId, me, '用 AI 生成了行程', `${guide.days.length} 天 · ${actCount} 项安排`);
+  await logActivity(tripId, me, '用 AI 生成了行程', `${guide.days.length} 天 · ${actCount} 项安排`);
   notify(tripId, 'day', 'ai-apply', me.id);
   json(res, 200, { ok: true, days: guide.days.length, activities: actCount });
 });
@@ -965,8 +967,8 @@ route('POST', '/api/trips/:id/ai/apply', true, async (_req, res, p, user, body) 
 
 route('GET', '/api/trips/:id/weather', true, async (_req, res, p, user) => {
   const tripId = Number(p.id);
-  requireMember(tripId, user);
-  const days = db().prepare('SELECT date, place FROM days WHERE trip_id = ? ORDER BY day_number').all(tripId) as any[];
+  await requireMember(tripId, user);
+  const days = await db().prepare('SELECT date, place FROM days WHERE trip_id = ? ORDER BY day_number').all(tripId) as any[];
   if (!days.length) {
     json(res, 200, []);
     return;
@@ -982,9 +984,9 @@ route('GET', '/api/trips/:id/weather', true, async (_req, res, p, user) => {
 /* ======== 公开分享 ======== */
 
 route('GET', '/api/share/:token', false, async (_req, res, p) => {
-  const trip = db().prepare('SELECT * FROM trips WHERE share_token = ?').get(String(p.token)) as any;
+  const trip = await db().prepare('SELECT * FROM trips WHERE share_token = ?').get(String(p.token)) as any;
   if (!trip) throw new ApiError(404, '分享链接不存在或已关闭');
-  const bundle = tripBundle(Number(trip.id), null);
+  const bundle = await tripBundle(Number(trip.id), null);
   json(res, 200, {
     trip: bundle.trip,
     days: bundle.days,
@@ -1004,7 +1006,7 @@ route('GET', '/api/users/search', true, async (req, res, _p, _user) => {
     json(res, 200, []);
     return;
   }
-  const rows = db().prepare('SELECT id, travel_id, username, nickname, avatar_color FROM users WHERE travel_id = ? OR username = ? OR nickname = ? LIMIT 5')
+  const rows = await db().prepare('SELECT id, travel_id, username, nickname, avatar_color FROM users WHERE travel_id = ? OR username = ? OR nickname = ? LIMIT 5')
     .all(Number(q) || -1, q, q) as any[];
   json(res, 200, rows.map(r => ({ id: r.id, travelId: r.travel_id, username: r.username, nickname: r.nickname, avatarColor: r.avatar_color })));
 });
@@ -1019,7 +1021,7 @@ export async function handleApi(req: IncomingMessage, res: ServerResponse): Prom
     const m = url.match(r.re);
     if (!m) continue;
     try {
-      const user = requireAuthSafe(req);
+      const user = await requireAuthSafe(req);
       if (r.auth && !user) throw new ApiError(401, '请先登录');
       const body = method === 'POST' || method === 'PATCH' || method === 'PUT' ? await readBody(req) : {};
       await r.handler(req, res, m.groups || {}, user, body);
@@ -1036,6 +1038,6 @@ export async function handleApi(req: IncomingMessage, res: ServerResponse): Prom
   return false;
 }
 
-function requireAuthSafe(req: IncomingMessage): SessionUser | null {
-  return getUserByToken(tokenFromRequest(req));
+async function requireAuthSafe(req: IncomingMessage): Promise<SessionUser | null> {
+  return await getUserByToken(tokenFromRequest(req));
 }

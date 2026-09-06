@@ -28,20 +28,20 @@ export interface SessionUser {
   bio: string;
 }
 
-export function createSession(userId: number): string {
+export async function createSession(userId: number): Promise<string> {
   const token = randomToken();
-  db().prepare('INSERT INTO sessions (token, user_id, created_at) VALUES (?,?,?)')
+  await db().prepare('INSERT INTO sessions (token, user_id, created_at) VALUES (?,?,?)')
     .run(token, userId, new Date().toISOString());
   return token;
 }
 
-export function destroySession(token: string): void {
-  db().prepare('DELETE FROM sessions WHERE token = ?').run(token);
+export async function destroySession(token: string): Promise<void> {
+  await db().prepare('DELETE FROM sessions WHERE token = ?').run(token);
 }
 
-export function getUserByToken(token: string): SessionUser | null {
+export async function getUserByToken(token: string): Promise<SessionUser | null> {
   if (!token) return null;
-  const row = db().prepare(
+  const row = await db().prepare(
     'SELECT u.id, u.travel_id, u.username, u.nickname, u.avatar_color, u.bio FROM sessions s JOIN users u ON u.id = s.user_id WHERE s.token = ?'
   ).get(token) as any;
   if (!row) return null;
@@ -56,22 +56,22 @@ export function tokenFromRequest(req: IncomingMessage): string {
   return m ? decodeURIComponent(m[1]) : '';
 }
 
-export function requireAuth(req: IncomingMessage): SessionUser {
-  const user = getUserByToken(tokenFromRequest(req));
+export async function requireAuth(req: IncomingMessage): Promise<SessionUser> {
+  const user = await getUserByToken(tokenFromRequest(req));
   if (!user) throw new ApiError(401, '请先登录');
   return user;
 }
 
 /** 分配一个未占用的 6 位旅行 ID */
-export function allocateTravelId(): number {
+export async function allocateTravelId(): Promise<number> {
   const d = db();
   for (let i = 0; i < 200; i++) {
     const id = 100000 + Math.floor(Math.random() * 900000);
-    const exists = d.prepare('SELECT 1 FROM users WHERE travel_id = ?').get(id);
+    const exists = await d.prepare('SELECT 1 FROM users WHERE travel_id = ?').get(id);
     if (!exists) return id;
   }
-  const max = d.prepare('SELECT MAX(travel_id) AS m FROM users').get() as any;
-  return Number(max.m || 100000) + 1;
+  const max = await d.prepare('SELECT MAX(travel_id) AS m FROM users').get() as any;
+  return Number(max?.m || 100000) + 1;
 }
 
 export function setAuthCookie(res: ServerResponse, token: string): void {

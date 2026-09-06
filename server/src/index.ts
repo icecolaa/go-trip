@@ -11,7 +11,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 // PocketBay 等托管平台通过 PORT 注入端口；GOTRIP_PORT 为本地部署的备用变量
 const PORT = Number(process.env.PORT) || Number(process.env.GOTRIP_PORT) || 8787;
 
-initDb();
+await initDb();
 
 const CLIENT_DIST = path.resolve(__dirname, '../../client/dist');
 const MIME: Record<string, string> = {

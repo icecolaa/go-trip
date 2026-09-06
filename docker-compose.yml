@@ -9,6 +9,8 @@ services:
     environment:
       GOTRIP_PORT: 8787
       GOTRIP_DB: /app/server/data/gotrip.db
+      # 如使用外部托管 PostgreSQL，取消注释或在同目录 .env 中提供
+      DATABASE_URL: ${DATABASE_URL:-}
       GOTRIP_AMAP_KEY: ${GOTRIP_AMAP_KEY:-}
       GOTRIP_AI_BASE_URL: ${GOTRIP_AI_BASE_URL:-}
       GOTRIP_AI_API_KEY: ${GOTRIP_AI_API_KEY:-}

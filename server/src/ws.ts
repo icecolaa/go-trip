@@ -19,13 +19,13 @@ const clients = new Set<Ctx>();
 const presence = new Map<number, Set<number>>();
 
 export function attachWs(server: Server): void {
-  server.on('upgrade', (req: IncomingMessage, socket, head) => {
+  server.on('upgrade', async (req: IncomingMessage, socket, head) => {
     const url = req.url || '';
     if (!url.startsWith('/ws')) {
       socket.destroy();
       return;
     }
-    const user = getUserByToken(tokenFromRequest(req));
+    const user = await getUserByToken(tokenFromRequest(req));
     if (!user) {
       socket.write('HTTP/1.1 401 Unauthorized\r\n\r\n');
       socket.destroy();
@@ -38,7 +38,7 @@ export function attachWs(server: Server): void {
       ws.on('message', raw => {
         try {
           const msg = JSON.parse(String(raw)) as WsClientMessage;
-          handle(ctx, msg);
+          handle(ctx, msg).catch(e => console.error('[ws] handle:', e?.message || e));
         } catch { /* 忽略非法消息 */ }
       });
       ws.on('close', () => {
@@ -65,10 +65,10 @@ export function attachWs(server: Server): void {
   interval.unref();
 }
 
-function handle(ctx: Ctx, msg: WsClientMessage): void {
+async function handle(ctx: Ctx, msg: WsClientMessage): Promise<void> {
   switch (msg.type) {
     case 'subscribe': {
-      if (!isMember(msg.tripId, ctx.userId)) return;
+      if (!await isMember(msg.tripId, ctx.userId)) return;
       ctx.trips.add(msg.tripId);
       joinRoom(msg.tripId, ctx.userId);
       broadcastPresence(msg.tripId);
@@ -84,8 +84,8 @@ function handle(ctx: Ctx, msg: WsClientMessage): void {
       ctx.alive = true;
       break;
     case 'location': {
-      if (!isMember(msg.tripId, ctx.userId)) return;
-      db().prepare('UPDATE trip_members SET location_lat = ?, location_lng = ?, location = ?, location_at = ? WHERE trip_id = ? AND user_id = ?')
+      if (!await isMember(msg.tripId, ctx.userId)) return;
+      await db().prepare('UPDATE trip_members SET location_lat = ?, location_lng = ?, location = ?, location_at = ? WHERE trip_id = ? AND user_id = ?')
         .run(msg.lat, msg.lng, msg.city || null, new Date().toISOString(), msg.tripId, ctx.userId);
       broadcastToTrip(msg.tripId, {
         type: 'location', tripId: msg.tripId, memberId: 0, lat: msg.lat, lng: msg.lng, city: msg.city, at: new Date().toISOString(),
@@ -95,8 +95,8 @@ function handle(ctx: Ctx, msg: WsClientMessage): void {
   }
 }
 
-function isMember(tripId: number, userId: number): boolean {
-  const row = db().prepare('SELECT 1 FROM trip_members WHERE trip_id = ? AND user_id = ?').get(tripId, userId);
+async function isMember(tripId: number, userId: number): Promise<boolean> {
+  const row = await db().prepare('SELECT 1 FROM trip_members WHERE trip_id = ? AND user_id = ?').get(tripId, userId);
   return !!row;
 }
 

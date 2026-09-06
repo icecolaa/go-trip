@@ -23,8 +23,8 @@
 | 层 | 技术 |
 |---|---|
 | 前端 | React 18 + TypeScript + Vite + Zustand + React Router（Hash 路由）+ Leaflet |
-| 后端 | Node.js 原生 HTTP（零框架）+ 内置 `node:sqlite` + ws |
-| 数据 | SQLite 单文件（Node ≥ 22.5 内置驱动），零外部依赖，备份即拷贝 |
+| 后端 | Node.js 原生 HTTP（零框架）+ `pg`（托管 PostgreSQL）/ 内置 `node:sqlite` + ws |
+| 数据 | **PostgreSQL**（PocketBay 托管，读平台注入的 `DATABASE_URL`）；未设置时自动回退本地 SQLite 单文件，本地开发零配置 |
 | AI | OpenAI 兼容接口（可配 base-url，国产模型开箱即用） |
 
 Monorepo 结构（npm workspaces）：
@@ -75,6 +75,7 @@ docker compose up -d --build
 
 | 变量 | 说明 | 默认 |
 |---|---|---|
+| `DATABASE_URL` | 平台托管 PostgreSQL 连接串（PocketBay 部署时自动注入）；设置后启用 PG 驱动，否则回退 SQLite | SQLite |
 | `GOTRIP_PORT` | 服务端口 | `8787` |
 | `GOTRIP_DB` | SQLite 文件路径 | `./data/gotrip.db` |
 | `GOTRIP_ORIGIN` | CORS 来源 | `*` |
