@@ -23,6 +23,8 @@ export async function chat(system: string, user: string, timeoutMs = 30000): Pro
           { role: 'user', content: user },
         ],
         temperature: 0.6,
+        // 强制 JSON 输出：主流 OpenAI 兼容供应商（DeepSeek/智谱/通义/OpenAI）均支持
+        response_format: { type: 'json_object' },
       }),
       signal: AbortSignal.timeout(timeoutMs),
     });
@@ -210,7 +212,7 @@ const GENERATE_SYSTEM = `你是资深中国旅行规划师。为用户生成行�
 /** 攻略文本 → 结构化行程（AI 优先，失败回退内置解析） */
 export async function parseGuide(text: string): Promise<ParsedGuide> {
   if (aiConfigured()) {
-    const out = await chat(PARSE_SYSTEM, text.slice(0, 6000));
+    const out = await chat(PARSE_SYSTEM, text.slice(0, 6000), 60000);
     if (out) {
       const json = extractJson(out);
       if (json?.days?.length) {

@@ -151,9 +151,20 @@ check "天气查询" "$R" 'date|"error"'
 R=$(req GET /api/ai/status "$TA")
 check "AI状态接口" "$R" '"enabled"'
 R=$(req POST /api/trips/$TRIP/ai/parse-guide "$TA" '{"text":"Day1 西湖一日游 上午 断桥残雪"}')
-check "AI解析优雅降级或成功" "$R" 'days|"error"'
+GUIDE_JSON='{"text":"Day1 09:30 人民公园喝盖碗茶\n15:00 武侯祠"}'
+printf '%s' "$GUIDE_JSON" > "$BJ"
+R=$(curl -s -X POST "$BASE/api/trips/$TRIP/ai/parse-guide" -H "Authorization: Bearer $TA" -H "Content-Type: application/json" --data-binary @"$BJ" --max-time 90)
+P_SRC=$(jget "$R" "d.get('source')")
+check "AI攻略解析(ai或builtin降级)" "$P_SRC" '^(ai|builtin)$'
+if [ "$P_SRC" = "ai" ]; then
+  check "AI解析出的天数" "$(jget "$R" "len(d.get('days',[]))")" '^[1-9]$'
+fi
 R=$(req POST /api/trips/$TRIP/ai/generate "$TA" '{"city":"杭州","days":2}')
-check "AI生成优雅降级或成功" "$R" 'days|"error"'
+G_SRC=$(jget "$R" "d.get('source')")
+check "AI行程生成(ai或builtin降级)" "$G_SRC" '^(ai|builtin)$'
+if [ "$G_SRC" = "ai" ]; then
+  check "AI生成的天数" "$(jget "$R" "len(d.get('days',[]))")" '^2$'
+fi
 
 echo "== 旅行锦囊 =="
 R=$(req GET /api/trips/$TRIP/handbook "$TA")
@@ -175,8 +186,16 @@ R=$(req PATCH /api/trips/$TRIP "$TA" '{"destination":"大理 → 丽江"}')
 check "改目的地为多城" "$R" '"ok":true'
 R=$(req POST /api/trips/$TRIP/handbook/generate "$TA" '{}')
 MULTI=$(jget "$R" "len(d)")
-check "多目的地锦囊合并(>=8张)" "$MULTI" '^((8|9)|1[0-9])$'
-echo "      (多城合并生成 $MULTI 张卡片)"
+MULTI_SRC=$(jget "$R" "d[0].get('source') if d else 'none'")
+if [ "$MULTI_SRC" = "ai" ]; then
+  # 配置 AI 时由大模型生成（约 5-6 张），仍须有效
+  check "多目的地锦囊AI生成(有效)" "$MULTI" '^([4-9]|1[0-9])$'
+  echo "      (AI 生成 $MULTI 张卡片)"
+else
+  # 未配置 AI 时内置库合并：大理4 + 丽江5
+  check "多目的地锦囊内置合并(>=8张)" "$MULTI" '^((8|9)|1[0-9])$'
+  echo "      (内置合并生成 $MULTI 张卡片)"
+fi
 
 echo "== 分享 =="
 R=$(req POST /api/trips/$TRIP/share "$TA" '{"enable":true}')
