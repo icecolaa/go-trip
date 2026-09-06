@@ -1,0 +1,19 @@
+services:
+  gotrip:
+    build: .
+    container_name: gotrip
+    ports:
+      - "8787:8787"
+    volumes:
+      - gotrip-data:/app/server/data
+    environment:
+      GOTRIP_PORT: 8787
+      GOTRIP_DB: /app/server/data/gotrip.db
+      GOTRIP_AMAP_KEY: ${GOTRIP_AMAP_KEY:-}
+      GOTRIP_AI_BASE_URL: ${GOTRIP_AI_BASE_URL:-}
+      GOTRIP_AI_API_KEY: ${GOTRIP_AI_API_KEY:-}
+      GOTRIP_AI_MODEL: ${GOTRIP_AI_MODEL:-}
+    restart: unless-stopped
+
+volumes:
+  gotrip-data:

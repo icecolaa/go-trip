@@ -1,0 +1,13 @@
+{
+  "name": "@gotrip/server",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node --watch --no-warnings src/index.ts",
+    "start": "node --no-warnings src/index.ts"
+  },
+  "dependencies": {
+    "ws": "^8.18.0"
+  }
+}
