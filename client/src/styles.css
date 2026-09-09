@@ -833,7 +833,7 @@ textarea.input { resize: vertical; min-height: 72px; line-height: 1.6; }
     max-height: 46%;
   }
   .map-legend { font-size: 10.5px; padding: 6px 9px; gap: 7px; max-width: calc(100% - 20px); }
-  .row-ops .chips { display: none; } /* 地图按天筛选在移动端让位给图例 */
+  .row-ops .chips { flex: 1 1 100%; justify-content: flex-start; } /* 天筛选 chips 换行保留（图例仅展示不可点） */
 
   /* 预算 */
   .budget-cards { grid-template-columns: repeat(2, 1fr); gap: 10px; }

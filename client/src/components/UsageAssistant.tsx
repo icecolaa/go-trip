@@ -50,6 +50,7 @@ export default function UsageAssistant() {
   const fabRef = useRef<HTMLButtonElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
   const drag = useRef({ active: false, moved: false, startX: 0, startY: 0, offX: 0, offY: 0 });
+  const cleanupDragRef = useRef<(() => void) | null>(null);
 
   /** 把坐标限制在视口内 */
   const clamp = (x: number, y: number): Pos => {
@@ -78,7 +79,11 @@ export default function UsageAssistant() {
   useEffect(() => {
     const onResize = () => setPos(p => (p.x < 0 ? p : clamp(p.x, p.y)));
     window.addEventListener('resize', onResize);
-    return () => window.removeEventListener('resize', onResize);
+    // 拖拽中组件卸载（如登出）时兜底移除 window 监听，避免泄漏
+    return () => {
+      window.removeEventListener('resize', onResize);
+      cleanupDragRef.current?.();
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -95,20 +100,9 @@ export default function UsageAssistant() {
     const rect = fabRef.current!.getBoundingClientRect();
     drag.current = { active: true, moved: false, startX: e.clientX, startY: e.clientY, offX: e.clientX - rect.left, offY: e.clientY - rect.top };
 
-    const onMove = (ev: PointerEvent) => {
-      const d = drag.current;
-      if (!d.active) return;
-      if (!d.moved && Math.abs(ev.clientX - d.startX) + Math.abs(ev.clientY - d.startY) <= 6) return;
-      d.moved = true;
-      setDragging(true);
-      setPos(clamp(ev.clientX - d.offX, ev.clientY - d.offY));
-    };
     const onUp = () => {
-      window.removeEventListener('pointermove', onMove);
-      window.removeEventListener('pointerup', onUp);
-      window.removeEventListener('pointercancel', onUp);
-      const d = drag.current;
-      drag.current = { active: false, moved: false, startX: 0, startY: 0, offX: 0, offY: 0 };
+      const d = drag.current; // 先捕获，cleanup 会重置 drag.current
+      cleanupDragRef.current?.();
       setDragging(false);
       if (!d.moved) {
         setOpen(true); // 未移动视为点击
@@ -126,9 +120,24 @@ export default function UsageAssistant() {
         return next;
       });
     };
+    const onMove = (ev: PointerEvent) => {
+      const d = drag.current;
+      if (!d.active) return;
+      if (!d.moved && Math.abs(ev.clientX - d.startX) + Math.abs(ev.clientY - d.startY) <= 6) return;
+      d.moved = true;
+      setDragging(true);
+      setPos(clamp(ev.clientX - d.offX, ev.clientY - d.offY));
+    };
     window.addEventListener('pointermove', onMove);
     window.addEventListener('pointerup', onUp);
     window.addEventListener('pointercancel', onUp);
+    cleanupDragRef.current = () => {
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+      window.removeEventListener('pointercancel', onUp);
+      drag.current = { active: false, moved: false, startX: 0, startY: 0, offX: 0, offY: 0 };
+      cleanupDragRef.current = null;
+    };
     e.preventDefault();
   };
 

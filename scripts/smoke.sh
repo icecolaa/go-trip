@@ -234,6 +234,16 @@ R=$(req POST /api/assistant "$TA" '{"messages":[]}')
 check "空历史也有应答" "$(jget "$R" "(d.get('reply') or '')[:1] != ''")" 'True'
 R=$(req POST /api/assistant "" '{"messages":[{"role":"user","content":"hi"}]}')
 check "未登录使用助手被拒" "$R" '请先登录'
+PYTHONIOENCODING=utf-8 python -c "
+import json
+print(json.dumps({'messages':[
+  {'role':'user','content':'怎么邀请朋友？'},
+  {'role':'assistant','content':'在成员页创建邀请码。'},
+  {'role':'user','content':'那邀请码能设置有效期吗？'}]}, ensure_ascii=False))
+" > "$BJ"
+R=$(curl -s -X POST "$BASE/api/assistant" -H "Authorization: Bearer $TA" -H "Content-Type: application/json" --data-binary @"$BJ" --max-time 90)
+check "助手多轮对话应答" "$(jget "$R" "(d.get('reply') or '')[:1] != ''")" 'True'
+check "多轮对话source合法" "$(jget "$R" "d.get('source')")" '^(ai|fallback)$'
 
 echo "== WebSocket 实时广播 =="
 NODE_BIN=$(command -v node || echo /d/nodeJs/node.exe)
