@@ -650,16 +650,39 @@ textarea.input { resize: vertical; min-height: 72px; line-height: 1.6; }
    使用助手（悬浮 AI 问答）
    ============================================================ */
 .ua-fab {
-  position: fixed; right: 22px; bottom: 22px; z-index: 90; /* 低于弹窗(100)，弹窗打开时不遮挡操作 */
+  position: fixed; /* 位置由内联 left/top 控制（支持拖拽记忆） */
+  z-index: 90; /* 低于弹窗(100)，弹窗打开时不遮挡操作 */
   display: flex; align-items: center; gap: 7px;
   border: none; border-radius: 999px;
   background: linear-gradient(135deg, var(--green), var(--green-deep));
   color: #fff; font-size: 14px; font-weight: 700;
-  padding: 12px 18px; cursor: pointer;
+  padding: 12px 18px; cursor: grab;
   box-shadow: 0 6px 22px rgba(30, 77, 53, .4);
-  transition: transform .15s ease, box-shadow .15s ease;
+  transition: box-shadow .15s ease;
+  touch-action: none; /* 拖拽时不触发页面滚动 */
+  user-select: none; -webkit-user-select: none;
 }
-.ua-fab:hover { transform: translateY(-2px); box-shadow: 0 10px 28px rgba(30, 77, 53, .5); }
+.ua-fab:hover { box-shadow: 0 10px 28px rgba(30, 77, 53, .5); }
+.ua-fab.dragging { cursor: grabbing; transition: none; opacity: .92; }
+.ua-fab-x {
+  position: absolute; top: -7px; right: -7px;
+  width: 20px; height: 20px; border-radius: 50%;
+  background: var(--red); color: #fff;
+  font-size: 13px; line-height: 16px; text-align: center;
+  border: 2px solid var(--card); box-shadow: var(--shadow);
+  cursor: pointer; padding: 0;
+}
+.ua-fab-x:hover { background: #a03d28; }
+.ua-restore {
+  position: fixed; right: 0; top: 58%; z-index: 90;
+  width: 26px; height: 50px; padding: 0;
+  border: none; border-radius: 10px 0 0 10px;
+  background: linear-gradient(135deg, var(--green), var(--green-deep));
+  color: #fff; font-size: 13px; cursor: pointer;
+  opacity: .5; box-shadow: var(--shadow);
+  transition: opacity .15s ease, width .15s ease;
+}
+.ua-restore:hover { opacity: 1; width: 32px; }
 .ua-fab-label { font-family: var(--sans); letter-spacing: .06em; }
 
 .ua-panel {
@@ -718,7 +741,7 @@ textarea.input { resize: vertical; min-height: 72px; line-height: 1.6; }
 .ua-inputrow .input { flex: 1; }
 
 @media (max-width: 560px) {
-  .ua-fab { right: 14px; bottom: 14px; padding: 11px 15px; }
+  .ua-fab { padding: 11px 15px; } /* 位置由内联 left/top 控制（拖拽记忆） */
   .ua-panel { right: 12px; bottom: 12px; height: min(540px, calc(100vh - 32px)); }
 }
 
@@ -863,7 +886,8 @@ textarea.input { resize: vertical; min-height: 72px; line-height: 1.6; }
   .feed-item { font-size: 12.5px; }
 
   /* 使用助手 */
-  .ua-fab { right: 14px; bottom: 14px; padding: 11px 15px; font-size: 13px; }
+  .ua-fab { padding: 11px 15px; font-size: 13px; }
+  .ua-restore { top: 52%; }
   .ua-panel { right: 10px; bottom: 10px; width: calc(100vw - 20px); height: min(62dvh, 540px); }
 }
 
