@@ -645,3 +645,79 @@ textarea.input { resize: vertical; min-height: 72px; line-height: 1.6; }
   background: radial-gradient(120px 60px at 85% -10%, rgba(255, 255, 255, .18), transparent);
   pointer-events: none;
 }
+
+/* ============================================================
+   使用助手（悬浮 AI 问答）
+   ============================================================ */
+.ua-fab {
+  position: fixed; right: 22px; bottom: 22px; z-index: 240;
+  display: flex; align-items: center; gap: 7px;
+  border: none; border-radius: 999px;
+  background: linear-gradient(135deg, var(--green), var(--green-deep));
+  color: #fff; font-size: 14px; font-weight: 700;
+  padding: 12px 18px; cursor: pointer;
+  box-shadow: 0 6px 22px rgba(30, 77, 53, .4);
+  transition: transform .15s ease, box-shadow .15s ease;
+}
+.ua-fab:hover { transform: translateY(-2px); box-shadow: 0 10px 28px rgba(30, 77, 53, .5); }
+.ua-fab-label { font-family: var(--sans); letter-spacing: .06em; }
+
+.ua-panel {
+  position: fixed; right: 20px; bottom: 20px; z-index: 240;
+  width: min(400px, calc(100vw - 32px));
+  height: min(560px, calc(100vh - 48px));
+  display: flex; flex-direction: column;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  box-shadow: var(--shadow-lg);
+  overflow: hidden;
+  animation: uaIn .2s ease;
+}
+@keyframes uaIn { from { opacity: 0; transform: translateY(14px) scale(.98); } }
+
+.ua-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 16px;
+  background: linear-gradient(160deg, var(--green-deep), var(--green));
+  color: #f3efe2;
+}
+.ua-head b { font-family: var(--serif); font-size: 16px; letter-spacing: .04em; }
+.ua-head .kicker { color: rgba(255, 255, 255, .65); }
+.ua-close {
+  width: 30px; height: 30px; border-radius: 50%; border: 1px solid rgba(255,255,255,.35);
+  background: rgba(255,255,255,.12); color: #fff; font-size: 16px; line-height: 1;
+}
+.ua-close:hover { background: rgba(255,255,255,.22); }
+
+.ua-msgs { flex: 1; overflow-y: auto; padding: 14px; display: flex; flex-direction: column; gap: 10px; }
+.ua-msg { display: flex; }
+.ua-msg.user { justify-content: flex-end; }
+.ua-msg.assistant { justify-content: flex-start; }
+.ua-bubble {
+  max-width: 82%; padding: 9px 13px; border-radius: 14px;
+  font-size: 13.5px; line-height: 1.65; white-space: pre-wrap; word-break: break-word;
+}
+.ua-msg.user .ua-bubble { background: var(--green); color: #fff; border-bottom-right-radius: 4px; }
+.ua-msg.assistant .ua-bubble { background: var(--card-warm); border: 1px solid var(--line); border-bottom-left-radius: 4px; }
+
+.ua-typing { display: inline-flex; align-items: center; gap: 8px; color: var(--ink-soft); }
+.ua-dots { display: inline-flex; gap: 3px; }
+.ua-dots i {
+  width: 5px; height: 5px; border-radius: 50%; background: var(--ink-faint);
+  animation: uaBlink 1.2s infinite;
+}
+.ua-dots i:nth-child(2) { animation-delay: .2s; }
+.ua-dots i:nth-child(3) { animation-delay: .4s; }
+@keyframes uaBlink { 0%, 70%, 100% { opacity: .25; } 35% { opacity: 1; } }
+
+.ua-chips { display: flex; flex-wrap: wrap; gap: 6px; padding: 2px 0; }
+.ua-chips .chip { font-size: 12px; padding: 5px 11px; }
+
+.ua-inputrow { display: flex; gap: 8px; padding: 12px; border-top: 1px solid var(--line); background: var(--card); }
+.ua-inputrow .input { flex: 1; }
+
+@media (max-width: 560px) {
+  .ua-fab { right: 14px; bottom: 14px; padding: 11px 15px; }
+  .ua-panel { right: 12px; bottom: 12px; height: min(540px, calc(100vh - 32px)); }
+}

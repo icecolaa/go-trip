@@ -7,6 +7,7 @@ import { searchPois } from './poi.ts';
 import { getWeather } from './weather.ts';
 import { parseGuide, generatePlan, aiConfigured } from './ai.ts';
 import { buildHandbook, aiHandbook } from './handbook.ts';
+import { answerUsageQuestion, sanitizeHistory } from './assistant.ts';
 import { onlineMemberIds, broadcastToTrip } from './ws.ts';
 import type { Trip, TripMember, Invite, TripDay, Activity, Expense, PackingItem, JournalNote, ActivityLogEntry, MemberRole, TripBundle, ParsedGuide, GuideCard } from '../../shared/types.ts';
 
@@ -899,6 +900,14 @@ route('DELETE', '/api/handbook/:id', true, async (_req, res, p, user) => {
   await db().prepare('DELETE FROM guide_cards WHERE id = ?').run(card.id);
   notify(Number(card.trip_id), 'handbook', 'delete', me.id);
   json(res, 200, { ok: true });
+});
+
+/* ======== 使用助手 ======== */
+
+route('POST', '/api/assistant', true, async (_req, res, _p, user, body) => {
+  const history = sanitizeHistory(body.messages);
+  const { reply, source } = await answerUsageQuestion(history);
+  json(res, 200, { reply, source });
 });
 
 /* ======== AI ======== */

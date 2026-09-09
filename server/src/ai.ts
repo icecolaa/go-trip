@@ -9,23 +9,24 @@ export function aiConfigured(): boolean {
   return !!(AI_BASE && AI_KEY && AI_MODEL);
 }
 
-/** 调用 OpenAI 兼容接口（智谱/DeepSeek/通义/Moonshot 等），导出供锦囊模块复用 */
-export async function chat(system: string, user: string, timeoutMs = 30000): Promise<string | null> {
+/** 调用 OpenAI 兼容接口（智谱/DeepSeek/通义/Moonshot 等），导出供锦囊/助手模块复用 */
+export async function chat(system: string, user: string, timeoutMs = 30000, jsonMode = true): Promise<string | null> {
   if (!aiConfigured()) return null;
   try {
+    const body: any = {
+      model: AI_MODEL,
+      messages: [
+        { role: 'system', content: system },
+        { role: 'user', content: user },
+      ],
+      temperature: 0.6,
+    };
+    // 强制 JSON 输出：结构化任务用；纯文本对话（如使用助手）关闭
+    if (jsonMode) body.response_format = { type: 'json_object' };
     const resp = await fetch(`${AI_BASE}/chat/completions`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${AI_KEY}` },
-      body: JSON.stringify({
-        model: AI_MODEL,
-        messages: [
-          { role: 'system', content: system },
-          { role: 'user', content: user },
-        ],
-        temperature: 0.6,
-        // 强制 JSON 输出：主流 OpenAI 兼容供应商（DeepSeek/智谱/通义/OpenAI）均支持
-        response_format: { type: 'json_object' },
-      }),
+      body: JSON.stringify(body),
       signal: AbortSignal.timeout(timeoutMs),
     });
     if (!resp.ok) return null;

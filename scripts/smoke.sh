@@ -226,6 +226,15 @@ check "登出B" "$R" '"ok":true'
 R=$(req GET /api/me "$TB")
 check "登出后token失效" "$R" '请先登录'
 
+echo "== 使用助手 =="
+R=$(req POST /api/assistant "$TA" '{"messages":[{"role":"user","content":"怎么邀请朋友加入旅程？"}]}')
+check "使用助手应答非空" "$(jget "$R" "(d.get('reply') or '')[:1] != ''")" 'True'
+check "使用助手source合法" "$(jget "$R" "d.get('source')")" '^(ai|fallback)$'
+R=$(req POST /api/assistant "$TA" '{"messages":[]}')
+check "空历史也有应答" "$(jget "$R" "(d.get('reply') or '')[:1] != ''")" 'True'
+R=$(req POST /api/assistant "" '{"messages":[{"role":"user","content":"hi"}]}')
+check "未登录使用助手被拒" "$R" '请先登录'
+
 echo "== WebSocket 实时广播 =="
 NODE_BIN=$(command -v node || echo /d/nodeJs/node.exe)
 WS_OUT=$("$NODE_BIN" scripts/ws-test.mjs 2>&1 || true)

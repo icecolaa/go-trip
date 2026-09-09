@@ -4,6 +4,7 @@ import { createHashRouter, RouterProvider, Outlet, Navigate, useLocation } from 
 import './styles.css';
 import { useApp } from './store';
 import { Toasts, TopBar } from './components/ui';
+import UsageAssistant from './components/UsageAssistant';
 import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
 import TripPage from './pages/TripPage';
@@ -23,6 +24,7 @@ function Shell() {
   return (
     <>
       <Toasts />
+      {me && <UsageAssistant />}
       {!bare && <TopBar me={me} />}
       <Outlet />
     </>
