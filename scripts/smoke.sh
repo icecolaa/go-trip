@@ -245,6 +245,14 @@ R=$(curl -s -X POST "$BASE/api/assistant" -H "Authorization: Bearer $TA" -H "Con
 check "助手多轮对话应答" "$(jget "$R" "(d.get('reply') or '')[:1] != ''")" 'True'
 check "多轮对话source合法" "$(jget "$R" "d.get('source')")" '^(ai|fallback)$'
 
+echo "== 图文使用说明静态页 =="
+R=$(curl -s -o /dev/null -w "%{http_code}" "$BASE/guide/index.html")
+check "指南页可访问(200)" "$R" '^200$'
+R=$(curl -s "$BASE/guide/index.html")
+check "指南页含标题" "$R" '图文使用说明'
+R=$(curl -s -o /dev/null -w "%{http_code}" "$BASE/guide/01-itinerary.png")
+check "指南配图可访问(200)" "$R" '^200$'
+
 echo "== WebSocket 实时广播 =="
 NODE_BIN=$(command -v node || echo /d/nodeJs/node.exe)
 WS_OUT=$("$NODE_BIN" scripts/ws-test.mjs 2>&1 || true)
