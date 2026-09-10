@@ -32,15 +32,19 @@ function haversine(lat1: number, lng1: number, lat2: number, lng2: number): numb
 }
 
 /** 高德地点页 / 导航链接 */
-export function amapPlaceUrl(title: string, place: string | null, lat: number | null, lng: number | null, destination: string): string {
+export function amapPlaceUrl(title: string, place: string | null, lat: number | null, lng: number | null, city: string): string {
   if (lat != null && lng != null) {
     return `https://uri.amap.com/marker?position=${lng},${lat}&name=${encodeURIComponent(title)}&src=gotrip&coordinate=gaode&callnative=0`;
   }
-  // 无坐标时只搜地名本身；短地名（≤3 字，如「古城」）歧义大，拼目的地缩小范围。
-  // 此前一律拼「目的地 地名」，跨城行程会命中无关结果（如「呼伦贝尔 赤峰-阿尔山」搜出阿尔山路）。
-  const base = (place || title || '').trim();
-  const q = base.length >= 4 ? base : `${destination} ${base}`.trim();
+  const base = lastSegment(place || title || '');
+  const q = base.length >= 4 || (city && base.includes(city)) ? base : `${city} ${base}`.trim();
   return `https://www.amap.com/search?query=${encodeURIComponent(q)}`;
+}
+
+/** 取「A → B → C」多段地名的末段（当前所在位置） */
+function lastSegment(place: string): string {
+  const segs = place.split(/\s*(?:→|->)\s*/).filter(Boolean);
+  return segs.length > 1 ? segs[segs.length - 1] : place;
 }
 
 /** 站点标签：清洗标题的动词前后缀，得到具体地名（如「穿越科尔沁大草原」→「科尔沁大草原」） */
@@ -83,6 +87,21 @@ export function amapRouteUrl(stops: Activity[]): string | null {
   return `https://uri.amap.com/navigation?from=${encodeURIComponent(fmt(first))}&to=${encodeURIComponent(fmt(last))}` +
     (via ? `&via=${encodeURIComponent(via)}` : '') +
     `&mode=car&policy=&src=gotrip&coordinate=gaode&callnative=0`;
+}
+
+/**
+ * 小红书搜索词：内容搜索是「多词 AND」语义，目的地前缀会大幅收窄结果。
+ * 含城市信息的独立地名（如「大庆站」「阿尔山火车站」）直接单独搜；
+ * 过短或泛化地名（如「古城」「草原」）才拼目的地限定，避免跑题。
+ */
+function xhsQuery(a: Activity, city: string): string {
+  let base = (a.place || a.title || '').trim();
+  if (!base) return city;
+  const segs = base.split(/\s*(?:→|->)\s*/).filter(Boolean);
+  if (segs.length > 1) base = segs[segs.length - 1];
+  if (base.length <= 2 || !base.includes(city)) return `${city} ${base}`;
+  if (/(站|机场)$/.test(base) || base.length >= 4) return base;
+  return `${city} ${base}`;
 }
 
 function xhsUrl(q: string): string {
@@ -150,6 +169,12 @@ export default function TripMode({ bundle, weather, onClose }: Props) {
 
   const weatherByDate = useMemo(() => new Map(weather.map(w => [w.date, w])), [weather]);
   const w = day && weatherByDate.get(day.date);
+  // 当日所在城市：多段目的地（如「大理 → 丽江」）按行程顺序取当日段
+  const dayCity = useMemo(() => {
+    const raw = day?.place || bundle.trip.destination || '';
+    const segs = raw.split(/\s*(?:→|->)\s*/).filter(Boolean);
+    return segs.length > 1 ? (segs[Math.min(dayIdx, segs.length - 1)] || raw) : raw;
+  }, [day, bundle.trip.destination, dayIdx]);
 
   useEffect(() => {
     try { sessionStorage.setItem(`gotrip_tm_day_${bundle.trip.id}`, String(dayIdx)); } catch { /* ignore */ }
@@ -295,7 +320,7 @@ export default function TripMode({ bundle, weather, onClose }: Props) {
                       const next = acts[i + 1];
                       const dist = a.lat != null && a.lng != null && next?.lat != null && next?.lng != null
                         ? haversine(a.lat, a.lng, next.lat, next.lng) : null;
-                      const km = amapPlaceUrl(a.title, a.place, a.lat, a.lng, bundle.trip.destination);
+                      const km = amapPlaceUrl(a.title, a.place, a.lat, a.lng, dayCity);
                       return (
                         <div key={a.id}>
                           <article className={'tm-stop' + (isDone ? ' is-done' : '') + (isNext ? ' is-next' : '')}>
@@ -314,7 +339,7 @@ export default function TripMode({ bundle, weather, onClose }: Props) {
                             </div>
                             <div className="tm-stop-actions">
                               <a className="tm-act-link" href={km} target="_blank" rel="noreferrer">高德导航</a>
-                              <a className="tm-act-link is-xhs" href={xhsUrl(`${bundle.trip.destination} ${a.place || a.title}`)} target="_blank" rel="noreferrer">小红书</a>
+                              <a className="tm-act-link is-xhs" href={xhsUrl(xhsQuery(a, dayCity))} target="_blank" rel="noreferrer">小红书</a>
                             </div>
                           </article>
                           {dist != null && dist > 0 && i < acts.length - 1 && (
