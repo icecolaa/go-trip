@@ -27,6 +27,75 @@ export default function MapTab({ bundle, reload, canEdit }: TabCtx) {
 
   const hasNoGeo = bundle.activities.some(a => a.lat == null && a.place);
 
+  /** 按行程顺序（bundle.activities 已按天/排序返回）取全部已定位站点 */
+  const allLocated = useMemo(
+    () => bundle.activities.filter(a => a.lat != null && a.lng != null)
+      .map(a => ({ id: a.id, lat: a.lat!, lng: a.lng!, title: a.place || a.title, subtitle: '', dayNumber: bundle.days.find(d => d.id === a.dayId)?.dayNumber })),
+    [bundle.activities, bundle.days],
+  );
+
+  /** 打开高德：全部目的地按行程顺序串联（起点→途经→终点） */
+  const searchAllDestinations = () => {
+    if (!allLocated.length) { toast('还没有已定位的地点，编辑行程时搜索地点即可定位', true); return; }
+    if (allLocated.length === 1) {
+      const p = allLocated[0];
+      window.open(`https://uri.amap.com/marker?position=${p.lng},${p.lat}&name=${encodeURIComponent(p.title)}&src=gotrip&coordinate=gaode&callnative=0`, '_blank', 'noopener');
+      return;
+    }
+    // 途经点过多时只取首尾与若干中间点，避免 URI 过长
+    const fmt = (p: MapPoint) => `${p.lng},${p.lat},${p.title}`;
+    const first = allLocated[0], last = allLocated[allLocated.length - 1];
+    const mid = allLocated.slice(1, -1);
+    const via = (mid.length > 8 ? mid.filter((_, i) => i % Math.ceil(mid.length / 8) === 0).slice(0, 8) : mid).map(fmt).join(';');
+    const url = `https://uri.amap.com/navigation?from=${encodeURIComponent(fmt(first))}&to=${encodeURIComponent(fmt(last))}` +
+      (via ? `&via=${encodeURIComponent(via)}` : '') +
+      `&mode=car&src=gotrip&coordinate=gaode&callnative=0`;
+    window.open(url, '_blank', 'noopener');
+  };
+
+  /** 一键复制全部行程（逐天逐站，含时间/地点/费用） */
+  const copyAllItinerary = async () => {
+    const days = bundle.days;
+    if (!days.length) { toast('还没有行程内容', true); return; }
+    const byDay = new Map<number, typeof bundle.activities>();
+    for (const d of days) byDay.set(d.id, []);
+    for (const a of bundle.activities) byDay.get(a.dayId)?.push(a);
+    for (const list of byDay.values()) list.sort((x, y) => x.sort - y.sort || x.id - y.id);
+
+    const lines: string[] = [
+      `【${bundle.trip.title}】${bundle.trip.destination || ''}`.trim(),
+      `${bundle.trip.startDate} ~ ${bundle.trip.endDate}　共 ${days.length} 天 · ${bundle.activities.length} 项安排`,
+      '',
+    ];
+    for (const d of days) {
+      const acts = byDay.get(d.id) || [];
+      lines.push(`D${d.dayNumber}（${d.date}${d.title ? ' · ' + d.title : ''}）${d.place ? '📍' + d.place : ''}`);
+      if (!acts.length) lines.push('  （暂无安排）');
+      acts.forEach((a, i) => {
+        const parts = [`  ${i + 1}.`];
+        if (a.time) parts.push(a.time);
+        parts.push(a.title);
+        if (a.place) parts.push(`（${a.place}）`);
+        if (a.cost) parts.push(`¥${a.cost}`);
+        if (a.notes) parts.push(`— ${a.notes}`);
+        lines.push(parts.join(' '));
+      });
+      lines.push('');
+    }
+    lines.push(`💰 预算 ${bundle.trip.budget || 0} 元 · 已花 ${bundle.budget.total} 元`);
+    const text = lines.join(String.fromCharCode(10));
+    try {
+      await navigator.clipboard.writeText(text);
+      toast('已复制全部行程');
+    } catch {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      document.body.appendChild(ta); ta.select();
+      document.execCommand('copy'); ta.remove();
+      toast('已复制全部行程');
+    }
+  };
+
   const search = async () => {
     if (!q.trim() || busy) return;
     setBusy(true);
@@ -66,7 +135,11 @@ export default function MapTab({ bundle, reload, canEdit }: TabCtx) {
             </button>
           ))}
         </div>
-        <span className="muted">{points.length} 个已定位地点{hasNoGeo ? '（部分行程未定位，编辑行程时搜索地点即可定位）' : ''}</span>
+        <button className="btn sm" onClick={searchAllDestinations} title="在高德地图中查看全部目的地路线">🗺️ 高德搜索全部目的地</button>
+        <button className="btn sm" onClick={copyAllItinerary} title="复制完整行程文本">📋 复制全部行程</button>
+      </div>
+      <div className="muted" style={{ marginBottom: 10, marginTop: -4 }}>
+        {points.length} 个已定位地点{hasNoGeo ? '（部分行程未定位，编辑行程时搜索地点即可定位）' : ''}
       </div>
 
       <div className="map-wrap">
