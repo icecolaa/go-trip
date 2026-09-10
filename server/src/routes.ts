@@ -5,6 +5,8 @@ import { requireAuth, getUserByToken, tokenFromRequest, hashPassword, verifyPass
 import { calcBudget } from './budget.ts';
 import { searchPois } from './poi.ts';
 import { getWeather } from './weather.ts';
+import { saveDataUrlImage } from './uploads.ts';
+import type { LinkType, TravelLink } from '../../shared/types.ts';
 import { parseGuide, generatePlan, aiConfigured } from './ai.ts';
 import { buildHandbook, aiHandbook } from './handbook.ts';
 import { answerUsageQuestion, sanitizeHistory } from './assistant.ts';
@@ -138,9 +140,11 @@ async function tripBundle(tripId: number, user: SessionUser | null): Promise<Tri
     packing: packing.map(r => ({ id: r.id, tripId: r.trip_id, category: r.category, title: r.title, done: !!r.done, assigneeMemberId: r.assignee_member_id, quantity: r.quantity, note: r.note || '', createdAt: r.created_at })),
     journal: journal.map(r => {
       const author = members.find(m => m.id === r.author_member_id);
+      let images: { full: string; thumb: string }[] = [];
+      try { images = JSON.parse(r.images || '[]'); } catch { images = []; }
       return {
         id: r.id, tripId: r.trip_id, dayId: r.day_id, authorMemberId: r.author_member_id,
-        content: r.content, mood: r.mood, createdAt: r.created_at, updatedAt: r.updated_at,
+        content: r.content, mood: r.mood, images, createdAt: r.created_at, updatedAt: r.updated_at,
         author: author ? { nickname: author.displayName, avatarColor: author.avatarColor } : null,
       };
     }),
@@ -796,8 +800,9 @@ route('POST', '/api/trips/:id/journal', true, async (_req, res, p, user, body) =
   if (!content) throw new ApiError(400, '写点什么再发布吧');
   const dayId = body.dayId != null && Number(body.dayId) > 0 ? Number(body.dayId) : null;
   const mood = String(body.mood || '🙂').slice(0, 8);
-  const r = await db().prepare('INSERT INTO journal_notes (trip_id, day_id, author_member_id, content, mood, created_at, updated_at) VALUES (?,?,?,?,?,?,?)')
-    .run(tripId, dayId, me.id, content, mood, nowISO(), nowISO());
+  const images = (Array.isArray(body.images) ? body.images : []).slice(0, 9);
+  const r = await db().prepare('INSERT INTO journal_notes (trip_id, day_id, author_member_id, content, mood, images, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?)')
+    .run(tripId, dayId, me.id, content, mood, JSON.stringify(images), nowISO(), nowISO());
   await logActivity(tripId, me, '写了旅行日志', content.slice(0, 20) + '…');
   notify(tripId, 'journal', 'create', me.id);
   json(res, 200, { id: Number(r.lastInsertRowid) });
@@ -810,7 +815,8 @@ route('PATCH', '/api/journal/:id', true, async (_req, res, p, user, body) => {
   if (note.author_member_id !== me.id && ROLE_RANK[me.role] < ROLE_RANK.admin) throw new ApiError(403, '只能编辑自己的日志');
   const content = body.content != null ? String(body.content).trim().slice(0, 3000) || note.content : note.content;
   const mood = body.mood != null ? String(body.mood).slice(0, 8) : note.mood;
-  await db().prepare('UPDATE journal_notes SET content = ?, mood = ?, updated_at = ? WHERE id = ?').run(content, mood, nowISO(), note.id);
+  const images = Array.isArray(body.images) ? JSON.stringify(body.images.slice(0, 9)) : null;
+  await db().prepare('UPDATE journal_notes SET content = ?, mood = ?, images = COALESCE(?, images), updated_at = ? WHERE id = ?').run(content, mood, images, nowISO(), note.id);
   notify(Number(note.trip_id), 'journal', 'update', me.id);
   json(res, 200, { ok: true });
 });
@@ -938,6 +944,72 @@ route('GET', '/api/flywhere/fee-policy', true, async (_req, res) => {
 
 route('POST', '/api/flywhere/ai-advice', true, async (_req, res, _p, _user, body) => {
   json(res, 200, await flywhereAiAdvice({ results: Array.isArray(body.results) ? body.results : [] }));
+});
+
+/* ======== 图片上传（日志配图） ======== */
+
+route('POST', '/api/trips/:id/uploads', true, async (_req, res, p, user, body) => {
+  const tripId = Number(p.id);
+  await requireMember(tripId, user, 'editor');
+  const items = Array.isArray(body.images) ? body.images.slice(0, 9) : [];
+  if (!items.length) throw new ApiError(400, '请选择图片');
+  const urls: { full: string; thumb: string }[] = [];
+  for (const pair of items) {
+    // 兼容字符串（仅原图）与 {full, thumb} 对象两种格式
+    if (typeof pair === 'string') {
+      urls.push({ full: saveDataUrlImage(pair), thumb: saveDataUrlImage(pair) });
+      continue;
+    }
+    if (!pair || typeof pair !== 'object') continue;
+    const full = saveDataUrlImage(String(pair.full || ''));
+    const thumb = pair.thumb ? saveDataUrlImage(String(pair.thumb)) : full;
+    urls.push({ full, thumb });
+  }
+  if (!urls.length) throw new ApiError(400, '没有可保存的图片');
+  json(res, 200, { images: urls });
+});
+
+/* ======== 攻略链接（小红书/公众号/网页） ======== */
+
+function rowToLink(r: any): TravelLink {
+  return { id: r.id, tripId: r.trip_id, type: r.type, title: r.title, url: r.url, note: r.note || '', createdAt: r.created_at };
+}
+
+function normalizeLinkType(v: any): LinkType {
+  return ['xhs', 'gzh', 'web'].includes(v) ? v : 'web';
+}
+
+route('GET', '/api/trips/:id/links', true, async (_req, res, p, user) => {
+  const tripId = Number(p.id);
+  await requireMember(tripId, user);
+  const rows = await db().prepare('SELECT * FROM travel_links WHERE trip_id = ? ORDER BY id DESC').all(tripId) as any[];
+  json(res, 200, rows.map(rowToLink));
+});
+
+route('POST', '/api/trips/:id/links', true, async (_req, res, p, user, body) => {
+  const tripId = Number(p.id);
+  const me = await requireMember(tripId, user, 'editor');
+  const title = String(body.title || '').trim().slice(0, 60);
+  const url = String(body.url || '').trim();
+  if (!title) throw new ApiError(400, '请填写标题');
+  let parsed: URL;
+  try { parsed = new URL(url); } catch { throw new ApiError(400, '请填写有效的链接地址'); }
+  if (!['http:', 'https:'].includes(parsed.protocol)) throw new ApiError(400, '链接仅支持 http/https');
+  const type = normalizeLinkType(body.type);
+  const note = String(body.note || '').trim().slice(0, 200);
+  const r = await db().prepare('INSERT INTO travel_links (trip_id, type, title, url, note, created_by, created_at) VALUES (?,?,?,?,?,?,?)')
+    .run(tripId, type, title, url, note, me.id, nowISO());
+  notify(tripId, 'link', 'create', me.id);
+  json(res, 200, rowToLink(await db().prepare('SELECT * FROM travel_links WHERE id = ?').get(Number(r.lastInsertRowid)) as any));
+});
+
+route('DELETE', '/api/links/:id', true, async (_req, res, p, user) => {
+  const row = await db().prepare('SELECT * FROM travel_links WHERE id = ?').get(Number(p.id)) as any;
+  if (!row) throw new ApiError(404, '链接不存在');
+  const me = await requireMember(Number(row.trip_id), user, 'editor');
+  await db().prepare('DELETE FROM travel_links WHERE id = ?').run(row.id);
+  notify(Number(row.trip_id), 'link', 'delete', me.id);
+  json(res, 200, { ok: true });
 });
 
 /* ======== 使用助手 ======== */

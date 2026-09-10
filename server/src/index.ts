@@ -6,6 +6,7 @@ import { initDb } from './db.ts';
 import { handleApi } from './routes.ts';
 import { attachWs } from './ws.ts';
 import { json, ApiError } from './util.ts';
+import { readUpload } from './uploads.ts';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 // PocketBay 等托管平台通过 PORT 注入端口；GOTRIP_PORT 为本地部署的备用变量
@@ -55,6 +56,13 @@ const server = http.createServer(async (req, res) => {
   try {
     if (url === '/health' || url === '/healthz') {
       json(res, 200, { ok: true });
+      return;
+    }
+    if (url.startsWith('/uploads/')) {
+      const file = readUpload(url.slice('/uploads/'.length).split('?')[0]);
+      if (!file) return void json(res, 404, { error: 'Not Found' });
+      res.writeHead(200, { 'Content-Type': file.contentType, 'Cache-Control': 'public, max-age=31536000, immutable' });
+      res.end(file.buf);
       return;
     }
     if (url.startsWith('/api/')) {

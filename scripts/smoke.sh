@@ -208,6 +208,28 @@ check "关闭分享" "$R" 'null'
 R=$(req GET /api/share/$TOKEN "")
 check "关闭后分享失效" "$R" '不存在或已关闭'
 
+echo "== 图片上传与攻略链接 =="
+TINY_JPEG_B64='/9j/4AAQSkZJRgABAQEAYABgAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0aHBwcJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/2wBDAQkJCQwLDBgNDRgyIRwhMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjL/wAARCAABAAEDASIAAhEBAxEB/8QAHwAAAQUBAQEBAQEAAAAAAAAAAAECAwQFBgcICQoL/8QAtRAAAgEDAwIEAwUFBAQAAAF9AQIDAAQRBRIhMUEGE1FhByJxFDKBkaEII0KxwRVS0fAkM2JyggkKFhcYGRolJicoKSo0NTY3ODk6Q0RFRkdISUpTVFVWV1hZWmNkZWZnaGlqc3R1dnd4eXqDhIWGh4iJipKTlJWWl5iZmqKjpKWmp6ipqrKztLW2t7i5usLDxMXGx8jJytLT1NXW19jZ2uHi4+Tl5ufo6erx8vP09fb3+Pn6/9oADAMBAAIRAxEAPwD3+iiigD//2Q=='
+python -c "
+import json
+tiny = '$TINY_JPEG_B64'
+open('up_body.json', 'w', encoding='utf-8').write(json.dumps({'images': ['data:image/jpeg;base64,' + tiny, 'data:image/jpeg;base64,' + tiny]}))
+"
+UP=$(curl -s -m 30 -X POST "$BASE/api/trips/$TRIP/uploads" -H "Authorization: Bearer $TA" -H "Content-Type: application/json" --data-binary @up_body.json)
+IMG_URL=$(echo "$UP" | python -c "import sys,json; d=json.load(sys.stdin); print(d['images'][0]['full'] if d.get('images') else 'ERR:'+json.dumps(d)[:80])")
+check "图片上传返回路径" "$IMG_URL" '^/uploads/'
+R=$(curl -s -o /dev/null -w "%{http_code}" "$BASE$IMG_URL")
+check "上传图片可访问(200)" "$R" '^200$'
+printf '%s' '{"type":"xhs","title":"验收链接","url":"https://www.xiaohongshu.com/explore/acc","note":"验收"}' > link_body.json
+R=$(curl -s -X POST "$BASE/api/trips/$TRIP/links" -H "Authorization: Bearer $TA" -H "Content-Type: application/json" --data-binary @link_body.json)
+check "收藏攻略链接" "$R" '"type":"xhs"'
+LNK=$(echo "$R" | python -c "import sys,json; print(json.load(sys.stdin)['id'])")
+R=$(curl -s -o /dev/null -w "%{http_code}" -X DELETE "$BASE/api/links/$LNK" -H "Authorization: Bearer $TA")
+check "删除攻略链接(200)" "$R" '^200$'
+R=$(curl -s -o /dev/null -w "%{http_code}" -X POST "$BASE/api/trips/$TRIP/links" -H "Authorization: Bearer $TA" -H "Content-Type: application/json" --data-binary '{"type":"web","title":"x","url":"notaurl"}')
+check "非法链接被拒(400)" "$R" '^400$'
+rm -f link_body.json up_body.json
+
 echo "== 越权与清理 =="
 R=$(req DELETE /api/trips/$TRIP/members/$MEM_A "$TB")
 check "B(编辑)移除成员被拒" "$R" '权限不足'

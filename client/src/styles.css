@@ -955,3 +955,32 @@ textarea.input { resize: vertical; min-height: 72px; line-height: 1.6; }
 .fw-advice-item b { color: var(--green-deep); font-size: 12.5px; }
 .fw-advice-item span { font-size: 12.5px; color: var(--ink-soft); line-height: 1.55; }
 .fw-advice-flag { margin-top: 8px; background: var(--green-soft); border-radius: 8px; padding: 6px 10px; font-size: 12.5px; color: var(--green-deep); }
+
+/* 日志图片与攻略收藏 */
+.journal-thumbs { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.journal-thumb { position: relative; width: 84px; height: 84px; border-radius: 10px; overflow: hidden; border: 1px solid var(--line); }
+.journal-thumb img { width: 100%; height: 100%; object-fit: cover; cursor: zoom-in; display: block; }
+.journal-thumb-x {
+  position: absolute; top: 3px; right: 3px; width: 18px; height: 18px; border-radius: 50%;
+  background: rgba(0,0,0,.6); color: #fff; font-size: 12px; line-height: 16px; text-align: center;
+  cursor: pointer;
+}
+.journal-thumb-x:hover { background: var(--red); }
+.journal-lightbox {
+  position: fixed; inset: 0; z-index: 400; background: rgba(0,0,0,.88);
+  display: flex; align-items: center; justify-content: center; cursor: zoom-out;
+  animation: fadeIn .15s ease;
+}
+.journal-lightbox img { max-width: 94vw; max-height: 92vh; border-radius: 8px; }
+.links-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
+.link-card { padding: 13px 15px; display: flex; flex-direction: column; gap: 6px; transition: transform .15s ease, box-shadow .15s ease; }
+.link-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); }
+.link-card-head { display: flex; align-items: center; justify-content: space-between; }
+.link-type { font-size: 11.5px; color: var(--green-deep); background: var(--green-soft); border-radius: 999px; padding: 2px 9px; }
+.link-del { opacity: 0; }
+.link-card:hover .link-del { opacity: 1; }
+@media (hover: none) { .link-del { opacity: .6; } }
+.link-title { font-size: 14.5px; font-weight: 700; color: var(--ink); text-decoration: none; line-height: 1.5; }
+.link-title:hover { color: var(--green); }
+.link-note { margin: 0; font-size: 12.5px; color: var(--ink-soft); line-height: 1.55; }
+.link-url { font-size: 11.5px; font-family: var(--mono); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

@@ -131,6 +131,8 @@ export interface PackingItem {
   createdAt: string;
 }
 
+export interface JournalImage { full: string; thumb: string }
+
 export interface JournalNote {
   id: number;
   tripId: number;
@@ -138,9 +140,22 @@ export interface JournalNote {
   authorMemberId: number;
   content: string;
   mood: string; // emoji
+  images: JournalImage[];
   createdAt: string;
   updatedAt: string;
   author?: { nickname: string; avatarColor: string } | null;
+}
+
+export type LinkType = 'xhs' | 'gzh' | 'web';
+
+export interface TravelLink {
+  id: number;
+  tripId: number;
+  type: LinkType;
+  title: string;
+  url: string;
+  note: string;
+  createdAt: string;
 }
 
 export interface ActivityLogEntry {
