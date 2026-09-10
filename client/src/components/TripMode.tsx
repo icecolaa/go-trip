@@ -83,15 +83,18 @@ function xhsUrl(q: string): string {
 function HandMap({ stops }: { stops: Activity[] }) {
   const pts = useMemo(() => {
     const geo = stops.filter(s => s.lat != null && s.lng != null);
-    if (geo.length === stops.length && stops.length > 0) {
+    if (geo.length === stops.length && stops.length > 1) {
       const la = stops.map(s => s.lat!), lo = stops.map(s => s.lng!);
       const minLa = Math.min(...la), maxLa = Math.max(...la);
       const minLo = Math.min(...lo), maxLo = Math.max(...lo);
-      const ySpan = Math.max(maxLa - minLa, 0.001), xSpan = Math.max(maxLo - minLo, 0.001);
-      return stops.map(s => ({
-        x: 90 + (s.lng! - minLo) / xSpan * 760,
-        y: 470 - (s.lat! - minLa) / ySpan * 350,
-      }));
+      // 坐标几乎重合（同城共用代表点）时真实投影无意义，改用错落布局
+      if (maxLa - minLa >= 0.02 || maxLo - minLo >= 0.02) {
+        const ySpan = Math.max(maxLa - minLa, 0.001), xSpan = Math.max(maxLo - minLo, 0.001);
+        return stops.map(s => ({
+          x: 90 + (s.lng! - minLo) / xSpan * 760,
+          y: 470 - (s.lat! - minLa) / ySpan * 350,
+        }));
+      }
     }
     const n = Math.max(stops.length, 1);
     return stops.map((_, i) => {

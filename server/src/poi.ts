@@ -60,6 +60,47 @@ export function locatePlace(place: string): { lat: number; lng: number } | null 
   return null;
 }
 
+/** AI 应用行程的待定位条目 */
+export interface GeocodeItem {
+  id: number;      // 活动 id
+  query: string;   // 地点名（place 优先，否则 title）
+  city: string;    // 当日所在城市，用于约束搜索范围
+}
+
+/**
+ * 批量为活动解析坐标：优先高德 POI（按当日城市约束），未命中回退内置城市库。
+ * 相同查询共享结果；限制总查询数与总耗时，失败/超时只影响定位精度，不阻塞行程写入。
+ */
+export async function geocodePlaces(items: GeocodeItem[], maxLookups = 24, maxMs = 9000): Promise<Map<number, { lat: number; lng: number }>> {
+  const result = new Map<number, { lat: number; lng: number }>();
+  const cache = new Map<string, { lat: number; lng: number } | null>();
+  const start = Date.now();
+  let lookups = 0;
+  for (const it of items) {
+    if (result.has(it.id)) continue;
+    const query = it.query.trim().slice(0, 40);
+    if (!query) continue;
+    const key = `${it.city}|${query}`;
+    if (!cache.has(key)) {
+      if (lookups >= maxLookups || Date.now() - start > maxMs) {
+        cache.set(key, null); // 超出预算：本条不定位，其余复用缓存
+        continue;
+      }
+      lookups++;
+      let hit: { lat: number; lng: number } | null = null;
+      try {
+        const pois = await searchPois(query, it.city);
+        hit = pois.find(p => isFinite(p.lat) && isFinite(p.lng)) || null;
+      } catch { hit = null; }
+      if (!hit) hit = locatePlace(query); // 内置城市库兜底（如「丽江」「杭州」）
+      cache.set(key, hit);
+    }
+    const c = cache.get(key);
+    if (c) result.set(it.id, c);
+  }
+  return result;
+}
+
 /** 生成高德 App 导航链接与网页链接 */
 export function amapLinks(name: string, lat?: number | null, lng?: number | null): { uri: string; web: string } {
   if (lat != null && lng != null) {

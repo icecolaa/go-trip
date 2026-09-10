@@ -8,6 +8,7 @@ import { getWeather } from './weather.ts';
 import { parseGuide, generatePlan, aiConfigured } from './ai.ts';
 import { buildHandbook, aiHandbook } from './handbook.ts';
 import { answerUsageQuestion, sanitizeHistory } from './assistant.ts';
+import { geocodePlaces, type GeocodeItem } from './poi.ts';
 import { onlineMemberIds, broadcastToTrip } from './ws.ts';
 import type { Trip, TripMember, Invite, TripDay, Activity, Expense, PackingItem, JournalNote, ActivityLogEntry, MemberRole, TripBundle, ParsedGuide, GuideCard } from '../../shared/types.ts';
 
@@ -952,24 +953,39 @@ route('POST', '/api/trips/:id/ai/apply', true, async (_req, res, p, user, body) 
   const insDay = await db().prepare('INSERT INTO days (trip_id, day_number, date, title, place) VALUES (?,?,?,?,?)');
   const insAct = await db().prepare('INSERT INTO activities (trip_id, day_id, sort, time, kind, title, place, lat, lng, cost, notes, created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)');
   let actCount = 0;
+  const pending: GeocodeItem[] = [];
   for (const gd of guide.days) {
     baseNum += 1;
     const date = gd.dayNumber && !replace ? addDays(trip.startDate, baseNum - 1) : addDays(trip.startDate, baseNum - 1);
     const r = await insDay.run(tripId, baseNum, date, String(gd.title || '').slice(0, 40), String(gd.place || trip.destination || '').slice(0, 40));
     const dayId = Number(r.lastInsertRowid);
+    const dayCity = String(gd.place || trip.destination || '').slice(0, 20);
     let sort = 0;
     for (const ga of gd.activities || []) {
       const title = String(ga.title || '').trim().slice(0, 100);
       if (!title) continue;
-      await insAct.run(tripId, dayId, sort++, ga.time ? String(ga.time).replace('：', ':').slice(0, 5) : null,
-        String(ga.kind || 'sight'), title, String(ga.place || gd.place || '').slice(0, 60), null, null, 0,
+      const place = String(ga.place || gd.place || '').slice(0, 60);
+      const r2 = await insAct.run(tripId, dayId, sort++, ga.time ? String(ga.time).replace('：', ':').slice(0, 5) : null,
+        String(ga.kind || 'sight'), title, place, null, null, 0,
         String(ga.notes || '').slice(0, 200), nowISO());
+      pending.push({ id: Number(r2.lastInsertRowid), query: place || title, city: dayCity });
       actCount++;
     }
   }
+  // 应用时自动地理编码：优先高德 POI（按当日城市约束），回退内置城市库；
+  // 设有总查询数与耗时预算，失败只影响定位精度，不阻塞行程写入
+  let located = 0;
+  if (pending.length) {
+    try {
+      const coords = await geocodePlaces(pending);
+      const upd = await db().prepare('UPDATE activities SET lat = ?, lng = ? WHERE id = ?');
+      for (const [id, c] of coords) await upd.run(c.lat, c.lng, id);
+      located = coords.size;
+    } catch { /* 定位失败不影响行程使用 */ }
+  }
   await logActivity(tripId, me, '用 AI 生成了行程', `${guide.days.length} 天 · ${actCount} 项安排`);
   notify(tripId, 'day', 'ai-apply', me.id);
-  json(res, 200, { ok: true, days: guide.days.length, activities: actCount });
+  json(res, 200, { ok: true, days: guide.days.length, activities: actCount, located });
 });
 
 /* ======== 天气 ======== */

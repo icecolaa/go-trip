@@ -326,8 +326,8 @@ function AiPanel({ bundle, reload, onClose }: { bundle: TabCtx['bundle']; reload
     if (!preview || busy) return;
     setBusy(true);
     try {
-      await api.post(`/api/trips/${bundle.trip.id}/ai/apply`, { guide: preview, replaceDays });
-      toast(`已写入 ${preview.days.length} 天行程${replaceDays ? '（已覆盖原行程）' : '（追加在行程后面）'}`);
+      const r = await api.post<{ ok: boolean; located: number }>(`/api/trips/${bundle.trip.id}/ai/apply`, { guide: preview, replaceDays });
+      toast(`已写入 ${preview.days.length} 天行程${r.located ? `，已自动定位 ${r.located} 个地点` : ''}${replaceDays ? '（已覆盖原行程）' : '（追加在行程后面）'}`);
       reload();
       onClose();
     } catch (e: any) {
