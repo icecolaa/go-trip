@@ -391,7 +391,7 @@ function AiPanel({ bundle, reload, onClose }: { bundle: TabCtx['bundle']; reload
       <div className="modal-ops" style={{ justifyContent: 'space-between' }}>
         <span className="muted">{preview ? `识别到 ${preview.days.length} 天行程（${preview.source === 'ai' ? 'AI 生成' : '内置模板'}）` : '未配置 AI 时自动使用内置规则，仍可生成合理框架'}</span>
         <div style={{ display: 'flex', gap: 8 }}>
-          <button className="btn" onClick={run} disabled={busy}>{busy ? 'AI 思考中…' : mode === 'generate' ? '生成预览' : '解析预览'}</button>
+          <button className="btn" onClick={run} disabled={busy}>{mode === 'generate' ? '生成预览' : '解析预览'}</button>
           {busy && (
             <div className="ai-progress" role="status">
               {elapsed < 15

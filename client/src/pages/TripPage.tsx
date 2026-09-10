@@ -28,6 +28,7 @@ export default function TripPage() {
   const tripId = Number(id);
   const { toast } = useApp();
   const [bundle, setBundle] = useState<TripBundle | null>(null);
+  const [loadErr, setLoadErr] = useState('');
   const [searchParams, setSearchParams] = useSearchParams();
   const rawTab = searchParams.get('tab') || 'itinerary';
   const tab = TABS.some(t => t.key === rawTab) ? rawTab : 'itinerary';
@@ -35,13 +36,14 @@ export default function TripPage() {
   const reloadTimer = useRef<number | null>(null);
 
   const load = useCallback(async () => {
+    setLoadErr('');
     try {
       const b = await api.get<TripBundle>(`/api/trips/${tripId}`);
       setBundle(b);
     } catch (e: any) {
-      toast(e.message || '加载失败', true);
+      setLoadErr(e.message || '加载失败');
     }
-  }, [tripId, toast]);
+  }, [tripId]);
 
   const loadWeather = useCallback(() => {
     api.get<TripBundle['weather']>(`/api/trips/${tripId}/weather`).then(setWeather).catch(() => {});
@@ -89,7 +91,21 @@ export default function TripPage() {
     };
   }, [tripId, load]);
 
-  if (!bundle) return <div className="spin" />;
+  if (!bundle) {
+    if (loadErr) {
+      return (
+        <div className="page">
+          <div className="card empty">
+            <span className="big">🚫</span>
+            {loadErr}
+            <br /><br />
+            <Link className="btn" to="/">← 返回全部旅程</Link>
+          </div>
+        </div>
+      );
+    }
+    return <div className="spin" />;
+  }
 
   const { trip, members } = bundle;
   const onlineCount = bundle.onlineMemberIds.length;

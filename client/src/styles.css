@@ -27,6 +27,19 @@
 
 * { box-sizing: border-box; }
 html, body, #root { height: 100%; }
+
+/* ---------- 统一滚动条样式（Firefox 用 scrollbar-width/color，WebKit 用伪元素） ---------- */
+* { scrollbar-width: thin; scrollbar-color: var(--line-strong) transparent; }
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: var(--line-strong);
+  border-radius: 99px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+::-webkit-scrollbar-thumb:hover { background: var(--ink-faint); background-clip: padding-box; border: 2px solid transparent; }
+::-webkit-scrollbar-corner { background: transparent; }
 body {
   margin: 0;
   font-family: var(--sans);
