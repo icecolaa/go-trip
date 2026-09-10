@@ -42,7 +42,7 @@ export function readBody(req: import('node:http').IncomingMessage): Promise<any>
     let size = 0;
     req.on('data', (c: Buffer) => {
       size += c.length;
-      if (size > 5 * 1024 * 1024) {
+      if (size > 25 * 1024 * 1024) { // 上限 25MB：兼容多张压缩图的日志批量上传
         reject(new Error('body too large'));
         req.destroy();
         return;

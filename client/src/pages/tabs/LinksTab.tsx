@@ -13,7 +13,7 @@ const TYPE_META: Record<LinkType, { label: string; icon: string }> = {
 };
 const TYPE_ORDER: LinkType[] = ['xhs', 'gzh', 'web'];
 
-export default function LinksTab({ bundle, reload, canEdit }: TabCtx) {
+export default function LinksTab({ bundle, canEdit }: TabCtx) {
   const { toast } = useApp();
   const [links, setLinks] = useState<TravelLink[] | null>(null);
   const [adding, setAdding] = useState(false);

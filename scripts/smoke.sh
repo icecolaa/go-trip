@@ -267,6 +267,12 @@ R=$(curl -s -X POST "$BASE/api/assistant" -H "Authorization: Bearer $TA" -H "Con
 check "助手多轮对话应答" "$(jget "$R" "(d.get('reply') or '')[:1] != ''")" 'True'
 check "多轮对话source合法" "$(jget "$R" "d.get('source')")" '^(ai|fallback)$'
 
+echo "== 飞哪里接线（不依赖上游网络） =="
+R=$(curl -s -o /dev/null -w "%{http_code}" -X POST "$BASE/api/flywhere/search" -H "Content-Type: application/json" --data-binary '{"origin":"广州","depDate":"2026-10-01"}')
+check "飞哪里未登录拦截(401)" "$R" '^401$'
+R=$(curl -s -X POST "$BASE/api/flywhere/search" -H "Authorization: Bearer $TA" -H "Content-Type: application/json" --data-binary '{"origin":"广州"}')
+check "缺出发日期拦截(400)" "$R" '请选择有效的出发日期'
+
 echo "== 图文使用说明静态页 =="
 R=$(curl -s -o /dev/null -w "%{http_code}" "$BASE/guide/index.html")
 check "指南页可访问(200)" "$R" '^200$'

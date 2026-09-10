@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { api } from '../api';
 import { useApp } from '../store';
-import MapView, { type MapPoint, dayColor } from '../components/MapView';
+import MapView, { type MapPoint } from '../components/MapView';
 
 /* ============ 飞哪里：按票价探索目的地（移植自 icecolaa/flywhere） ============ */
 

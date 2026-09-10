@@ -15,7 +15,6 @@ export function uploadsDir(): string {
 }
 
 const MAX_BYTES = 8 * 1024 * 1024;
-const ALLOWED = ['image/jpeg', 'image/png', 'image/webp'];
 
 /** 保存 dataURL 图片（前端 canvas 已压缩），返回可访问的 /uploads/ 路径 */
 export function saveDataUrlImage(dataUrl: string): string {

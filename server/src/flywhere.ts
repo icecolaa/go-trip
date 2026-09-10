@@ -2,6 +2,7 @@ import { spawn } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { chat } from './ai.ts';
+import { ApiError } from './util.ts';
 
 /* ============================================================
  * 飞哪里 FlyWhere：按票价探索目的地（移植自 icecolaa/flywhere）
@@ -282,16 +283,16 @@ function dateArgs(query: FlightQuery, prefix: 'dep' | 'back'): string[] {
   const start = query[`${prefix}DateStart` as keyof FlightQuery] as string | undefined;
   const end = query[`${prefix}DateEnd` as keyof FlightQuery] as string | undefined;
   if (start && end) return ['--dep-date-start', start, '--dep-date-end', end];
-  throw new Error(prefix === 'dep' ? '请选择出发日期' : '请选择回程日期');
+  throw new ApiError(400, prefix === 'dep' ? '请选择出发日期' : '请选择回程日期');
 }
 
 function validateTripDates(query: FlightQuery) {
   const depDate = String(query.depDate || '');
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(depDate)) { throw new Error('请选择有效的出发日期'); }
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(depDate)) { throw new ApiError(400, '请选择有效的出发日期'); }
   if (query.trip === 'oneway') return;
   const backDate = String(query.backDate || '');
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(backDate)) { throw new Error('请选择有效的回程日期'); }
-  if (backDate < depDate) { throw new Error('回程日期不能早于出发日期'); }
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(backDate)) { throw new ApiError(400, '请选择有效的回程日期'); }
+  if (backDate < depDate) { throw new ApiError(400, '回程日期不能早于出发日期'); }
 }
 
 function searchCacheKey(query: FlightQuery) {
