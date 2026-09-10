@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>图文使用说明 · 出发吧 GoTrip</title>
+<style>
+  :root {
+    --bg: #f6f1e7; --card: #fffdf6; --ink: #2b2620; --ink-soft: #6b6154; --ink-faint: #9a8f7e;
+    --line: #e3dac7; --green: #2f6e4f; --green-deep: #1e4d35; --green-soft: #e4eee5;
+    --orange: #d9752b; --gold: #c9a04e; --serif: "Noto Serif SC", "Songti SC", "STSong", serif;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif; color: var(--ink); background: var(--bg); line-height: 1.75; }
+  .hero { background: linear-gradient(160deg, var(--green-deep), var(--green)); color: #f3efe2; padding: 42px 20px 36px; text-align: center; }
+  .hero h1 { margin: 8px 0 6px; font-family: var(--serif); font-size: 30px; letter-spacing: .04em; }
+  .hero p { margin: 0; opacity: .85; font-size: 14px; }
+  .hero .kicker { font-size: 10px; letter-spacing: .28em; opacity: .7; font-weight: 700; }
+  main { max-width: 820px; margin: 0 auto; padding: 8px 18px 70px; }
+  section { margin-top: 38px; }
+  .step-no {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 30px; height: 30px; border-radius: 50%; background: var(--green); color: #fff;
+    font-weight: 800; font-family: var(--serif); margin-right: 10px; flex-shrink: 0;
+  }
+  h2 { display: flex; align-items: center; font-family: var(--serif); font-size: 21px; color: var(--green-deep); margin: 0 0 10px; }
+  h3 { font-size: 15.5px; color: var(--green-deep); margin: 22px 0 6px; }
+  p, li { font-size: 14.5px; color: var(--ink-soft); }
+  li { margin: 4px 0; }
+  b { color: var(--ink); }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 20px 22px; box-shadow: 0 2px 14px rgba(87,68,35,.08); }
+  img { width: 100%; border-radius: 12px; border: 1px solid var(--line); box-shadow: 0 4px 18px rgba(60,48,24,.12); margin: 10px 0 4px; display: block; }
+  .cap { font-size: 12.5px; color: var(--ink-faint); text-align: center; margin: 4px 0 0; }
+  ul, ol { padding-left: 22px; margin: 8px 0; }
+  .tip { background: var(--green-soft); border: 1px solid #d3e2d4; border-radius: 12px; padding: 10px 16px; font-size: 13.5px; color: var(--green-deep); margin: 12px 0; }
+  .kbd { font-family: monospace; background: #efe8da; border-radius: 6px; padding: 1px 7px; font-size: 12.5px; }
+  .toc { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 8px; margin-top: 14px; }
+  .toc a { display: block; background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 9px 14px; font-size: 13.5px; color: var(--green-deep); text-decoration: none; }
+  .toc a:hover { border-color: var(--green); }
+  footer { text-align: center; color: var(--ink-faint); font-size: 12.5px; margin-top: 60px; }
+  @media (max-width: 560px) { main { padding: 8px 12px 50px; } .card { padding: 14px 14px; } }
+</style>
+</head>
+<body>
+<div class="hero">
+  <div class="kicker">GOTRIP USER GUIDE</div>
+  <h1>🧭 出发吧 · 图文使用说明</h1>
+  <p>和朋友一起，规划每一次出发 —— 5 分钟上手</p>
+</div>
+<main>
+
+<section id="start">
+  <h2><span class="step-no">🚀</span>快速开始</h2>
+  <div class="card">
+    <ol>
+      <li><b>注册 / 登录</b>：打开应用 → 输入用户名密码注册（或用演示账号 <span class="kbd">demo / demo1234</span> 体验）</li>
+      <li><b>创建旅程</b>：仪表盘点「＋ 创建旅程」，填标题、目的地和日期</li>
+      <li><b>邀请朋友</b>：进入旅程 → 「成员」页创建邀请码发给朋友，或直接输入对方<b>旅行 ID</b> 添加</li>
+      <li><b>开始规划</b>：手动添加安排，或交给 AI 一键生成</li>
+    </ol>
+  </div>
+</section>
+
+<section id="itinerary">
+  <h2><span class="step-no">1</span>每日行程：规划的起点</h2>
+  <div class="card">
+    <ul>
+      <li>「<b>＋ 添加行程</b>」：填时间、做什么、地点，可搜索定位（带坐标才能上地图）</li>
+      <li>每站右侧「<b>修改 / 删除</b>」随时调整；按住左侧 <b>⋮⋮</b> 可拖拽排序、跨天移动</li>
+      <li>「<b>✨ AI 助手</b>」：按目的地 + 天数 + 节奏生成整段行程，或粘贴攻略文本自动解析（一般 20~60 秒，请耐心等待）</li>
+      <li>顶部 <b>D1~Dn chips</b> 快速切天；天气胶囊展示当日预报</li>
+    </ul>
+    <img src="/guide/01-itinerary.png" alt="每日行程页" loading="lazy" />
+    <p class="cap">每日行程：每站含时间、地点、费用与备注</p>
+  </div>
+</section>
+
+<section id="tripmode">
+  <h2><span class="step-no">2</span>出发模式：旅途中的当天视图</h2>
+  <div class="card">
+    <p>行程页点「<b>🧭 出发模式</b>」，进入全屏当天视图——这是旅途中真正会打开的界面：</p>
+    <ul>
+      <li>顶部日期条切换当天，<b>勾选</b>完成一站，「下一站」自动橙色高亮</li>
+      <li><b>手绘路线图</b>展示各站方位（断网也能看）</li>
+      <li>每站可跳「<b>高德导航</b>」与「<b>小红书</b>」看攻略</li>
+      <li>底部「复制今日路线」一键转发给同伴；「高德导航全天路线」按行程顺序串起所有站点</li>
+    </ul>
+    <img src="/guide/02-tripmode.png" alt="出发模式" loading="lazy" />
+    <p class="cap">出发模式：勾选进度 + 手绘路线 + 一键导航</p>
+  </div>
+</section>
+
+<section id="map">
+  <h2><span class="step-no">3</span>旅行地图：一眼看全行程</h2>
+  <div class="card">
+    <ul>
+      <li>全部已定位地点按 <b>D1~Dn 分色</b>展示，虚线为建议路线顺序</li>
+      <li>顶部 <b>D1~Dn chips</b> 按天筛选查看</li>
+      <li>「<b>🗺️ 高德搜索全部目的地</b>」：把所有站点按行程顺序串成高德路线，一键导航</li>
+      <li>「<b>📋 复制全部行程</b>」：完整行程文本进剪贴板，方便分享</li>
+      <li>「地点搜索」面板可搜任意地点并直接加入某天行程</li>
+    </ul>
+    <img src="/guide/03-map.png" alt="旅行地图" loading="lazy" />
+    <p class="cap">旅行地图：分色标记 + 按天筛选 + 一键串联路线</p>
+  </div>
+</section>
+
+<section id="budget">
+  <h2><span class="step-no">4</span>团队预算：记账与结算</h2>
+  <div class="card">
+    <ul>
+      <li>「<b>＋ 记一笔</b>」：填说明和金额，选垫付人；可指定只有部分人分摊</li>
+      <li>自动统计「团队总花费 / 我垫付的 / 待收回」与分类占比</li>
+      <li><b>结算方案</b>自动算出「转账最少」的组合，照着转就两清</li>
+    </ul>
+    <img src="/guide/04-budget.png" alt="团队预算" loading="lazy" />
+    <p class="cap">旅行钱包：统计、分类占比与结算方案</p>
+  </div>
+</section>
+
+<section id="packing">
+  <h2><span class="step-no">5</span>打包清单：别落下充电宝</h2>
+  <div class="card">
+    <ul>
+      <li>「<b>从模板导入</b>」：证件 / 衣物 / 电子 / 洗护 / 药品等 6 套模板一键生成</li>
+      <li>物品可<b>指派负责人</b>、写数量与备注；出发前逐项勾选</li>
+    </ul>
+    <img src="/guide/05-packing.png" alt="打包清单" loading="lazy" />
+    <p class="cap">出发准备清单：按分类勾选、指派到人</p>
+  </div>
+</section>
+
+<section id="handbook">
+  <h2><span class="step-no">6</span>旅行锦囊：目的地攻略手册</h2>
+  <div class="card">
+    <ul>
+      <li>「<b>✨ 按目的地重新生成</b>」：AI 生成<b>美食 / 贴士 / 语言 / 拍摄</b>四类卡片</li>
+      <li>内置全国 20+ 热门城市与出境目的地内容，未配置 AI 也能用</li>
+      <li>「<b>＋ 自定义卡片</b>」记录团队约定、老饕私藏清单</li>
+    </ul>
+    <img src="/guide/06-handbook.png" alt="旅行锦囊" loading="lazy" />
+    <p class="cap">旅行锦囊：美食、贴士、语言、拍摄四类手册卡</p>
+  </div>
+</section>
+
+<section id="members">
+  <h2><span class="step-no">7</span>成员与分享：把大家拉进来</h2>
+  <div class="card">
+    <ul>
+      <li><b>邀请好友</b>：生成邀请码/链接（可限次数与有效期），朋友注册登录后自动加入</li>
+      <li><b>旅行 ID 添加</b>：对方在「我的」页查看自己的 6 位 ID</li>
+      <li><b>只填名称占位</b>：还没注册的家人朋友先占个位，之后自动绑定</li>
+      <li><b>角色</b>：发起人 / 管理员 / 成员 / 观察者，分级权限；发起人可转让</li>
+      <li><b>对外分享</b>：开启只读链接，适合发给长辈或不用操作的同行人</li>
+    </ul>
+    <img src="/guide/07-members.png" alt="成员管理" loading="lazy" />
+    <p class="cap">成员管理：角色、邀请、对外分享</p>
+  </div>
+</section>
+
+<section id="journal">
+  <h2><span class="step-no">8</span>日志与动态：记录与回顾</h2>
+  <div class="card">
+    <ul>
+      <li><b>日志</b>：带心情的旅行手记，可关联某一天；谁写的谁编辑</li>
+      <li><b>动态</b>：全员操作自动生成时间线，谁改了行程、记了账一目了然</li>
+    </ul>
+    <img src="/guide/08-journal.png" alt="旅行日志" loading="lazy" />
+    <p class="cap">旅行日志：心情手记，按天关联</p>
+  </div>
+</section>
+
+<section id="more">
+  <h2><span class="step-no">✨</span>更多好用的小功能</h2>
+  <div class="card">
+    <ul>
+      <li><b>💬 使用助手</b>：任意页面右下角悬浮球，随问随答使用问题；右上角 × 可隐藏，屏幕右缘小图标找回；按住可拖到顺手的位置</li>
+      <li><b>🌙 夜间模式</b>：顶栏一键切换，晚上看行程不刺眼</li>
+      <li><b>手机适配</b>：手机浏览器直接访问，布局自动适配</li>
+    </ul>
+    <img src="/guide/11-mobile.png" alt="移动端" loading="lazy" />
+    <p class="cap">手机浏览器访问，自动适配小屏</p>
+  </div>
+</section>
+
+<section id="faq">
+  <h2><span class="step-no">❓</span>常见问题</h2>
+  <div class="card">
+    <ul>
+      <li><b>地图上有些站点没显示？</b>——添加/编辑行程时在「地点」框搜索一次即可定位</li>
+      <li><b>AI 生成很慢？</b>——正常需 20~60 秒（复杂行程更久），界面有进度提示</li>
+      <li><b>忘了密码？</b>——暂不支持自助找回，可重新注册（数据不互通）</li>
+      <li><b>想删掉整个旅程？</b>——发起人在「成员」页操作解散</li>
+      <li><b>线上访问偶尔提示休眠？</b>——免费托管闲置会休眠，点「唤醒并继续」等 10~30 秒即可；用前可运行 <span class="kbd">node scripts/keepalive.mjs</span> 保活</li>
+    </ul>
+  </div>
+</section>
+
+<footer>出发吧 GoTrip · 和朋友一起，规划每一次出发</footer>
+</main>
+</body>
+</html>

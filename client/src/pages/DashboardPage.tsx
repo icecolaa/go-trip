@@ -41,7 +41,10 @@ export default function DashboardPage() {
             你好，{me?.nickname}！共 {trips.length} 段旅程{upcoming > 0 ? `，其中 ${upcoming} 段在路上等你` : ''}。
           </div>
         </div>
-        <button className="btn primary lg" onClick={() => setCreating(true)}>＋ 创建旅程</button>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <a className="btn lg" href="/guide/index.html" target="_blank" rel="noreferrer" style={{ textDecoration: 'none' }}>📖 使用说明</a>
+          <button className="btn primary lg" onClick={() => setCreating(true)}>＋ 创建旅程</button>
+        </div>
       </div>
 
       <div className="chips" style={{ marginBottom: 18 }}>

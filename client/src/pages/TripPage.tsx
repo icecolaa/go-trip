@@ -154,7 +154,8 @@ export default function TripPage() {
               <span className="ico">{t.ico}</span>{t.label}
             </Link>
           ))}
-          <div style={{ marginTop: 8, padding: '8px 12px' }}>
+          <div style={{ marginTop: 8, padding: '8px 12px', display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <a href="/guide/index.html" target="_blank" rel="noreferrer" className="muted" style={{ fontSize: 12.5 }}>📖 图文使用说明</a>
             <Link to="/" className="muted" style={{ fontSize: 12.5 }}>← 返回全部旅程</Link>
           </div>
         </nav>
