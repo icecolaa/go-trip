@@ -11,6 +11,7 @@ import TripPage from './pages/TripPage';
 import JoinPage from './pages/JoinPage';
 import SharePage from './pages/SharePage';
 import SettingsPage from './pages/SettingsPage';
+import FlyWherePage from './pages/FlyWherePage';
 
 function Shell() {
   const { me, ready, loadMe } = useApp();
@@ -51,6 +52,7 @@ const router = createHashRouter([
           { path: '/', element: <DashboardPage /> },
           { path: '/trip/:id', element: <TripPage /> },
           { path: '/settings', element: <SettingsPage /> },
+          { path: '/flywhere', element: <FlyWherePage /> },
         ],
       },
       { path: '*', element: <Navigate to="/" replace /> },

@@ -9,6 +9,7 @@ import { parseGuide, generatePlan, aiConfigured } from './ai.ts';
 import { buildHandbook, aiHandbook } from './handbook.ts';
 import { answerUsageQuestion, sanitizeHistory } from './assistant.ts';
 import { geocodePlaces, cleanActivityQuery, type GeocodeItem } from './poi.ts';
+import { flywhereSearch, flywhereAiAdvice, feePolicy as flywhereFeePolicy } from './flywhere.ts';
 import { onlineMemberIds, broadcastToTrip } from './ws.ts';
 import type { Trip, TripMember, Invite, TripDay, Activity, Expense, PackingItem, JournalNote, ActivityLogEntry, MemberRole, TripBundle, ParsedGuide, GuideCard } from '../../shared/types.ts';
 
@@ -901,6 +902,42 @@ route('DELETE', '/api/handbook/:id', true, async (_req, res, p, user) => {
   await db().prepare('DELETE FROM guide_cards WHERE id = ?').run(card.id);
   notify(Number(card.trip_id), 'handbook', 'delete', me.id);
   json(res, 200, { ok: true });
+});
+
+/* ======== 飞哪里：机票低价探索 ======== */
+
+route('POST', '/api/flywhere/search', true, async (_req, res, _p, user, body) => {
+  const query = {
+    origin: String(body.origin || '广州').slice(0, 20),
+    destination: body.destination ? String(body.destination).slice(0, 20) : '',
+    trip: body.trip === 'oneway' ? 'oneway' : 'round',
+    depDate: String(body.depDate || ''), backDate: String(body.backDate || ''),
+    outTimeStart: String(body.outTimeStart || '').slice(0, 5), outTimeEnd: String(body.outTimeEnd || '').slice(0, 5),
+    backTimeStart: String(body.backTimeStart || '').slice(0, 5), backTimeEnd: String(body.backTimeEnd || '').slice(0, 5),
+    passengers: Math.max(1, Math.min(9, Number(body.passengers) || 1)),
+  };
+  const results = await flywhereSearch(query);
+  // 为前 6 个目的城市附带天气（尽量走缓存），失败不影响结果
+  try {
+    const citySeen = new Set<string>();
+    for (const item of results) {
+      if (citySeen.size >= 6) break;
+      const city = item.city;
+      if (!city || citySeen.has(city)) continue;
+      citySeen.add(city);
+      const dates = [item.date, item.backDate || item.date].filter(Boolean);
+      item.weather = await getWeather(city, dates);
+    }
+  } catch { /* 天气失败不阻塞 */ }
+  json(res, 200, { results, count: results.length, minPrice: results[0]?.totalPrice ?? null });
+});
+
+route('GET', '/api/flywhere/fee-policy', true, async (_req, res) => {
+  json(res, 200, flywhereFeePolicy);
+});
+
+route('POST', '/api/flywhere/ai-advice', true, async (_req, res, _p, _user, body) => {
+  json(res, 200, await flywhereAiAdvice({ results: Array.isArray(body.results) ? body.results : [] }));
 });
 
 /* ======== 使用助手 ======== */

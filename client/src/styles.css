@@ -934,3 +934,24 @@ textarea.input { resize: vertical; min-height: 72px; line-height: 1.6; }
 .ug-qa p { font-size: 13.5px; color: var(--ink-soft); line-height: 1.7; }
 .ug-img { width: 100%; border-radius: 10px; border: 1px solid var(--line); margin: 10px 0 2px; display: block; }
 .ug-cap { font-size: 12px; color: var(--ink-faint); text-align: center; margin: 2px 0 10px; }
+
+/* 飞哪里 FlyWhere */
+.fw-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; align-items: end; }
+.fw-card { padding: 13px 16px; margin-bottom: 10px; }
+.fw-card-head { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.fw-rank {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 30px; height: 30px; border-radius: 50%;
+  background: var(--green); color: #fff; font-weight: 800; font-family: var(--serif);
+}
+.fw-city { font-size: 16px; font-weight: 700; display: flex; align-items: center; flex-wrap: wrap; gap: 4px; }
+.fw-price { text-align: right; }
+.fw-price-total { font-family: var(--serif); font-size: 20px; font-weight: 800; color: var(--orange); }
+.fw-card-foot { display: flex; align-items: center; justify-content: space-between; margin-top: 8px; padding-top: 8px; border-top: 1px dashed var(--line); }
+.fw-advice { margin-top: 10px; background: var(--green-soft); border: 1px solid #d3e2d4; border-radius: 10px; padding: 10px 14px; }
+.fw-advice-summary { font-size: 13.5px; color: var(--green-deep); margin-bottom: 8px; font-weight: 600; }
+.fw-advice-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 8px; }
+.fw-advice-item { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 8px 12px; display: flex; flex-direction: column; gap: 3px; }
+.fw-advice-item b { color: var(--green-deep); font-size: 12.5px; }
+.fw-advice-item span { font-size: 12.5px; color: var(--ink-soft); line-height: 1.55; }
+.fw-advice-flag { margin-top: 8px; background: var(--green-soft); border-radius: 8px; padding: 6px 10px; font-size: 12.5px; color: var(--green-deep); }

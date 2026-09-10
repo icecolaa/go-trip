@@ -15,6 +15,7 @@ services:
       GOTRIP_AI_BASE_URL: ${GOTRIP_AI_BASE_URL:-}
       GOTRIP_AI_API_KEY: ${GOTRIP_AI_API_KEY:-}
       GOTRIP_AI_MODEL: ${GOTRIP_AI_MODEL:-}
+      FLYAI_API_KEY: ${FLYAI_API_KEY:-}
     restart: unless-stopped
 
 volumes:
