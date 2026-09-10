@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import type { Activity, TripBundle, WeatherDay } from '@shared/types';
+import { api } from '../api';
 import { useApp } from '../store';
+import type { Activity, TripBundle, TripDay, WeatherDay } from '@shared/types';
 import { KIND_META, weekOf, fmtDate, yuan } from './ui';
 
 /* ============ 出发模式：当天行程全屏视图（参考旅行手册 Trip Mode） ============ */
@@ -35,8 +36,31 @@ export function amapPlaceUrl(title: string, place: string | null, lat: number | 
   if (lat != null && lng != null) {
     return `https://uri.amap.com/marker?position=${lng},${lat}&name=${encodeURIComponent(title)}&src=gotrip&coordinate=gaode&callnative=0`;
   }
-  const q = place ? `${destination} ${place}` : `${destination} ${title}`;
+  // 无坐标时只搜地名本身；短地名（≤3 字，如「古城」）歧义大，拼目的地缩小范围。
+  // 此前一律拼「目的地 地名」，跨城行程会命中无关结果（如「呼伦贝尔 赤峰-阿尔山」搜出阿尔山路）。
+  const base = (place || title || '').trim();
+  const q = base.length >= 4 ? base : `${destination} ${base}`.trim();
   return `https://www.amap.com/search?query=${encodeURIComponent(q)}`;
+}
+
+/**
+ * 从当日标题/地点提取最可能命中的搜索词。
+ * AI 生成的行程日常是「A-B-C」多段主题（如「赤峰-科尔沁草原-阿尔山」），
+ * 整串去搜索会被地名后缀干扰（命中「阿尔山路」），需拆词取当日主目的地。
+ */
+export function smartDayQuery(day: TripDay | undefined, destination: string): string {
+  const place = day?.place?.trim();
+  if (place && place !== destination) return place; // 当日地点明确（多城行程）直接用
+  const title = (day?.title || '').trim();
+  if (!title) return destination;
+  // 按常见分隔符拆词
+  const tokens = title.split(/[-—–·•→>/／,，、;；:：!?！？\s]+/).map(t => t.trim()).filter(t => t.length >= 2);
+  // 去掉行程修饰词（一日游/抵达/返程…）
+  const cleaned = tokens
+    .map(t => t.replace(/(全天游|一日游|半日游|深度游|经典一日|自由活动|全天|一日|半日|返程|抵达|到达|出发|前往|返回|初见|初探|初体验|慢时光|休闲|印象|巡礼)/g, '').trim())
+    .filter(t => t.length >= 2);
+  // 行程标题通常按时间顺序排列，取最后一个具体地名（终点/主目的地）
+  return cleaned[cleaned.length - 1] || tokens[tokens.length - 1] || destination;
 }
 
 /** 高德路线规划：起点 → 途经 → 终点（需至少两站有坐标） */
@@ -102,6 +126,7 @@ export default function TripMode({ bundle, weather, onClose }: Props) {
   }, [bundle.trip.id]);
   const [dayIdx, setDayIdx] = useState(Math.min(saved, Math.max(bundle.days.length - 1, 0)));
   const [done, setDone] = useState<Record<string, boolean>>(() => readDone(bundle.trip.id));
+  const [geocoding, setGeocoding] = useState(false);
   const chipsRef = useRef<HTMLDivElement>(null);
 
   const days = bundle.days;
@@ -138,6 +163,35 @@ export default function TripMode({ bundle, weather, onClose }: Props) {
 
   const doneCount = acts.filter(a => done[a.id]).length;
   const nextIdx = acts.findIndex(a => !done[a.id]);
+
+  /** 「高德地图搜索今日目的地」：先用高德 POI 接口精确地理编码，失败再退关键词搜索 */
+  const openDayOnAmap = async () => {
+    if (geocoding) return;
+    setGeocoding(true);
+    const q = smartDayQuery(day, bundle.trip.destination || bundle.trip.title);
+    const candidates = [...new Set([q, day?.place?.trim(), bundle.trip.destination].filter(x => x && x.length >= 2))] as string[];
+    let opened = false;
+    try {
+      // 依次尝试候选词，命中第一个带坐标的 POI 就打开精确标记
+      for (const cand of candidates) {
+        try {
+          const pois = await api.get<{ lat: number; lng: number; name: string }[]>(`/api/poi/search?q=${encodeURIComponent(cand)}`);
+          const hit = pois.find(p => isFinite(p.lat) && isFinite(p.lng));
+          if (hit) {
+            window.open(`https://uri.amap.com/marker?position=${hit.lng},${hit.lat}&name=${encodeURIComponent(hit.name)}&src=gotrip&coordinate=gaode&callnative=0`, '_blank', 'noopener');
+            opened = true;
+            break;
+          }
+        } catch { /* 单个候选失败继续下一个 */ }
+      }
+    } finally {
+      setGeocoding(false);
+    }
+    if (!opened) {
+      // POI 接口无结果（未配 Key 且内置库未收录）→ 高德网页关键词搜索
+      window.open(`https://www.amap.com/search?query=${encodeURIComponent(q)}`, '_blank', 'noopener');
+    }
+  };
 
   const copyDay = async () => {
     const lines = [
@@ -264,7 +318,7 @@ export default function TripMode({ bundle, weather, onClose }: Props) {
                 <button className="btn" onClick={copyDay} disabled={!acts.length}>📋 复制今日路线</button>
                 {routeUrl
                   ? <a className="btn primary" href={routeUrl} target="_blank" rel="noreferrer">🗺️ 高德导航全天路线 ↗</a>
-                  : <a className="btn primary" href={amapPlaceUrl(day.place || day.title || bundle.trip.destination, null, null, null, bundle.trip.destination)} target="_blank" rel="noreferrer">🗺️ 高德地图搜索今日目的地 ↗</a>}
+                  : <button className="btn primary" onClick={openDayOnAmap} disabled={geocoding}>🗺️ {geocoding ? '正在定位今日目的地…' : '高德地图搜索今日目的地'} ↗</button>}
               </nav>
             </>
           )}
