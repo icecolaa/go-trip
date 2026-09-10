@@ -54,6 +54,8 @@ npm run dev          # 同时启动 server(8787) 与 client(5173)
 
 内置演示账号：**demo / demo1234**（含两条示例旅程）。
 
+> 💡 **PocketBay 免费托管会闲置休眠**：一段时间不访问应用会被回收，下次访问点「唤醒并继续」即可（10~30 秒）。使用期间可运行保活脚本避免休眠：`node scripts/keepalive.mjs`（默认每 4 分钟心跳，Ctrl+C 停止）。
+
 ```bash
 npm run build        # 构建前端到 client/dist
 npm start            # 生产模式启动（托管构建产物）
