@@ -4,6 +4,7 @@ import { api, type TripCardInfo } from '../api';
 import { useApp } from '../store';
 import { Avatar, Modal, countdownText, yuan } from '../components/ui';
 import CreateTripModal from '../components/CreateTripModal';
+import UsageGuideModal from '../components/UsageGuideModal';
 
 type Filter = 'all' | 'mine' | 'upcoming';
 
@@ -14,6 +15,7 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<Filter>('all');
   const [creating, setCreating] = useState(false);
+  const [guideOpen, setGuideOpen] = useState(false);
 
   const load = () => {
     setLoading(true);
@@ -42,7 +44,7 @@ export default function DashboardPage() {
           </div>
         </div>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          <a className="btn lg" href="/guide/index.html" target="_blank" rel="noreferrer" style={{ textDecoration: 'none' }}>📖 使用说明</a>
+          <button className="btn lg" onClick={() => setGuideOpen(true)}>📖 使用说明</button>
           <button className="btn primary lg" onClick={() => setCreating(true)}>＋ 创建旅程</button>
         </div>
       </div>
@@ -72,6 +74,7 @@ export default function DashboardPage() {
           onCreated={(id) => { setCreating(false); nav(`/trip/${id}`); }}
         />
       )}
+      {guideOpen && <UsageGuideModal onClose={() => setGuideOpen(false)} />}
     </div>
   );
 }

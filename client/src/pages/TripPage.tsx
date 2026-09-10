@@ -4,6 +4,7 @@ import { api, getToken, type TripBundle } from '../api';
 import { useApp } from '../store';
 import { Avatar, countdownText, tripProgress, yuan } from '../components/ui';
 import ItineraryTab from './tabs/ItineraryTab';
+import UsageGuideModal from '../components/UsageGuideModal';
 import MapTab from './tabs/MapTab';
 import BudgetTab from './tabs/BudgetTab';
 import PackingTab from './tabs/PackingTab';
@@ -33,6 +34,7 @@ export default function TripPage() {
   const rawTab = searchParams.get('tab') || 'itinerary';
   const tab = TABS.some(t => t.key === rawTab) ? rawTab : 'itinerary';
   const [weather, setWeather] = useState<TripBundle['weather']>([]);
+  const [guideOpen, setGuideOpen] = useState(false);
   const reloadTimer = useRef<number | null>(null);
 
   const load = useCallback(async () => {
@@ -155,7 +157,7 @@ export default function TripPage() {
             </Link>
           ))}
           <div style={{ marginTop: 8, padding: '8px 12px', display: 'flex', flexDirection: 'column', gap: 6 }}>
-            <a href="/guide/index.html" target="_blank" rel="noreferrer" className="muted" style={{ fontSize: 12.5 }}>📖 图文使用说明</a>
+            <button className="ug-nav-btn muted" style={{ fontSize: 12.5 }} onClick={() => setGuideOpen(true)}>📖 使用说明</button>
             <Link to="/" className="muted" style={{ fontSize: 12.5 }}>← 返回全部旅程</Link>
           </div>
         </nav>
@@ -172,6 +174,7 @@ export default function TripPage() {
           {tab === 'activity' && <ActivityTab {...ctx} />}
         </div>
       </div>
+      {guideOpen && <UsageGuideModal onClose={() => setGuideOpen(false)} />}
     </div>
   );
 }

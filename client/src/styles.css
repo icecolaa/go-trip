@@ -922,3 +922,15 @@ textarea.input { resize: vertical; min-height: 72px; line-height: 1.6; }
   animation: aiPulse 1.8s ease-in-out infinite;
 }
 @keyframes aiPulse { 50% { opacity: .6; } }
+
+/* 使用说明弹窗（分类 chips + 配图） */
+.ug-nav-btn { background: none; border: none; cursor: pointer; padding: 0; font-size: 12.5px; text-align: left; width: 100%; }
+.ug-nav-btn:hover { color: var(--green); }
+.ug-title { margin: 0 0 8px; font-family: var(--serif); font-size: 17px; color: var(--green-deep); }
+.ug-intro { font-size: 13.5px; color: var(--ink-soft); margin: 0 0 8px; line-height: 1.7; }
+.ug-list { padding-left: 20px; margin: 8px 0; }
+.ug-list li { font-size: 13.5px; color: var(--ink-soft); margin: 5px 0; }
+.ug-list b, .ug-qa b { color: var(--ink); }
+.ug-qa p { font-size: 13.5px; color: var(--ink-soft); line-height: 1.7; }
+.ug-img { width: 100%; border-radius: 10px; border: 1px solid var(--line); margin: 10px 0 2px; display: block; }
+.ug-cap { font-size: 12px; color: var(--ink-faint); text-align: center; margin: 2px 0 10px; }
