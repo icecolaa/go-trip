@@ -8,7 +8,7 @@ import { getWeather } from './weather.ts';
 import { parseGuide, generatePlan, aiConfigured } from './ai.ts';
 import { buildHandbook, aiHandbook } from './handbook.ts';
 import { answerUsageQuestion, sanitizeHistory } from './assistant.ts';
-import { geocodePlaces, type GeocodeItem } from './poi.ts';
+import { geocodePlaces, cleanActivityQuery, type GeocodeItem } from './poi.ts';
 import { onlineMemberIds, broadcastToTrip } from './ws.ts';
 import type { Trip, TripMember, Invite, TripDay, Activity, Expense, PackingItem, JournalNote, ActivityLogEntry, MemberRole, TripBundle, ParsedGuide, GuideCard } from '../../shared/types.ts';
 
@@ -968,7 +968,9 @@ route('POST', '/api/trips/:id/ai/apply', true, async (_req, res, p, user, body) 
       const r2 = await insAct.run(tripId, dayId, sort++, ga.time ? String(ga.time).replace('：', ':').slice(0, 5) : null,
         String(ga.kind || 'sight'), title, place, null, null, 0,
         String(ga.notes || '').slice(0, 200), nowISO());
-      pending.push({ id: Number(r2.lastInsertRowid), query: place || title, city: dayCity });
+      // 每站用清洗后的标题作为定位查询（如「穿越科尔沁大草原」→「科尔沁大草原」），
+      // 避免整天共用当日地点查询导致坐标相同、站间距离恒为 0
+      pending.push({ id: Number(r2.lastInsertRowid), query: cleanActivityQuery(title), alt: place || undefined, city: dayCity });
       actCount++;
     }
   }

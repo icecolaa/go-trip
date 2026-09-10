@@ -43,6 +43,16 @@ export function amapPlaceUrl(title: string, place: string | null, lat: number | 
   return `https://www.amap.com/search?query=${encodeURIComponent(q)}`;
 }
 
+/** 站点标签：清洗标题的动词前后缀，得到具体地名（如「穿越科尔沁大草原」→「科尔沁大草原」） */
+function stopLabel(a: Activity): string {
+  const clean = a.title.trim()
+    .replace(/^(穿越|游览|前往|去往|到达|抵达|入住|参观|返回|包车|骑行|徒步|漫步|打卡|品尝|集合|去|到|逛|游|吃)/, '')
+    .replace(/(集合出发|附近客栈|附近|周边|一带|之旅)$/, '')
+    .trim();
+  const label = clean || a.place?.trim() || a.title.trim();
+  return label.slice(0, 10);
+}
+
 /**
  * 从当日标题/地点提取最可能命中的搜索词。
  * AI 生成的行程日常是「A-B-C」多段主题（如「赤峰-科尔沁草原-阿尔山」），
@@ -113,7 +123,7 @@ function HandMap({ stops }: { stops: Activity[] }) {
         <g key={i}>
           <circle cx={p.x} cy={p.y} r={25} className={'tm-map-dot' + (i === pts.length - 1 ? ' is-last' : '')} />
           <text x={p.x} y={p.y + 8} className="tm-map-number">{i + 1}</text>
-          <text x={p.x} y={p.y + (i % 2 === 0 ? -48 : 58)} className="tm-map-label">{(stops[i].place || stops[i].title).slice(0, 10)}</text>
+          <text x={p.x} y={p.y + (i % 2 === 0 ? -48 : 58)} className="tm-map-label">{stopLabel(stops[i])}</text>
         </g>
       ))}
       <text x="42" y="52" className="tm-map-caption">方位示意 · 非精确导航</text>
@@ -307,7 +317,7 @@ export default function TripMode({ bundle, weather, onClose }: Props) {
                               <a className="tm-act-link is-xhs" href={xhsUrl(`${bundle.trip.destination} ${a.place || a.title}`)} target="_blank" rel="noreferrer">小红书</a>
                             </div>
                           </article>
-                          {dist != null && i < acts.length - 1 && (
+                          {dist != null && dist > 0 && i < acts.length - 1 && (
                             <div className="tm-transfer">↓ 到下一站直线距离约 <b>{dist} km</b></div>
                           )}
                         </div>

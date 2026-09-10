@@ -60,10 +60,20 @@ export function locatePlace(place: string): { lat: number; lng: number } | null 
   return null;
 }
 
+/** 清洗活动标题为可搜索地名：去动词前后缀（穿越/入住…、集合出发/附近客栈…） */
+export function cleanActivityQuery(title: string): string {
+  const t = title.trim()
+    .replace(/^(穿越|游览|前往|去往|到达|抵达|入住|参观|返回|包车|骑行|徒步|漫步|打卡|品尝|集合|去|到|逛|游|吃)/, '')
+    .replace(/(集合出发|附近客栈|附近|周边|一带|之旅)$/, '')
+    .trim();
+  return t || title.trim();
+}
+
 /** AI 应用行程的待定位条目 */
 export interface GeocodeItem {
   id: number;      // 活动 id
-  query: string;   // 地点名（place 优先，否则 title）
+  query: string;   // 首选地名（每站清洗后的标题，保证各站查询互不相同）
+  alt?: string;    // 备选地名（如活动的 place）
   city: string;    // 当日所在城市，用于约束搜索范围
 }
 
@@ -88,11 +98,14 @@ export async function geocodePlaces(items: GeocodeItem[], maxLookups = 24, maxMs
       }
       lookups++;
       let hit: { lat: number; lng: number } | null = null;
-      try {
-        const pois = await searchPois(query, it.city);
-        hit = pois.find(p => isFinite(p.lat) && isFinite(p.lng)) || null;
-      } catch { hit = null; }
-      if (!hit) hit = locatePlace(query); // 内置城市库兜底（如「丽江」「杭州」）
+      for (const cand of [query, it.alt].filter((c): c is string => !!c && !!c.trim())) {
+        try {
+          const pois = await searchPois(cand, it.city);
+          hit = pois.find(p => isFinite(p.lat) && isFinite(p.lng)) || null;
+        } catch { hit = null; }
+        if (hit) break;
+      }
+      if (!hit) hit = locatePlace(it.city); // 内置城市库兜底（如「丽江」「杭州」）
       cache.set(key, hit);
     }
     const c = cache.get(key);

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { api } from '../../api';
 import { useApp } from '../../store';
 import { Modal, KIND_META, fmtDate, weekOf, yuan } from '../../components/ui';
@@ -296,6 +296,12 @@ function AiPanel({ bundle, reload, onClose }: { bundle: TabCtx['bundle']; reload
   const [guideText, setGuideText] = useState('');
   const [preview, setPreview] = useState<any>(null);
   const [busy, setBusy] = useState(false);
+  const [elapsed, setElapsed] = useState(0);
+  useEffect(() => {
+    if (!busy) { setElapsed(0); return; }
+    const t = setInterval(() => setElapsed(s => s + 1), 1000);
+    return () => clearInterval(t);
+  }, [busy]);
 
   const INTERESTS = ['美食', '自然', '人文', '亲子', '购物', '夜生活'];
 
@@ -386,6 +392,15 @@ function AiPanel({ bundle, reload, onClose }: { bundle: TabCtx['bundle']; reload
         <span className="muted">{preview ? `识别到 ${preview.days.length} 天行程（${preview.source === 'ai' ? 'AI 生成' : '内置模板'}）` : '未配置 AI 时自动使用内置规则，仍可生成合理框架'}</span>
         <div style={{ display: 'flex', gap: 8 }}>
           <button className="btn" onClick={run} disabled={busy}>{busy ? 'AI 思考中…' : mode === 'generate' ? '生成预览' : '解析预览'}</button>
+          {busy && (
+            <div className="ai-progress" role="status">
+              {elapsed < 15
+                ? 'AI 正在规划，一般需要 20~60 秒，可先喝口水 ☕'
+                : elapsed < 60
+                  ? `已等待 ${elapsed} 秒，正在细化每日安排…`
+                  : `已等待 ${Math.floor(elapsed / 60)} 分 ${elapsed % 60} 秒，复杂行程生成较慢，请再稍候…`}
+            </div>
+          )}
         </div>
       </div>
 
