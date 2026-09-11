@@ -933,7 +933,15 @@ route('POST', '/api/flywhere/search', true, async (_req, res, _p, user, body) =>
     passengers: Math.max(1, Math.min(9, Number(body.passengers) || 1)),
   };
   if (!flyaiConfigured()) throw new ApiError(400, '未配置飞猪 API Key（环境变量 FLYAI_API_KEY），无法查询真实航班');
-  const results = await flywhereSearch(query);
+  // 兜底：查询链路里任何未语义化的异常都转成可重试的 502，避免用户看到"服务器开小差"
+  let results: any[];
+  try {
+    results = await flywhereSearch(query);
+  } catch (e: any) {
+    if (e instanceof ApiError) throw e;
+    console.error('[flywhere] 航班查询未知异常:', e);
+    throw new ApiError(502, '航班查询暂时不可用，请稍后重试');
+  }
   // 为前 6 个目的城市附带天气（尽量走缓存），失败不影响结果
   try {
     const citySeen = new Set<string>();
