@@ -793,6 +793,16 @@ route('DELETE', '/api/packing/:id', true, async (_req, res, p, user) => {
 
 /* ======== 旅行日志 ======== */
 
+/** 日志图片入库前规范化：只保留 full/thumb 且必须是本服务 /uploads/ 路径，thumb 非法时回退 full */
+function sanitizeJournalImages(raw: any): { full: string; thumb: string }[] {
+  const out: { full: string; thumb: string }[] = [];
+  for (const im of (Array.isArray(raw) ? raw : [])) {
+    if (!im || typeof im.full !== 'string' || !im.full.startsWith('/uploads/')) continue;
+    out.push({ full: im.full, thumb: typeof im.thumb === 'string' && im.thumb.startsWith('/uploads/') ? im.thumb : im.full });
+  }
+  return out.slice(0, 9);
+}
+
 route('POST', '/api/trips/:id/journal', true, async (_req, res, p, user, body) => {
   const tripId = Number(p.id);
   const me = await requireMember(tripId, user, 'editor');
@@ -800,9 +810,7 @@ route('POST', '/api/trips/:id/journal', true, async (_req, res, p, user, body) =
   if (!content) throw new ApiError(400, '写点什么再发布吧');
   const dayId = body.dayId != null && Number(body.dayId) > 0 ? Number(body.dayId) : null;
   const mood = String(body.mood || '🙂').slice(0, 8);
-  const images = (Array.isArray(body.images) ? body.images : [])
-    .filter(im => im && typeof im.full === 'string' && im.full.startsWith('/uploads/'))
-    .slice(0, 9);
+  const images = sanitizeJournalImages(body.images);
   const r = await db().prepare('INSERT INTO journal_notes (trip_id, day_id, author_member_id, content, mood, images, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?)')
     .run(tripId, dayId, me.id, content, mood, JSON.stringify(images), nowISO(), nowISO());
   await logActivity(tripId, me, '写了旅行日志', content.slice(0, 20) + '…');
@@ -817,9 +825,7 @@ route('PATCH', '/api/journal/:id', true, async (_req, res, p, user, body) => {
   if (note.author_member_id !== me.id && ROLE_RANK[me.role] < ROLE_RANK.admin) throw new ApiError(403, '只能编辑自己的日志');
   const content = body.content != null ? String(body.content).trim().slice(0, 3000) || note.content : note.content;
   const mood = body.mood != null ? String(body.mood).slice(0, 8) : note.mood;
-  const images = Array.isArray(body.images)
-    ? JSON.stringify(body.images.filter(im => im && typeof im.full === 'string' && im.full.startsWith('/uploads/')).slice(0, 9))
-    : null;
+  const images = Array.isArray(body.images) ? JSON.stringify(sanitizeJournalImages(body.images)) : null;
   await db().prepare('UPDATE journal_notes SET content = ?, mood = ?, images = COALESCE(?, images), updated_at = ? WHERE id = ?').run(content, mood, images, nowISO(), note.id);
   notify(Number(note.trip_id), 'journal', 'update', me.id);
   json(res, 200, { ok: true });

@@ -317,7 +317,11 @@ async function searchFresh(query: FlightQuery) {
   const sortTypes = ['3', '4', '2', '8'];
   const outboundSearches = await Promise.allSettled(sortTypes.map(sortType => runFlyai([...common, '--sort-type', sortType, ...(destination ? ['--destination', destination] : []), ...dateArgs(query, 'dep')])));
   const successful = outboundSearches.filter(item => item.status === 'fulfilled').map(item => item.value);
-  if (!successful.length) throw (outboundSearches[0] as any)?.reason || new Error('航班查询没有返回结果');
+  if (!successful.length) {
+    const reason = (outboundSearches[0] as any)?.reason;
+    console.warn('[flywhere] 航班查询失败:', String(reason?.message || reason || '').slice(0, 200));
+    throw new ApiError(502, '航班查询失败（上游限流或超时），请稍后重试');
+  }
   const outboundNormalized = successful.flatMap(normalize);
   const attemptedDomesticCities = new Set(outboundNormalized.filter(isDomesticDestination).map(item => normalizedDomesticCityName(item.city)));
   if (!destination) {

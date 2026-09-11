@@ -140,7 +140,12 @@ R=$(req PATCH /api/journal/$J1 "$TB" '{"content":"改别人的日志"}')
 check "他人改日志被拒" "$R" '只能编辑自己的日志'
 R=$(req PATCH /api/journal/$J1 "$TA" '{"content":"西湖的日落太美了，明天去灵隐寺。"}')
 check "作者改日志" "$R" '"ok":true'
+R=$(req POST /api/trips/$TRIP/journal "$TA" '{"content":"图片过滤冒烟","images":[{"full":"javascript:alert(1)","thumb":"http://evil.example/x.png"},{"full":"/uploads/smoke_ok.jpg","thumb":"javascript:alert(2)"}]}')
+check "发布日志(含非法图片)" "$R" '"id"'
+J2=$(jget "$R" "d['id']")
 BUNDLE=$(req GET /api/trips/$TRIP "$TA")
+check "非法图片被过滤" "$(jget "$BUNDLE" "len([n for n in d['journal'] if n['id']==$J2][0]['images'])")" '^1$'
+check "thumb非法回退full" "$(jget "$BUNDLE" "[n for n in d['journal'] if n['id']==$J2][0]['images'][0]['thumb']")" '^/uploads/smoke_ok\.jpg$'
 check "动态流有记录" "$BUNDLE" '创建了旅程'
 
 echo "== POI / 天气 / AI =="
