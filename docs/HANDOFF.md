@@ -1,14 +1,14 @@
 # 交接文档（HANDOFF）
 
 > 面向下一个接手的开发者或 AI 会话。先读根目录 `CLAUDE.md`（规则手册），再读本文（现状、过程与经验）。
-> 更新：2026-09-10。
+> 更新：2026-09-11。
 
 ## 当前状态一览
 
 | 项 | 值 |
 |---|---|
-| 生产 | `https://gotrip.pocketbay.app`，部署 #7253（2026-09-10），`/health` 正常 |
-| 最近提交 | `b351ce1` fix: 飞哪里搜索缓存键加入人数（passengers） |
+| 生产 | `https://gotrip.pocketbay.app`，部署 #7268（2026-09-11），`/health` 正常，飞哪里双人数回归通过 |
+| 最近提交 | `1a3b09a` fix: review 修复——db 迁移去重、日志 thumb 规范化、飞哪里 502 友好化、冒烟 88 项 |
 | 仓库 | Gitee `ice-colaa/go-trip`，分支 `master` |
 | 数据库 | PocketBay 托管 PostgreSQL（生产）／SQLite（本地回退） |
 | 验收 | `acceptance/REPORT.md` + `acceptance/screenshots/`（85 项冒烟全过） |
@@ -34,6 +34,7 @@
 | 「中文 curl body 测试失败」误判为应用 bug | Windows Git Bash 把中文按 GBK 发送 | 调中文接口一律 UTF-8 文件 + `--data-binary @file` |
 | 本地起的 server 莫名消失 | 后续启动命令里的 taskkill 误杀 | 同一环境串行实验时注意进程清理范围 |
 | 合成 click 点不动悬浮球 | 该元素监听 pointer 序列 | 合成事件按元素实际监听派发（`pointerdown`+`pointerup` 成对） |
+| 部署 #7268 后 ~10 分钟内，生产飞哪里 2 人查询连续 3 次 500（9 人正常），~15 分钟后未做任何变更自愈 | 未定因：平台无运行日志接口，容器内 `console.error` 现场取不到；本地（Win/node26）冷、热缓存序列均无法复现，代码与 #7253 在该路径无差异 | 生产偶发 500 先隔几分钟重试、对照同 token 轻量接口（/api/me）区分 DB 与路由问题，再谈改代码；冒烟里的双人数断言（88 项）就是这类问题的回归防线 |
 
 ## 已知限制 / 后续可做
 
