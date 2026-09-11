@@ -301,6 +301,7 @@ function searchCacheKey(query: FlightQuery) {
     depDate: query.depDate, backDate: query.backDate || '',
     outTimeStart: query.outTimeStart || '', outTimeEnd: query.outTimeEnd || '',
     backTimeStart: query.backTimeStart || '', backTimeEnd: query.backTimeEnd || '',
+    passengers: query.passengers || 1, // 人数影响 totalPrice，必须参与缓存键
   });
 }
 
