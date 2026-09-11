@@ -7,8 +7,8 @@
 
 | 项 | 值 |
 |---|---|
-| 生产 | `https://gotrip.pocketbay.app`，部署 #7576（2026-09-12），`/health` 正常；已切换 DESIGN.md（Programa 瑞士亮色风），线上资产验证通过 |
-| 最近提交 | `b63d22b` style: 按 DESIGN.md（Programa）全站重构（前置 `e67c47f` docs: DESIGN.md/AGENTS.md 更新） |
+| 生产 | `https://gotrip.pocketbay.app`，部署 #7579（2026-09-12），`/health` 正常；已切换 DESIGN.md（Dimension 暗色工作台风），线上资产验证通过 |
+| 最近提交 | `54faf06` style: 按 DESIGN.md（Dimension）全站重构（前置 `f24390f` docs: DESIGN.md/AGENTS.md 更新） |
 | 仓库 | Gitee `ice-colaa/go-trip` + GitHub `icecolaa/go-trip`（私有镜像），分支 `master`；origin 配了双 push URL，`git push origin master` 一条命令两边同步 |
 | 数据库 | PocketBay 托管 PostgreSQL（生产）／SQLite（本地回退） |
 | 验收 | `acceptance/REPORT.md` + `acceptance/screenshots/`；冒烟 `scripts/smoke.sh` 91 项全过（2026-09-12） |
@@ -22,7 +22,7 @@
 5. **飞哪儿 FlyWhere**（与「我的旅程」并列的一级 Tab；2026-09-12 起界面由「飞哪里」更名为「飞哪儿」）：移植 `icecolaa/flywhere`，飞猪 AI 开放平台机票低价探索，`FLYAI_API_KEY` 走环境变量；串行队列 + 429 退避 + 双层缓存（FlyAI 原始结果 10 分钟、搜索结果 30 分钟）；缺 Key 时接口返回友好 400。**2026-09-12 前端改版**：时间与偏好（去/回程时间段）、条件 chips、地图/列表切换、按目的地分组（航司数/组合数/天气/标记已去过）、筛选排序、AI 建议三栏卡片、价格说明（费率接口）、本地查询记录（localStorage 快照，恢复不重新请求）。
 8. **参考落地（源自 GitHub 发现报告，见 `work/github-idea-report.md`）**：①行程体检 `server/src/checkup.ts` + `GET /api/trips/:id/checkup`（时间重叠/转场紧张/深夜极早/未排时/满日程检查，参考 roadtrip-skill 校验思路），前端「每日行程」页 🩺 按钮；②飞哪儿价格记忆 `flywhere_watch` 表（双方言），按路线记最低单人价，重查返回 `trend` 涨跌提示（参考 flight-finder price history）；③结算建议（最小转账）项目原有能力，与 actual/firefly-iii 同类；④跨平台比价工作台（参考 flight-price-assistant，MIT）——**2026-09-12 已整体移除**（组件、`/api/flywhere/compare` 接口、`flywhere_compare` 表 DDL 与冒烟段一并删除，线上 404），原因是功能与飞哪儿核心流程脱节、自动读价在 Web 端无法实现导致价值有限。
 9. **全站去 AI 味设计升级（2026-09-12 上午）**：键盘焦点环（`:focus-visible`）、按钮/chips 按压反馈、全局 `tabular-nums`、标题 `text-wrap: balance`、仪表盘骨架屏、`transition: all` 精确化、弹窗 `88dvh` 与 `role="dialog"`、日志灯箱 Esc、og/theme-color meta；清理按钮装饰 emoji 与成功文案感叹号。
-10. **按 DESIGN.md 全站换肤（2026-09-12，重大视觉变更，共两轮）**：根目录 `AGENTS.md`（规则：所有 UI 代码必须遵循 `DESIGN.md`）。第一轮为 Henry 暗色编辑风（部署 #7574）；**用户随后替换 DESIGN.md 为 Programa 瑞士亮色风（部署 #7576，当前生效）**：白画布 + 雾灰 `#f4f4f4` 次表面（无边框）+ 墨黑 `#1a1a1a` 文字与 1px 边框，层级靠 400/500 字重；**荧光黄 `#fbff2b` 是唯一彩色强调**（黄底 + 墨边的贴纸质感主 CTA，每屏一个）；页面标题 42px/500；按钮/输入 10px、卡片 16px 圆角；刻意无阴影/渐变/模糊；地图按天分类色保留（数据编码）。**主题切换功能已移除**（规范 light-only），`gotrip_theme` localStorage 与 `applyTheme`/`ThemeToggle` 删除。CJK 字距对规范 -0.03em 做了保守收敛（正文 -0.01em、标题 -0.02em），避免中文字腔碰撞。冒烟 91 项不受影响；浏览器已截图验证仪表盘/旅程页/线上生产。
+10. **按 DESIGN.md 全站换肤（2026-09-12，重大视觉变更，共三轮）**：根目录 `AGENTS.md`（规则：所有 UI 代码必须遵循 `DESIGN.md`）。三轮依次为 Henry 暗色编辑风（#7574）→ Programa 瑞士亮色风（#7576）→ **Dimension 暗色工作台风（#7579，当前生效）**：void 画布 `#0a0a0a` + graphite 面板 `#161616` + 磨砂玻璃 `rgba(212,212,212,.1)`+4px blur；正文 bone `#ededed` / 次要 ash `#c2c2c2` / 弱化 slate `#686868`；边框一律 1px 发丝亮线 `#e5e5e5`，无阴影；**主 CTA 是全站唯一填充按钮（白色药丸，#161616 字）**；按钮/标签 9999px 药丸、UI 控件 10px、卡片 24px、图标容器 4px；顶栏为漂浮磨砂药丸导航（signature）；紫 `#6b62f2` 唯一彩色且仅以渐变洗染（section 标题竖条、地图终点低透明标记）。**飞哪儿表单控件重设计**（用户反馈截图）：分段控件改药丸容器内嵌白色激活段（替代旧黑块贴边样式）、人数步进器改药丸容器+mono 数字+洗染 hover。主题切换保持移除（规范 dark-only）。CJK 字距保守收敛（正文 -0.01em、标题 -0.02em）。地图按天分类色保留（数据编码，画在浅色瓦片上）。冒烟 91 项不受影响；浏览器已截图验证飞哪儿/仪表盘/线上登录页。
 6. **内容收藏**：旅行日志支持多图上传（前端 canvas 压缩 1600/400 双尺寸，JPEG 0.85）+ 缩略图；新增「攻略」Tab 收藏小红书/公众号链接。
 7. **质量**：多轮代码 review 修复；`scripts/smoke.sh` 冒烟 91 项；验收报告归档。
 
