@@ -7,8 +7,8 @@
 
 | 项 | 值 |
 |---|---|
-| 生产 | `https://gotrip.pocketbay.app`，部署 #7582（2026-09-12），`/health` 正常；已切换 DESIGN.md（Apple 亮色风），线上资产验证通过 |
-| 最近提交 | `d8a104e` style: 按 DESIGN.md（Apple）全站重构（前置 `bcbce40` docs: DESIGN.md/AGENTS.md 更新） |
+| 生产 | `https://gotrip.pocketbay.app`，部署 #7588（2026-09-13），`/health` 正常；AI 精准替换某几天功能已上线（越界拦截/解析均线上验证通过） |
+| 最近提交 | `2fb085b` feat: AI 助手按文字内容精准重写某几天行程 |
 | 仓库 | Gitee `ice-colaa/go-trip` + GitHub `icecolaa/go-trip`（私有镜像），分支 `master`；origin 配了双 push URL，`git push origin master` 一条命令两边同步 |
 | 数据库 | PocketBay 托管 PostgreSQL（生产）／SQLite（本地回退） |
 | 验收 | `acceptance/REPORT.md` + `acceptance/screenshots/`；冒烟 `scripts/smoke.sh` 91 项全过（2026-09-12） |
@@ -23,6 +23,7 @@
 8. **参考落地（源自 GitHub 发现报告，见 `work/github-idea-report.md`）**：①行程体检 `server/src/checkup.ts` + `GET /api/trips/:id/checkup`（时间重叠/转场紧张/深夜极早/未排时/满日程检查，参考 roadtrip-skill 校验思路），前端「每日行程」页 🩺 按钮；②飞哪儿价格记忆 `flywhere_watch` 表（双方言），按路线记最低单人价，重查返回 `trend` 涨跌提示（参考 flight-finder price history）；③结算建议（最小转账）项目原有能力，与 actual/firefly-iii 同类；④跨平台比价工作台（参考 flight-price-assistant，MIT）——**2026-09-12 已整体移除**（组件、`/api/flywhere/compare` 接口、`flywhere_compare` 表 DDL 与冒烟段一并删除，线上 404），原因是功能与飞哪儿核心流程脱节、自动读价在 Web 端无法实现导致价值有限。
 9. **全站去 AI 味设计升级（2026-09-12 上午）**：键盘焦点环（`:focus-visible`）、按钮/chips 按压反馈、全局 `tabular-nums`、标题 `text-wrap: balance`、仪表盘骨架屏、`transition: all` 精确化、弹窗 `88dvh` 与 `role="dialog"`、日志灯箱 Esc、og/theme-color meta；清理按钮装饰 emoji 与成功文案感叹号。
 10. **按 DESIGN.md 全站换肤（2026-09-12，重大视觉变更，共四轮）**：根目录 `AGENTS.md`（规则：所有 UI 代码必须遵循 `DESIGN.md`）。四轮依次为 Henry 暗色（#7574）→ Programa 亮色（#7576）→ Dimension 暗色（#7579）→ **Apple 亮色风（#7582，当前生效）**：雾灰画布 `#f5f5f7` + 白色卡片 8px 圆角（无阴影，层级靠表面色）+ 碳黑文字 `#1d1d1f`；**苹果蓝 `#0071e3` 唯一交互色**（仅填充按钮与选中态），`#0066cc` 描边按钮与链接，`#2997ff` 仅装饰；按钮/标签 980px 药丸，填充+描边成对、禁止并排双填充；顶栏为全宽碳黑 `#1d1d1f` 导航条 + 浅色小字链接；分段控件/登录 tabs 为 iOS 风（卵石灰轨道 + 白色选中段 + 发丝边）；聚焦环 2px 蓝。**在线状态点用 Apple 系统绿 `#30d158`**（规范调色板外的务实例外：状态语义信号，非装饰）。主题切换保持移除（规范 light-only）。地图按天分类色保留（数据编码，画在浅色瓦片上）。冒烟 91 项不受影响；浏览器已截图验证飞哪儿/仪表盘/线上登录页。
+11. **AI 精准重写某几天行程（2026-09-13）**：行程页 AI 助手→解析攻略文本，粘贴带「D5：10月5日：路线A-B-C」标头的文字，自动识别天号并**只重写对应的那几天**（其余天不动）。实现：①解析器支持 D+数字 标头剥离日期入 `date` 字段、路线型标题（≥2 连字符或「地名-地名」开头）只作当天主题不重复成活动、跳过 餐：/行：/游：/住：/总计 概要行；修复 20~23 点时间被截断的预存正则 bug（`[01]?\d`→`[0-2]?\d`）；AI 提示词强制保留原文顺序与时间、不补「待定」。②`/ai/apply` 新增 `targeted:true` 模式：校验各 guide 天号 ∈ 1..maxDay（越界 400「无法定位第 N 天」），按天号删旧插新（date 按天号推导），返回 `replacedDays`。③弹窗预览显示「识别到第 X、Y 天」+ 蓝色主按钮「只替换第 X、Y 天」（天号超行程范围时隐藏并显示范围提示）。冒烟新增 4 项断言（共 95 项）。⚠️ 运维教训：**部署打包必须在仓库根目录执行**——一次在 client/ 子目录打包导致线上缺 server/（#7587），发现后根目录重打重部（#7588）。
 6. **内容收藏**：旅行日志支持多图上传（前端 canvas 压缩 1600/400 双尺寸，JPEG 0.85）+ 缩略图；新增「攻略」Tab 收藏小红书/公众号链接。
 7. **质量**：多轮代码 review 修复；`scripts/smoke.sh` 冒烟 91 项；验收报告归档。
 
