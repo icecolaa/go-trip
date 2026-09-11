@@ -3,6 +3,7 @@ import { api } from '../api';
 import { useApp } from '../store';
 import { Modal, fmtDate } from '../components/ui';
 import MapView, { type MapPoint } from '../components/MapView';
+import FlyCompare from '../components/FlyCompare';
 
 /* ============ 飞哪儿 FlyWhere：按票价探索目的地（移植自 icecolaa/flywhere） ============ */
 
@@ -410,6 +411,14 @@ export default function FlyWherePage() {
           </div>
         )}
       </div>
+
+      <FlyCompare
+        query={{
+          origin: form.origin.trim(), destination: form.destination.trim(), trip: form.trip,
+          depDate: form.depDate, backDate: form.trip === 'round' ? form.backDate : '', passengers: form.passengers,
+        }}
+        results={results}
+      />
 
       {restoredTs != null && (
         <div className="fw-restore">

@@ -297,6 +297,19 @@ check "飞哪里未登录拦截(401)" "$R" '^401$'
 R=$(curl -s -X POST "$BASE/api/flywhere/search" -H "Authorization: Bearer $TA" -H "Content-Type: application/json" --data-binary '{"origin":"广州"}')
 check "缺出发日期拦截(400)" "$R" '请选择有效的出发日期'
 
+echo "== 跨平台比价工作台 =="
+CMP_BODY='{"origin":"广州","destination":"三亚","trip":"oneway","depDate":"2026-10-01","backDate":"","passengers":2,"city":"三亚","groups":[{"title":"航班 CA8215","confidence":95,"minTaxTotal":600,"entries":[{"platform":"fliggy","flightNo":"CA8215","out":"21:15","arr":"23:15","basePrice":550,"tax":50,"priceType":"taxed","total":600,"note":"含税","jumpUrl":""},{"platform":"qunar","flightNo":"CA8215","out":"21:15","arr":"23:15","basePrice":520,"tax":null,"priceType":"floor","total":null,"note":"起步价","jumpUrl":""}]},{"title":"起降 08:30-11:30","confidence":80,"minTaxTotal":700,"entries":[{"platform":"ctrip","flightNo":"","out":"08:30","arr":"11:30","basePrice":620,"tax":80,"priceType":"public","total":700,"note":"","jumpUrl":""}]}]}'
+R=$(curl -s -o /dev/null -w "%{http_code}" -X POST "$BASE/api/flywhere/compare" -H "Content-Type: application/json" --data-binary "$CMP_BODY")
+check "比价未登录拦截(401)" "$R" '^401$'
+R=$(req POST /api/flywhere/compare "$TA" "$CMP_BODY")
+check "保存比价快照" "$R" '"ok":true'
+check "首次快照样本不足" "$(jget "$R" "d['stats']['level']")" 'insufficient'
+R=$(req POST /api/flywhere/compare "$TA" "$CMP_BODY")
+check "二次快照进入统计" "$(jget "$R" "d['stats']['count']")" '^2$'
+R=$(req GET "/api/flywhere/compare?routeKey=%E5%B9%BF%E5%B7%9E%7C%E4%B8%89%E4%BA%9A%7Coneway%7C2026-10-01%7C*%7C2" "$TA")
+check "历史快照可读" "$(jget "$R" "d['count']")" '^2$'
+check "快照含分组明细" "$R" 'CA8215'
+
 echo "== 图文使用说明静态页 =="
 R=$(curl -s -o /dev/null -w "%{http_code}" "$BASE/guide/index.html")
 check "指南页可访问(200)" "$R" '^200$'
