@@ -7,7 +7,7 @@
 
 | 项 | 值 |
 |---|---|
-| 生产 | `https://gotrip.pocketbay.app`，部署 #7268（2026-09-11），`/health` 正常，飞哪里双人数回归通过 |
+| 生产 | `https://gotrip.pocketbay.app`，部署 #7281（2026-09-11），`/health` 正常，飞哪里双人数回归通过 |
 | 最近提交 | `1a3b09a` fix: review 修复——db 迁移去重、日志 thumb 规范化、飞哪里 502 友好化、冒烟 88 项 |
 | 仓库 | Gitee `ice-colaa/go-trip`，分支 `master` |
 | 数据库 | PocketBay 托管 PostgreSQL（生产）／SQLite（本地回退） |
