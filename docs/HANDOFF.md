@@ -9,7 +9,7 @@
 |---|---|
 | 生产 | `https://gotrip.pocketbay.app`，部署 #7557（2026-09-12），`/health` 正常，飞哪儿双人数回归通过 |
 | 最近提交 | `5bd661c` feat: 飞哪儿改版（参考独立版 FlyWhere）+ 更名「飞哪儿」 |
-| 仓库 | Gitee `ice-colaa/go-trip`，分支 `master` |
+| 仓库 | Gitee `ice-colaa/go-trip` + GitHub `icecolaa/go-trip`（私有镜像），分支 `master`；origin 配了双 push URL，`git push origin master` 一条命令两边同步 |
 | 数据库 | PocketBay 托管 PostgreSQL（生产）／SQLite（本地回退） |
 | 验收 | `acceptance/REPORT.md` + `acceptance/screenshots/`（85 项冒烟全过） |
 
@@ -47,4 +47,4 @@
 
 1. 读 `CLAUDE.md`（规则红线）→ 本文件（现状）→ 需要部署细节再读 `docs/deployment-pocketbay.md`。
 2. 常用命令：`npm run dev`（本地）、`npm run check`（TS 检查）、`bash scripts/smoke.sh`（冒烟，需服务在跑）。
-3. 改完代码的标准收尾：本地冒烟 → `git commit` + push origin master → 提交后对本次 diff 做 review（CLAUDE.md 红线 6）→ 按 deployment-pocketbay.md 重新部署 → 线上验证。
+3. 改完代码的标准收尾：本地冒烟 → `git commit` + push origin master（origin 配了 Gitee + GitHub 双 push URL，一条命令两边同步更新）→ 提交后对本次 diff 做 review（CLAUDE.md 红线 6）→ 按 deployment-pocketbay.md 重新部署 → 线上验证。
