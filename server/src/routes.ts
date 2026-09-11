@@ -955,6 +955,7 @@ route('POST', '/api/flywhere/search', true, async (_req, res, _p, user, body) =>
     backTimeStart: String(body.backTimeStart || '').slice(0, 5), backTimeEnd: String(body.backTimeEnd || '').slice(0, 5),
     passengers: Math.max(1, Math.min(9, Number(body.passengers) || 1)),
   };
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(query.depDate)) throw new ApiError(400, '请选择有效的出发日期');
   if (!flyaiConfigured()) throw new ApiError(400, '未配置飞猪 API Key（环境变量 FLYAI_API_KEY），无法查询真实航班');
   // 兜底：查询链路里任何未语义化的异常都转成可重试的 502，避免用户看到"服务器开小差"
   let results: any[];
@@ -1001,56 +1002,6 @@ route('POST', '/api/flywhere/search', true, async (_req, res, _p, user, body) =>
 
 route('GET', '/api/flywhere/fee-policy', true, async (_req, res) => {
   json(res, 200, flywhereFeePolicy);
-});
-
-/* ======== 跨平台比价工作台（服务器历史 + 分位数，形态参考 flight-price-assistant） ======== */
-
-function flywhereCompareRouteKey(b: any): string {
-  return [String(b.origin || ''), String(b.destination || '*'), b.trip === 'oneway' ? 'oneway' : 'round',
-    String(b.depDate || ''), String(b.backDate || '*'), Math.max(1, Math.min(9, Number(b.passengers) || 1))].join('|');
-}
-
-route('POST', '/api/flywhere/compare', true, async (_req, res, _p, _user, body) => {
-  const groups = Array.isArray(body.groups) ? body.groups.slice(0, 20) : [];
-  if (!groups.length) throw new ApiError(400, '没有可比价的航班数据');
-  for (const g of groups) {
-    if (!Array.isArray(g.entries) || !g.entries.length) throw new ApiError(400, '比价分组缺少平台报价');
-    g.entries = g.entries.slice(0, 8);
-  }
-  const routeKey = flywhereCompareRouteKey(body);
-  const minTaxTotal = Math.min(...groups.map((g: any) => Number(g.minTaxTotal) || Infinity));
-  if (!isFinite(minTaxTotal)) throw new ApiError(400, '报价数据不含有效含税价');
-  const payload = JSON.stringify({ origin: String(body.origin || '').slice(0, 20), destination: String(body.destination || '').slice(0, 20), trip: body.trip === 'oneway' ? 'oneway' : 'round', depDate: String(body.depDate || '').slice(0, 10), backDate: String(body.backDate || '').slice(0, 10), passengers: Math.max(1, Math.min(9, Number(body.passengers) || 1)), groups });
-  if (payload.length > 100000) throw new ApiError(400, '比价数据过大');
-  const now = nowISO();
-  const past = await db().prepare('SELECT min_tax_total FROM flywhere_compare WHERE route_key = ? ORDER BY id').all(routeKey) as any[];
-  const r = await db().prepare('INSERT INTO flywhere_compare (route_key, city, min_tax_total, payload, created_at) VALUES (?,?,?,?,?)')
-    .run(routeKey, String(body.city || '').slice(0, 20), minTaxTotal, payload, now);
-  const all = [...past.map(p => Number(p.min_tax_total)), minTaxTotal];
-  const rank = all.filter(v => v <= minTaxTotal).length;
-  const percentile = Math.round(100 * rank / all.length);
-  const stats = {
-    count: all.length,
-    percentile,
-    level: all.length < 3 ? 'insufficient' : percentile <= 30 ? 'low' : percentile >= 75 ? 'high' : 'mid',
-    minEver: Math.min(...all),
-    maxEver: Math.max(...all),
-  };
-  json(res, 200, { ok: true, id: Number(r.lastInsertRowid), stats });
-});
-
-route('GET', '/api/flywhere/compare', true, async (req, res) => {
-  const url = new URL(req.url || '', 'http://localhost');
-  const routeKey = String(url.searchParams.get('routeKey') || '');
-  if (!routeKey) throw new ApiError(400, '缺少 routeKey');
-  const rows = await db().prepare('SELECT * FROM flywhere_compare WHERE route_key = ? ORDER BY id DESC LIMIT 30').all(routeKey) as any[];
-  json(res, 200, {
-    count: rows.length,
-    snapshots: rows.map(r => ({
-      id: r.id, city: r.city, minTaxTotal: r.min_tax_total, createdAt: r.created_at,
-      plan: (() => { try { return JSON.parse(r.payload); } catch { return null; } })(),
-    })),
-  });
 });
 
 route('POST', '/api/flywhere/ai-advice', true, async (_req, res, _p, _user, body) => {
