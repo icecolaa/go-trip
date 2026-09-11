@@ -11,7 +11,9 @@
 - **旅行地图**：高德地图 / 高德卫星图双图层，按天分色聚合、虚线建议路线、按天筛选，内置景点搜索（配置高德 Key 后可搜任意地点），成员位置共享。每站支持高德导航跳转与小红书攻略搜索。
 - **团队预算**：记账（分摊人 / 垫付人）、分类统计、人均消耗、预算进度条，自动计算「转账最少」的结算方案。
 - **打包清单**：分类物品、指派负责人、数量备注，内置中国出行模板（证件 / 衣物 / 电子 / 洗护 / 药品）。
-- **旅行日志**：按天关联的图文心情手记，谁写谁编辑。
+- **旅行日志**：按天关联的图文心情手记，支持多图上传（自动压缩生成缩略图），谁写谁编辑。
+- **攻略收藏**：收藏小红书 / 公众号攻略链接，备注标题一键直达，方便快速查阅。
+- **飞哪里**：机票低价探索——输入出发地与日期，聚合飞猪低价机票组合（按人数精确计价），附目的地天气与 AI 出行建议；需配置 `FLYAI_API_KEY`。
 - **成员动态**：全员的创建、记账、加入等操作自动生成动态流。
 - **AI 助手**：粘贴小红书 / 公众号攻略文本自动解析为结构化行程；或输入目的地 + 天数 + 节奏 + 偏好直接生成。未配置大模型时自动降级为内置规则引擎，依然可用。
 - **对外分享**：一键生成只读分享链接，适合发给长辈或不参与规划的同行人。
@@ -86,6 +88,7 @@ docker compose up -d --build
 | `GOTRIP_AI_BASE_URL` | OpenAI 兼容接口地址 | 内置规则引擎 |
 | `GOTRIP_AI_API_KEY` | 对应 API Key | — |
 | `GOTRIP_AI_MODEL` | 模型名 | — |
+| `FLYAI_API_KEY` | 飞猪 AI 开放平台 Key，启用「飞哪里」机票搜索 | 接口返回友好提示 |
 
 AI 配置示例：
 
@@ -114,8 +117,11 @@ GOTRIP_AI_MODEL=deepseek-chat
 - 行程：`POST /api/trips/:id/days`、`PATCH/DELETE /api/days/:id`、`POST /api/days/:id/activities`、`PATCH/DELETE /api/activities/:id`、`POST /api/trips/:id/activities/reorder`
 - 记账：`POST /api/trips/:id/expenses`、`PATCH/DELETE /api/expenses/:id`
 - 清单：`POST /api/trips/:id/packing | packing/template`、`PATCH/DELETE /api/packing/:id`
-- 日志：`POST /api/trips/:id/journal`、`PATCH/DELETE /api/journal/:id`
-- AI：`GET /api/ai/status`、`POST /api/trips/:id/ai/parse-guide | generate | apply`
+- 日志：`POST /api/trips/:id/journal`、`PATCH/DELETE /api/journal/:id`、`POST /api/trips/:id/uploads`（日志图片）
+- 攻略：`GET/POST /api/trips/:id/links`、`DELETE /api/links/:id`
+- 锦囊：`GET/POST /api/trips/:id/handbook`、`POST /api/trips/:id/handbook/generate`、`DELETE /api/handbook/:id`
+- 飞哪里：`POST /api/flywhere/search`、`GET /api/flywhere/fee-policy`、`POST /api/flywhere/ai-advice`
+- AI：`GET /api/ai/status`、`POST /api/trips/:id/ai/parse-guide | generate | apply`、`POST /api/assistant`（使用助手）
 - 其他：`GET /api/poi/search`、`GET /api/trips/:id/weather`、`GET /api/share/:token`、`GET /api/users/search`
 - WebSocket：`/ws?token=<token>`，消息协议 `subscribe / unsubscribe / heartbeat / location`，服务端推送 `hello / presence / change / location`
 
