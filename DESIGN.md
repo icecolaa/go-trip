@@ -1,62 +1,62 @@
-# Dimension — Style Reference
-> dusk-lit workspace with frosted glass panels
+# Apple — Style Reference
+> white room with a single blue switch.
 
-**Theme:** dark
+**Theme:** light
 
-Dimension operates as a dusk-lit AI workspace: deep matte-black canvases (#0a0a0a) carry frosted-glass panels, pill-shaped controls, and whisper-weight headlines that lean on medium weights (500) rather than bold statements. The system is almost entirely achromatic — white and warm grays do all the talking — punctuated by a signature gradient hero that transitions from warm amber through to cobalt blue, evoking a sunset bleeding into a product UI. Components are lightweight and round: 9999px pill buttons, 10px UI radii, 24px card radii, with hairline 1px borders rather than heavy shadows. The visual rhythm is quiet, controlled, and editorial — every element feels placed rather than dropped, with generous breathing room and a single violet glow (#6b62f2 at 0.565 alpha) as the only chromatic accent, used sparingly in linear gradient washes.
+Apple's design language is a study in restraint: near-white canvas, generous breathing room, and one vivid blue accent that makes every action feel deliberate. Typography is the primary voice — SF Pro set with negative tracking that tightens as size grows, giving headlines architectural clarity without weight. The product IS the design: large product photography and lifestyle imagery dominate, while chrome recedes into thin borders, ghost navigation, and hairline rules. Sections alternate on a light gray canvas with full-bleed color washes for promotional blocks, creating rhythm through scale shifts rather than decoration.
 
 ## Tokens — Colors
 
 | Name | Value | Token | Role |
 |------|-------|-------|------|
-| Void Canvas | `#0a0a0a` | `--color-void-canvas` | Primary page background, base surface for the dark UI shell |
-| Graphite | `#161616` | `--color-graphite` | Elevated surface for floating panels, pill nav bar, modal bodies — one step above canvas |
-| Frosted Glass | `#d4d4d4` | `--color-frosted-glass` | Translucent panel fill at 10% opacity over dark surfaces — creates the frosted overlay look on the floating nav and feature cards |
-| Ink Black | `#000000` | `--color-ink-black` | Icon strokes, SVG fill, deep contrast elements on light surfaces |
-| Snow White | `#ffffff` | `--color-snow-white` | Primary CTA fill, headline text on dark surfaces, card backgrounds — the inverted counterweight to the dark canvas |
-| Bone | `#ededed` | `--color-bone` | Primary readable text on dark surfaces — slightly warmer than pure white, reduces glare |
-| Ash | `#c2c2c2` | `--color-ash` | Secondary body text, helper copy, de-emphasized labels |
-| Slate | `#686868` | `--color-slate` | Muted text, link text, tertiary metadata, timestamp-style labels |
-| Smoke | `#b2b2b2` | `--color-smoke` | Disabled or idle button text, integration label text in ghost controls |
-| Hairline | `#e5e5e5` | `--color-hairline` | 1px borders on dark-surface controls — appears as a light edge against the dark canvas, creating definition without weight |
-| Dusk Violet | `linear-gradient(90deg, rgba(0, 0, 0, 0), rgba(0, 0, 0, 0) 40%, rgba(107, 98, 242, 0.565) 50%, rgba(0, 0, 0, 0) 60%, rgba(0, 0, 0, 0))` | `--color-dusk-violet` | The only chromatic accent — used at 0.565 alpha in a horizontal gradient wash to add a single pulse of color to the dark UI; Radial glow accent — concentrated violet center fading to white, used as spotlight or product reveal moment |
+| Apple Blue | `#0071e3` | `--color-apple-blue` | Filled action buttons, selected states — the only chromatic interactive color, used sparingly so each appearance carries weight |
+| Link Blue | `#0066cc` | `--color-link-blue` | Outlined action borders, inline links — deeper saturation than Apple Blue, used where a filled pill would be too loud |
+| Signal Blue | `#2997ff` | `--color-signal-blue` | Decorative borders, image outlines, icon strokes — the lightest blue in the system, used for atmospheric emphasis rather than interaction |
+| Carbon | `#1d1d1f` | `--color-carbon` | Primary text, heading borders, nav rules, card borders — the dominant ink color, near-black with a whisper of warmth |
+| Frost | `#f5f5f7` | `--color-frost` | Page canvas, body backgrounds, footer surface — the signature Apple light gray, slightly cooler than pure white |
+| Ice | `#f4f8fb` | `--color-ice` | Elevated surface washes, subtle fills, button text on dark backgrounds — barely-blue tint that lifts a section without declaring it |
+| Smoke | `#333333` | `--color-smoke` | Secondary text, nav fills, button borders — the workhorse neutral for borders and icons that need more presence than mid-gray |
+| Graphite | `#474747` | `--color-graphite` | Nav text, nav borders, link borders — sits between Carbon and Smoke for tertiary hierarchy |
+| Ash | `#707070` | `--color-ash` | Footer text, list borders, nav borders, muted body text — the mid-gray for content that should be present but quiet |
+| Mist | `#858585` | `--color-mist` | Body borders, icon strokes, button borders — the lightest functional gray, for hairline rules on light surfaces |
+| Onyx | `#000000` | `--color-onyx` | Heading borders, nav borders, dark image backgrounds — true black for maximum contrast in promotional and heading contexts |
+| Pebble | `#e2e2e5` | `--color-pebble` | Button background fills, disabled surfaces — the only near-white surface that is deliberately grayer than the canvas |
 
 ## Tokens — Typography
 
-### DM Sans — Primary display and body face — used for the 72px hero headline (weight 500, -0.035em tracking) and all 16px body/UI text. The weight-500 display choice is anti-convention: most sites push 700+ for hero headlines, but DM Sans at 500 with tight tracking achieves authority through restraint and modernity through geometric clarity. · `--font-dm-sans`
-- **Substitute:** Inter
-- **Weights:** 500
-- **Sizes:** 13px, 14px, 15px, 16px, 18px, 40px, 72px
-- **Line height:** 1.00–1.56
-- **Letter spacing:** -0.035em at 72px and 40px, +0.025em at 13–16px UI scale
-- **Role:** Primary display and body face — used for the 72px hero headline (weight 500, -0.035em tracking) and all 16px body/UI text. The weight-500 display choice is anti-convention: most sites push 700+ for hero headlines, but DM Sans at 500 with tight tracking achieves authority through restraint and modernity through geometric clarity.
+### SF Pro Display — Display headlines and large feature text — sizes 40px+ use the display cut for tighter aperture and stronger negative tracking; 700 reserved for promotional lockups, 400 for editorial product names · `--font-sf-pro-display`
+- **Substitute:** Inter, system-ui
+- **Weights:** 400, 600, 700
+- **Sizes:** 21px, 28px, 40px, 56px
+- **Line height:** 1.07, 1.10, 1.14, 1.19
+- **Letter spacing:** -0.005em at 21px, 0.007em at 28px, 0.011em at 40px+
+- **OpenType features:** `"numr"`
+- **Role:** Display headlines and large feature text — sizes 40px+ use the display cut for tighter aperture and stronger negative tracking; 700 reserved for promotional lockups, 400 for editorial product names
 
-### Geist — Secondary face for feature headings and editorial body — Geist's mono-adjacent precision adds a technical, product-aware texture to section headings (32px/600, 36px/500, 48px/500). The 24px body usage in Geist creates a slightly more compressed, information-dense reading rhythm compared to DM Sans. · `--font-geist`
-- **Substitute:** Inter
-- **Weights:** 400, 500, 600
-- **Sizes:** 14px, 16px, 18px, 24px, 32px, 36px, 48px
-- **Line height:** 1.00–1.71
-- **Role:** Secondary face for feature headings and editorial body — Geist's mono-adjacent precision adds a technical, product-aware texture to section headings (32px/600, 36px/500, 48px/500). The 24px body usage in Geist creates a slightly more compressed, information-dense reading rhythm compared to DM Sans.
-
-### system-ui — system-ui — detected in extracted data but not described by AI · `--font-system-ui`
-- **Weights:** 400, 500
-- **Sizes:** 18px
-- **Line height:** 1.5
-- **Role:** system-ui — detected in extracted data but not described by AI
+### SF Pro Text — Body, navigation, buttons, subheads — the working typeface; 400 for body copy, 300 for subheads and refined labels, 600 for nav items and button text; negative tracking tightens proportionally with size (-0.022em at 12px down to -0.01em at 44px) · `--font-sf-pro-text`
+- **Substitute:** Inter, system-ui
+- **Weights:** 300, 400, 600
+- **Sizes:** 12px, 14px, 17px, 18px, 24px, 26px, 34px, 44px
+- **Line height:** 1.18, 1.24, 1.29, 1.33, 1.47, 1.50, 2.12, 2.41
+- **Letter spacing:** -0.022em at 12px, -0.016em at 17px, -0.011em at 24px, -0.01em at 44px
+- **Role:** Body, navigation, buttons, subheads — the working typeface; 400 for body copy, 300 for subheads and refined labels, 600 for nav items and button text; negative tracking tightens proportionally with size (-0.022em at 12px down to -0.01em at 44px)
 
 ### Type Scale
 
 | Role | Size | Line Height | Letter Spacing | Token |
 |------|------|-------------|----------------|-------|
-| caption | 13px | 1.5 | 0.33px | `--text-caption` |
-| body | 16px | 1.5 | — | `--text-body` |
-| subheading | 18px | 1.5 | — | `--text-subheading` |
-| heading-sm | 24px | 1.33 | — | `--text-heading-sm` |
-| heading | 36px | 1.11 | — | `--text-heading` |
-| heading-lg | 48px | 1 | — | `--text-heading-lg` |
-| display | 72px | 1 | -2.52px | `--text-display` |
+| caption | 12px | 1.33 | -0.264px | `--text-caption` |
+| body-sm | 14px | 1.29 | -0.224px | `--text-body-sm` |
+| body | 17px | 1.47 | -0.272px | `--text-body` |
+| subheading | 21px | 1.24 | -0.105px | `--text-subheading` |
+| heading-sm | 28px | 1.18 | 0.196px | `--text-heading-sm` |
+| heading | 40px | 1.14 | 0.44px | `--text-heading` |
+| heading-lg | 44px | 1.18 | -0.44px | `--text-heading-lg` |
+| display | 56px | 1.07 | 0.616px | `--text-display` |
 
 ## Tokens — Spacing & Shapes
+
+**Base unit:** 4px
 
 **Density:** comfortable
 
@@ -65,19 +65,12 @@ Dimension operates as a dusk-lit AI workspace: deep matte-black canvases (#0a0a0
 | Name | Value | Token |
 |------|-------|-------|
 | 4 | 4px | `--spacing-4` |
-| 6 | 6px | `--spacing-6` |
 | 8 | 8px | `--spacing-8` |
-| 10 | 10px | `--spacing-10` |
 | 12 | 12px | `--spacing-12` |
-| 14 | 14px | `--spacing-14` |
 | 16 | 16px | `--spacing-16` |
 | 20 | 20px | `--spacing-20` |
-| 22 | 22px | `--spacing-22` |
 | 24 | 24px | `--spacing-24` |
-| 28 | 28px | `--spacing-28` |
-| 32 | 32px | `--spacing-32` |
 | 40 | 40px | `--spacing-40` |
-| 44 | 44px | `--spacing-44` |
 | 48 | 48px | `--spacing-48` |
 | 56 | 56px | `--spacing-56` |
 
@@ -85,168 +78,149 @@ Dimension operates as a dusk-lit AI workspace: deep matte-black canvases (#0a0a0
 
 | Element | Value |
 |---------|-------|
-| ui | 10px |
-| cards | 24px |
-| icons | 4px |
-| panels | 42px |
-| buttons | 9999px |
-| largeCards | 40px |
+| tags | 980px |
+| cards | 8px |
+| images | 8px |
+| inputs | 8px |
+| buttons | 980px |
 
 ### Shadows
 
 | Name | Value | Token |
 |------|-------|-------|
-| subtle | `rgba(255, 255, 255, 0.1) 0px 0px 0px 1px inset` | `--shadow-subtle` |
+| xl | `rgba(0, 0, 0, 0.22) 3px 5px 30px 0px` | `--shadow-xl` |
 
 ### Layout
 
-- **Page max-width:** 1200px
-- **Section gap:** 64-80px
-- **Card padding:** 28px
-- **Element gap:** 8-16px
+- **Page max-width:** 1440px
+- **Section gap:** 64px
+- **Card padding:** 24px
+- **Element gap:** 12px
 
 ## Components
 
-### White Pill CTA
-**Role:** Primary action button
+### Filled Pill Button
+**Role:** Primary action — Buy, Learn more, Shop
 
-Filled white background, #161616 text, 9999px border-radius (full pill), 8px vertical × 12px horizontal padding. The only filled button in the system — inverts the dark canvas to draw the eye. Uses DM Sans 14–16px weight 400. Pair with the ghost nav button as a secondary.
+980px border-radius, #0071e3 background, white (#f4f8fb) text at 17px weight 400, padding 11px 15px, no border, no shadow. The single filled interactive element in the system.
 
-### Ghost Nav Button
-**Role:** Navigation link styled as button
+### Outlined Pill Button
+**Role:** Secondary action — pair with filled primary
 
-Transparent background, #ffffff text at 85% opacity, 1px #e5e5e5 hairline border, 9999px border-radius, 6px vertical × 14px horizontal padding. Lives inside the floating dark nav bar. The reduced text opacity (0.85) creates a quieter rhythm than the full-white CTA.
+980px border-radius, 1px solid #0066cc border, #0066cc text at 17px weight 400, transparent fill, padding 11px 15px. Used as the second action next to a filled blue button.
 
-### Floating Frosted Nav
-**Role:** Site-wide navigation
+### Ghost Link
+**Role:** Tertiary action or inline text link
 
-Dark surface (#161616 with possible translucency), 19px asymmetric border-radius, 4px backdrop blur, 1px #e5e5e5 border, 6px × 14px padding for internal links. Sits as a floating pill at the bottom or top of the viewport. Contains logo + 2–3 nav links + white CTA. This is the signature component — it replaces the traditional flat nav bar with a detached, glass-like element.
+No background, no border, #0066cc text at inherit size, underline on hover only. Weight 400, same family as body.
 
-### Hairline Ghost Button
-**Role:** Secondary action or integration label
+### Global Nav Bar
+**Role:** Top-level site navigation
 
-Transparent background, #ffffff or #b2b2b2 text, 1px #e5e5e5 border, 10px border-radius (not pill — distinguishes from nav), 8px × 8px tight padding. Used for integration labels (Google Drive, Notion, etc.) where the pill shape would be too prominent.
+Full-width, #1d1d1f or white background, 8px vertical padding, horizontal links at 12px weight 400 in #1d1d1f or #f5f5f7. Apple logo on left, product categories centered, search and bag icons on right. 1px hairline bottom border in #1d1d1f or #333.
 
-### Frosted Glass Feature Card
-**Role:** Translucent content panel
+### Sticky Mini-Nav
+**Role:** Product page sub-navigation that pins below global nav
 
-rgba(212,212,212,0.1) background over the dark canvas, 24px border-radius, 0px padding (content is placed inside), no shadow — the translucency itself creates depth. Often paired with a 4px backdrop blur for the frosted effect. Used for feature groupings and section dividers.
+White background, product name in 21px weight 600 + colored wordmark, action links at 14px weight 400. 1px bottom border in #d2d2d7.
 
-### Gradient Hero Panel
-**Role:** Full-bleed hero background
+### Product Hero Section
+**Role:** Full-bleed product showcase
 
-A warm-to-cool gradient (amber/coral left → cobalt blue right) fills the hero section. Contains the 72px DM Sans display headline in white, a left-aligned feature bullet list with icon + text rows at 16px, and the white pill CTA. A laptop mockup sits on the right half, creating a split text+visual hero pattern.
+#f5f5f7 background, centered product name at 56px weight 600 in #1d1d1f, tagline at 26px weight 300, two action buttons centered below. Large product render fills the section with generous bottom padding.
 
-### Numbered Accordion Row
-**Role:** Feature list item with index
+### Feature Banner
+**Role:** Full-bleed promotional or service content
 
-Left-aligned feature name in #ededed, right-aligned two-digit number (01, 02, 03…) in #c2c2c2, 20px row-gap between rows, no visible borders or backgrounds. The numbered prefix creates editorial structure without chrome. Used for 'What Dimension handles for you' style capability lists.
+Full-width photographic or color-washed background, overlay text and CTA. Can be dark with white text, or a pastel wash with dark text. No card surface — the image IS the surface.
 
-### Bulleted Feature Row
-**Role:** Compact feature highlight in hero
+### Service Card Grid
+**Role:** Multi-service promotional row (Apple TV+, Fitness+, Music, Arcade)
 
-Small icon (4px radius, #ffffff fill) + 16px DM Sans text in #ededed, 12px gap between icon and text, 16px vertical spacing between rows. Four rows typical in the hero, each one line. No borders, no backgrounds — pure typographic density.
+Horizontal scroll or grid of cards, each full-bleed photographic background, 8px radius, white text overlay. Card title 24-28px weight 600, genre label in 12-14px, pill action button (Listen now, Play now, Watch now) at bottom.
 
-### Device Mockup Frame
-**Role:** Product screenshot container
+### Typography-Only CTA Block
+**Role:** Compact product call-out within a section
 
-Large rounded-rectangle frame containing a product UI screenshot. The frame uses 40px 40px 0px 0px border-radius (top corners rounded, bottom flush), white background, 0px padding (screenshot bleeds to edges). Represents a laptop or monitor showing the product interface.
+Centered stack: product name at 40-56px weight 600, one-line descriptor at 21px weight 300, optional italic product variant (e.g. 'iPad air') at 28px in #2997ff. Two pill buttons below, generous vertical breathing room.
 
-### Status Banner Pill
-**Role:** Ephemeral announcement at page top
+### Footer
+**Role:** Site-wide legal and link directory
 
-Pill-shaped bar at the very top of the page, dark or translucent background, 9999px radius, contains a sparkle/star icon + announcement text + arrow. Example: 'Dimension is winding down on May 20, 2026 →'. Centered or left-aligned, sits above the main hero.
+#f5f5f7 or #1d1d1f background, multi-column link grid at 12px weight 400 in #707070 or #f5f5f7, 1px hairline dividers in #333 or #d2d2d7, fine print at 12px. No card surfaces — flat, typographic, structural.
 
-### Section Header
-**Role:** Section-level title
+### Form Input
+**Role:** Search, email capture, configuration inputs
 
-Geist 32px weight 600 or 36px weight 500, #ededed color, 1.5 line-height, often followed by a descriptive paragraph in 18px Geist weight 500. The 600-weight Geist creates a slightly heavier anchor than the DM Sans body text, marking section boundaries without a visible divider line.
-
-### Icon Glyph
-**Role:** Feature or UI icon
-
-Monochrome #ffffff or #000000, 4px border-radius on the container, appears at 16–20px size. Icons are simple geometric shapes (plus, check, sparkle, chat bubble) rendered as filled or stroked SVGs. Stroke weight ~1.5px. The 4px container radius gives icons a subtle squircle softness without rounding the glyph itself.
+8px radius, 1px border in #d2d2d7 or #707070, 14-17px text, #f5f5f7 fill. Focus ring in #0071e3 at 2px.
 
 ## Do's and Don'ts
 
 ### Do
-- Use 9999px border-radius for all primary buttons, nav links, and tag/pill elements — the pill shape is the system's defining silhouette
-- Set display headlines to DM Sans 72px weight 500 with -2.52px letter-spacing — never go bolder than 500 for hero text
-- Default to #ededed for body text on dark surfaces and #161616 for text on white surfaces — avoid pure #ffffff for body copy to reduce glare
-- Use 1px solid #e5e5e5 hairlines for all borders on dark-surface elements — never use heavy 2px+ borders or box-shadows for definition
-- Apply the warm-to-cool gradient (amber → cobalt) only to hero or spotlight sections — never to UI controls or cards
-- Maintain 8–16px element gaps within components and 64–80px section gaps between major blocks — the rhythm is generous but not maximalist
-- Use the Dusk Violet (#6b62f2) accent only in gradient washes, never as a solid fill on buttons, text, or backgrounds
+- Use #0071e3 only for filled action buttons and selected/active states — one color, one job.
+- Pair every filled blue button with an outlined blue secondary action, never stack two filled buttons.
+- Set body text at 17px with -0.016em letter-spacing — the negative tracking is what makes Apple type feel precise, not the size alone.
+- Let product photography fill the full viewport width — never constrain hero images to a max-width container.
+- Use 980px border-radius for every interactive button, tag, and pill — the fully rounded shape is non-negotiable.
+- Set section backgrounds to full-bleed #f5f5f7 or a single product color wash — never use card containers inside a section.
+- Weight 300 for subheads and editorial descriptors creates the signature Apple whisper-voice — 400 is for body, 600 is for nav.
 
 ### Don't
-- Do not use box-shadow for elevation — the system relies on translucency, hairline borders, and surface contrast instead
-- Do not introduce additional brand colors — the 2% colorfulness is intentional; any new hue breaks the monochromatic discipline
-- Do not use border-radius below 4px or above 42px on cards — the 24px/40px/42px card radii are the system's sweet spot
-- Do not set hero headlines to weight 700 or above — the weight-500 restraint is the signature, not a suggestion
-- Do not use Geist for body text below 24px — DM Sans handles 13–18px UI text, Geist begins at the subheading level
-- Do not place the floating nav bar flush against the viewport edge — it should always float with visible margin (16–24px from edges)
-- Do not use solid #6b62f2 as a button fill or text color — the violet only appears as a gradient wash or radial glow
+- Never use #0071e3 for text, borders, or decoration — it is exclusively a button fill color.
+- Never add drop shadows to cards, buttons, or nav — the system uses hairline borders and surface shifts, not elevation.
+- Never set headlines at 700 weight for product names — 600 is the maximum; 700 only appears in editorial lockups or promotional art.
+- Never use a card or panel inside a #f5f5f7 section — the canvas itself is the surface; containers break the spatial logic.
+- Never constrain the main content to a narrow column — Apple pages breathe at 100% width with internal max-widths only for text-heavy blocks.
+- Never use radius below 980px for buttons or above 8px for cards/images — these are the only two radius values in the system.
+- Never mix the three blues in one interactive element — #0071e3 is fill, #0066cc is outlined action, #2997ff is decorative.
 
 ## Surfaces
 
 | Level | Name | Value | Purpose |
 |-------|------|-------|---------|
-| 0 | Void Canvas | `#0a0a0a` | Page background — the base dark plane everything sits on |
-| 1 | Graphite | `#161616` | Elevated panels — floating nav bar, dropdown bodies, dark cards |
-| 2 | Frosted Glass | `#d4d4d4` | Translucent overlay panels at 10% opacity — frosted card surfaces with blur backdrop |
-| 3 | Snow White | `#ffffff` | Inverted surfaces — white CTA buttons, white card panels in dark sections |
-
-## Elevation
-
-- **Floating Frosted Nav:** `rgba(255, 255, 255, 0.02) 0px 3px 4.5px, rgba(0, 0, 0, 0.04) 0px 10px 8px, rgba(0, 0, 0, 0.1) 0px 4px 3px`
+| 0 | Canvas | `#f5f5f7` | Page background, section default |
+| 1 | Elevated Wash | `#f4f8fb` | Light blue-tinted section background for featured products |
+| 2 | Pebble | `#e2e2e5` | Button fills, disabled states, surface differentiation |
 
 ## Imagery
 
-The site uses minimal photography — instead, it relies on a signature gradient hero that transitions from warm amber/coral on the left to cobalt blue on the right, evoking a sunset bleeding into a product interface. Product screenshots appear inside device mockup frames (laptop/monitor shapes with 40px top-corner radius). Icons are monochrome geometric SVGs (sparkle, plus, check, chat bubble) in #ffffff or #000000, rendered at 16–20px with ~1.5px stroke weight. The visual language is editorial-product: no lifestyle photography, no abstract 3D renders, no illustration — just the gradient hero, product mockups, and tightly composed UI screenshots. A single radial violet glow (#6b62f2) appears as a spotlight accent. Overall image density is low — text and UI chrome dominate, with visual moments concentrated in the hero and product reveal sections.
+Photography is the dominant visual language. Product shots are rendered on pure white or soft gray backgrounds with no environmental context — the device IS the hero, isolated and lit. Lifestyle photography appears in feature banners at full-bleed width, often with subjects cropped tightly. Color washes (pastel blue, pink, green) serve as section backgrounds for product highlights, not as decoration. Iconography is minimal and line-based, weight 1-2px, in the same gray scale as text. No illustrations, no abstract graphics, no 3D renders beyond the product photography itself.
 
 ## Layout
 
-The page uses a max-width ~1200px centered content column with a floating dark pill nav bar that detaches from the viewport edge. The hero is a full-bleed warm-to-cool gradient background with a split layout: left column holds the 72px headline + bulleted feature list + white CTA, right column holds a laptop mockup showing a product screenshot. Below the hero, sections transition to the dark #0a0a0a canvas. The 'What Dimension handles for you' section uses a left-aligned numbered accordion list (01–07) with generous vertical spacing (20px row-gap). Section rhythm alternates between dark canvas sections and frosted-glass panel sections, separated by 64–80px vertical gaps. Content is generally left-aligned with no centered stacks except the status banner at the very top. Card grids are minimal — the design favors editorial single-column or two-column text+visual compositions over multi-column card walls.
+Full-bleed page model with no fixed max-width container — sections stretch edge-to-edge while text blocks center internally at roughly 980px. Navigation is a single sticky global bar with a secondary product-specific sub-nav that appears on scroll. Hero pattern is always centered: large product name, one-line tagline, two pill buttons, then the product render filling the remaining viewport. Sections stack vertically with generous vertical rhythm (64px+ between sections), alternating between #f5f5f7 and color-wash backgrounds. The lower page is a single horizontal row of full-bleed service cards (Apple TV+, Fitness+, Music, Arcade), each a photographic tile with overlaid text and a pill action. No sidebars, no multi-column content layouts, no asymmetric compositions — everything is centered, stacked, and symmetrical.
 
 ## Agent Prompt Guide
 
 **Quick Color Reference**
-- text: #ededed (body on dark), #161616 (body on white)
-- background: #0a0a0a (canvas), #161616 (elevated)
-- border: #e5e5e5 (1px hairline)
-- accent: #6b62f2 (gradient wash only)
-- primary action: #ffffff (filled action)
+- text: #1d1d1f
+- background: #f5f5f7
+- border: #d2d2d7 / #333333
+- accent: #2997ff (decorative only)
+- primary action: #0071e3 (filled action)
+- outlined action border: #0066cc
 
-**Example Component Prompts**
+**3-5 Example Component Prompts**
+1. Create a product hero section: #f5f5f7 full-bleed background. Headline 'iPhone' at 56px SF Pro Display weight 600, #1d1d1f, letter-spacing 0.616px. Tagline 'Meet the latest iPhone lineup.' at 26px SF Pro Text weight 300, #1d1d1f. Two pill buttons centered below: filled #0071e3 with white text 'Learn more' (980px radius, 11px 15px padding), and outlined #0066cc with 1px border and #0066cc text 'Shop iPhone' (same radius and padding). Product render fills the lower portion.
 
-1. Create a Primary Action Button: #ffffff background, #000000 text, 9999px radius, compact pill padding. Use this filled treatment for the main CTA.
+2. Create a service card tile: full-bleed photographic background, 8px radius. Title 'Fitness+' at 28px weight 600 white, genre label at 12px weight 400 white with 70% opacity. Pill button at bottom: 980px radius, #0071e3 background, white text 'Watch now' at 14px weight 400, 8px 15px padding.
 
-2. **Floating Nav Bar**: Dark surface #161616, 19px asymmetric border-radius, 1px #e5e5e5 border, 4px backdrop blur, 6px×14px internal padding. Contains logo mark + two nav links (#ffffff at 85% opacity, 9999px radius, 1px #e5e5e5 border) + white pill CTA. Floats 16–24px from viewport edge.
+3. Create a global nav bar: full-width, #1d1d1f background, 8px vertical padding. Apple logo SVG on left at 14px height. Nav links centered: Store, Mac, iPad, iPhone, Watch, Vision, AirPods, TV & Home, Entertainment, Accessories, Support — all 12px weight 400, #f5f5f7 color, 1px #333333 bottom border on the bar. Search icon and bag icon on right.
 
-3. **Numbered Feature List**: Dark #0a0a0a canvas. Section header in Geist 32px weight 600 #ededed. Seven rows, each: feature name in 16px DM Sans #ededed left-aligned + two-digit number (01–07) in #c2c2c2 right-aligned, 20px vertical gap between rows. No borders, no backgrounds.
+4. Create a typographic CTA block: centered, 64px vertical padding. Product name 'iPad' at 40px SF Pro Display weight 600 #1d1d1f, followed by 'air' inline at 28px weight 400 italic #2997ff. Subtitle 'Now supercharged by M4.' at 21px weight 300 #1d1d1f. Two pill buttons below: filled #0071e3 'Learn more' and outlined #0066cc 'Buy' (both 980px radius, 11px 15px padding).
 
-4. **Frosted Glass Card**: rgba(212,212,212,0.1) background, 24px border-radius, 4px backdrop blur, 28px internal padding. Content inside: Geist 18px weight 500 #ededed heading + DM Sans 16px weight 400 #c2c2c2 body text. No shadow, no border — translucency creates the depth.
+5. Create a footer block: #f5f5f7 background, four-column link grid. Each link 12px weight 400 #707070, 10px vertical gap. Column headers at 12px weight 600 #1d1d1f. 1px #d2d2d7 hairline divider above fine print. Fine print at 12px weight 400 #707070.
 
-5. **Status Banner**: Centered pill at page top, 9999px radius, dark or translucent background, 1px #e5e5e5 border. Contains: small sparkle icon (4px radius, #ffffff) + 14px DM Sans weight 500 #ededed text + right arrow. 6px×14px padding.
+## Elevation Philosophy
 
-## Gradient System
-
-The site uses gradients as a signature visual device, not as decoration. Three distinct gradient types serve separate purposes:
-
-1. **Hero Horizon** — warm-to-cool full-bleed gradient on hero sections: amber/coral left → cobalt blue right. This is the only gradient applied to a full section background. It establishes the product's identity as a transition point between human work hours and AI off-hours.
-
-2. **Dusk Violet Wash** — linear gradient at 90deg with the violet accent (#6b62f2 at 0.565 alpha) concentrated in a narrow 50% center band, fading to transparent at 40% and 60%. Used as a horizontal highlight strip on dark UI — never as a background fill.
-
-3. **Radial Spotlight** — radial gradient from #6b62f2 center to #ffffff edge, used sparingly as a product reveal or feature highlight. Creates a soft glow that draws the eye to a specific point.
-
-Rules: Gradients appear only on hero sections, accent strips, and spotlights. Never apply gradients to cards, buttons, or text. Never combine multiple gradients on the same element.
+This system intentionally avoids elevation as a visual tool. Instead of shadows, hierarchy is built through surface color shifts (#f5f5f7 canvas, #f4f8fb elevated wash, #e2e2e5 filled surfaces) and 1px hairline borders in #d2d2d7 or #333333. The only shadow present is a subtle rgba(0,0,0,0.22) 3px 5px 30px on product images to ground them against the white canvas — never on cards, buttons, or panels. Flatness is the signature; depth comes from scale and photography, not from CSS shadows.
 
 ## Similar Brands
 
-- **Linear** — Same dark-canvas + monochromatic discipline with a single gradient hero, pill-shaped controls, and hairline borders on dark surfaces. Both favor weight-500 restraint over bold headlines.
-- **Vercel** — Identical Geist/DM Sans pairing, 9999px pill buttons, 1px hairline borders on #e5e5e5, and the floating glass nav bar concept. Both use warm-to-cool gradient heroes as signature moments.
-- **Raycast** — Dark surface stack (#0a0a0a → #161616), pill nav controls, frosted glass panels with backdrop blur, and the same anti-bold weight-500 headline approach. Both treat 2% colorfulness as a design principle.
-- **Arc Browser** — Shared language of frosted glass panels over dark canvases, pill-shaped floating controls, and generous editorial spacing. Both use gradient washes as accent rather than as primary fills.
+- **Bang & Olufsen** — Same product-as-hero isolation photography on white canvas, same generous whitespace, same whisper-thin typography for product names
+- **Teenage Engineering** — Same near-monochrome product pages with generous spacing, though TE adds more personality through type and color accents
+- **Nothing (tech)** — Similar minimal product showcase layout, though Nothing uses more dot-matrix texture and dark surfaces
+- **Dyson** — Same centered product hero with large render, minimal copy, and paired pill action buttons on a light gray canvas
 
 ## Quick Start
 
@@ -255,97 +229,93 @@ Rules: Gradients appear only on hero sections, accent strips, and spotlights. Ne
 ```css
 :root {
   /* Colors */
-  --color-void-canvas: #0a0a0a;
-  --color-graphite: #161616;
-  --color-frosted-glass: #d4d4d4;
-  --color-ink-black: #000000;
-  --color-snow-white: #ffffff;
-  --color-bone: #ededed;
-  --color-ash: #c2c2c2;
-  --color-slate: #686868;
-  --color-smoke: #b2b2b2;
-  --color-hairline: #e5e5e5;
-  --color-dusk-violet: #6b62f2;
-  --gradient-dusk-violet: linear-gradient(90deg, rgba(0, 0, 0, 0), rgba(0, 0, 0, 0) 40%, rgba(107, 98, 242, 0.565) 50%, rgba(0, 0, 0, 0) 60%, rgba(0, 0, 0, 0));
+  --color-apple-blue: #0071e3;
+  --color-link-blue: #0066cc;
+  --color-signal-blue: #2997ff;
+  --color-carbon: #1d1d1f;
+  --color-frost: #f5f5f7;
+  --color-ice: #f4f8fb;
+  --color-smoke: #333333;
+  --color-graphite: #474747;
+  --color-ash: #707070;
+  --color-mist: #858585;
+  --color-onyx: #000000;
+  --color-pebble: #e2e2e5;
 
   /* Typography — Font Families */
-  --font-dm-sans: 'DM Sans', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  --font-geist: 'Geist', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  --font-system-ui: 'system-ui', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-sf-pro-display: 'SF Pro Display', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-sf-pro-text: 'SF Pro Text', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 
   /* Typography — Scale */
-  --text-caption: 13px;
-  --leading-caption: 1.5;
-  --tracking-caption: 0.33px;
-  --text-body: 16px;
-  --leading-body: 1.5;
-  --text-subheading: 18px;
-  --leading-subheading: 1.5;
-  --text-heading-sm: 24px;
-  --leading-heading-sm: 1.33;
-  --text-heading: 36px;
-  --leading-heading: 1.11;
-  --text-heading-lg: 48px;
-  --leading-heading-lg: 1;
-  --text-display: 72px;
-  --leading-display: 1;
-  --tracking-display: -2.52px;
+  --text-caption: 12px;
+  --leading-caption: 1.33;
+  --tracking-caption: -0.264px;
+  --text-body-sm: 14px;
+  --leading-body-sm: 1.29;
+  --tracking-body-sm: -0.224px;
+  --text-body: 17px;
+  --leading-body: 1.47;
+  --tracking-body: -0.272px;
+  --text-subheading: 21px;
+  --leading-subheading: 1.24;
+  --tracking-subheading: -0.105px;
+  --text-heading-sm: 28px;
+  --leading-heading-sm: 1.18;
+  --tracking-heading-sm: 0.196px;
+  --text-heading: 40px;
+  --leading-heading: 1.14;
+  --tracking-heading: 0.44px;
+  --text-heading-lg: 44px;
+  --leading-heading-lg: 1.18;
+  --tracking-heading-lg: -0.44px;
+  --text-display: 56px;
+  --leading-display: 1.07;
+  --tracking-display: 0.616px;
 
   /* Typography — Weights */
+  --font-weight-light: 300;
   --font-weight-regular: 400;
-  --font-weight-medium: 500;
   --font-weight-semibold: 600;
   --font-weight-bold: 700;
 
   /* Spacing */
+  --spacing-unit: 4px;
   --spacing-4: 4px;
-  --spacing-6: 6px;
   --spacing-8: 8px;
-  --spacing-10: 10px;
   --spacing-12: 12px;
-  --spacing-14: 14px;
   --spacing-16: 16px;
   --spacing-20: 20px;
-  --spacing-22: 22px;
   --spacing-24: 24px;
-  --spacing-28: 28px;
-  --spacing-32: 32px;
   --spacing-40: 40px;
-  --spacing-44: 44px;
   --spacing-48: 48px;
   --spacing-56: 56px;
 
   /* Layout */
-  --page-max-width: 1200px;
-  --section-gap: 64-80px;
-  --card-padding: 28px;
-  --element-gap: 8-16px;
+  --page-max-width: 1440px;
+  --section-gap: 64px;
+  --card-padding: 24px;
+  --element-gap: 12px;
 
   /* Border Radius */
-  --radius-md: 4px;
-  --radius-lg: 10px;
-  --radius-2xl: 19px;
-  --radius-3xl: 24px;
-  --radius-3xl-2: 40px;
-  --radius-full: 64px;
-  --radius-full-2: 9999px;
+  --radius-lg: 8px;
+  --radius-lg-2: 11px;
+  --radius-full: 980px;
+  --radius-full-2: 999px;
 
   /* Named Radii */
-  --radius-ui: 10px;
-  --radius-cards: 24px;
-  --radius-icons: 4px;
-  --radius-panels: 42px;
-  --radius-buttons: 9999px;
-  --radius-largecards: 40px;
+  --radius-tags: 980px;
+  --radius-cards: 8px;
+  --radius-images: 8px;
+  --radius-inputs: 8px;
+  --radius-buttons: 980px;
 
   /* Shadows */
-  --shadow-subtle: rgba(255, 255, 255, 0.1) 0px 0px 0px 1px inset;
+  --shadow-xl: rgba(0, 0, 0, 0.22) 3px 5px 30px 0px;
 
   /* Surfaces */
-  --surface-void-canvas: #0a0a0a;
-  --surface-graphite: #161616;
-  --surface-frosted-glass: #d4d4d4;
-  --surface-snow-white: #ffffff;
+  --surface-canvas: #f5f5f7;
+  --surface-elevated-wash: #f4f8fb;
+  --surface-pebble: #e2e2e5;
 }
 ```
 
@@ -354,69 +324,67 @@ Rules: Gradients appear only on hero sections, accent strips, and spotlights. Ne
 ```css
 @theme {
   /* Colors */
-  --color-void-canvas: #0a0a0a;
-  --color-graphite: #161616;
-  --color-frosted-glass: #d4d4d4;
-  --color-ink-black: #000000;
-  --color-snow-white: #ffffff;
-  --color-bone: #ededed;
-  --color-ash: #c2c2c2;
-  --color-slate: #686868;
-  --color-smoke: #b2b2b2;
-  --color-hairline: #e5e5e5;
-  --color-dusk-violet: #6b62f2;
+  --color-apple-blue: #0071e3;
+  --color-link-blue: #0066cc;
+  --color-signal-blue: #2997ff;
+  --color-carbon: #1d1d1f;
+  --color-frost: #f5f5f7;
+  --color-ice: #f4f8fb;
+  --color-smoke: #333333;
+  --color-graphite: #474747;
+  --color-ash: #707070;
+  --color-mist: #858585;
+  --color-onyx: #000000;
+  --color-pebble: #e2e2e5;
 
   /* Typography */
-  --font-dm-sans: 'DM Sans', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  --font-geist: 'Geist', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  --font-system-ui: 'system-ui', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-sf-pro-display: 'SF Pro Display', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-sf-pro-text: 'SF Pro Text', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 
   /* Typography — Scale */
-  --text-caption: 13px;
-  --leading-caption: 1.5;
-  --tracking-caption: 0.33px;
-  --text-body: 16px;
-  --leading-body: 1.5;
-  --text-subheading: 18px;
-  --leading-subheading: 1.5;
-  --text-heading-sm: 24px;
-  --leading-heading-sm: 1.33;
-  --text-heading: 36px;
-  --leading-heading: 1.11;
-  --text-heading-lg: 48px;
-  --leading-heading-lg: 1;
-  --text-display: 72px;
-  --leading-display: 1;
-  --tracking-display: -2.52px;
+  --text-caption: 12px;
+  --leading-caption: 1.33;
+  --tracking-caption: -0.264px;
+  --text-body-sm: 14px;
+  --leading-body-sm: 1.29;
+  --tracking-body-sm: -0.224px;
+  --text-body: 17px;
+  --leading-body: 1.47;
+  --tracking-body: -0.272px;
+  --text-subheading: 21px;
+  --leading-subheading: 1.24;
+  --tracking-subheading: -0.105px;
+  --text-heading-sm: 28px;
+  --leading-heading-sm: 1.18;
+  --tracking-heading-sm: 0.196px;
+  --text-heading: 40px;
+  --leading-heading: 1.14;
+  --tracking-heading: 0.44px;
+  --text-heading-lg: 44px;
+  --leading-heading-lg: 1.18;
+  --tracking-heading-lg: -0.44px;
+  --text-display: 56px;
+  --leading-display: 1.07;
+  --tracking-display: 0.616px;
 
   /* Spacing */
   --spacing-4: 4px;
-  --spacing-6: 6px;
   --spacing-8: 8px;
-  --spacing-10: 10px;
   --spacing-12: 12px;
-  --spacing-14: 14px;
   --spacing-16: 16px;
   --spacing-20: 20px;
-  --spacing-22: 22px;
   --spacing-24: 24px;
-  --spacing-28: 28px;
-  --spacing-32: 32px;
   --spacing-40: 40px;
-  --spacing-44: 44px;
   --spacing-48: 48px;
   --spacing-56: 56px;
 
   /* Border Radius */
-  --radius-md: 4px;
-  --radius-lg: 10px;
-  --radius-2xl: 19px;
-  --radius-3xl: 24px;
-  --radius-3xl-2: 40px;
-  --radius-full: 64px;
-  --radius-full-2: 9999px;
+  --radius-lg: 8px;
+  --radius-lg-2: 11px;
+  --radius-full: 980px;
+  --radius-full-2: 999px;
 
   /* Shadows */
-  --shadow-subtle: rgba(255, 255, 255, 0.1) 0px 0px 0px 1px inset;
+  --shadow-xl: rgba(0, 0, 0, 0.22) 3px 5px 30px 0px;
 }
 ```
