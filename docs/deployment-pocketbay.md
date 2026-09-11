@@ -13,7 +13,7 @@
 | `DATABASE_URL` | 平台自动注入 | 托管 PostgreSQL 连接串 |
 | `GOTRIP_AMAP_KEY` | 已配置（用户在控制台添加） | 高德 POI 搜索 |
 | `GOTRIP_AI_BASE_URL` / `GOTRIP_AI_API_KEY` / `GOTRIP_AI_MODEL` | 智谱 GLM（OpenAI 兼容） | AI 行程规划 / 使用助手 |
-| `FLYAI_API_KEY` | 2026-09-10 已配置 | 飞哪里机票搜索 |
+| `FLYAI_API_KEY` | 2026-09-10 已配置 | 飞哪儿机票搜索 |
 
 **密钥只存在两处**：本地 `.env`（已 gitignore）与 PocketBay 控制台。**不要**把 `.env` 打进部署包：免配对部署接口会拒绝（实测 2026-09-10 报 `config_policy_violation`，`approved_config_paths` 传 `[".env"]`、`["./.env"]` 或两者同批均被拒）；手册指引携带配置须走「配对页确认」，比控制台添加麻烦得多，不推荐。
 
@@ -40,7 +40,7 @@ curl -s https://gotrip.pocketbay.app/health                          # {"ok":tru
 # 登录拿 token（demo / demo1234）
 curl -s -X POST https://gotrip.pocketbay.app/api/auth/login \
   -H 'Content-Type: application/json' -d '{"username":"demo","password":"demo1234"}'
-# 飞哪里双人数回归（缓存键修复的验收动作，2026-09-10 起纳入）：
+# 飞哪儿双人数回归（缓存键修复的验收动作，2026-09-10 起纳入）：
 # 同一出发/日期分别传 passengers=9 与 passengers=2，
 # 断言各自 totalPrice == perPerson × N，两次结果互不影响
 ```

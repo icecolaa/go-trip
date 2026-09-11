@@ -935,7 +935,7 @@ textarea.input { resize: vertical; min-height: 72px; line-height: 1.6; }
 .ug-img { width: 100%; border-radius: 10px; border: 1px solid var(--line); margin: 10px 0 2px; display: block; }
 .ug-cap { font-size: 12px; color: var(--ink-faint); text-align: center; margin: 2px 0 10px; }
 
-/* 飞哪里 FlyWhere */
+/* 飞哪儿 FlyWhere */
 .fw-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; align-items: end; }
 .fw-card { padding: 13px 16px; margin-bottom: 10px; }
 .fw-card-head { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
@@ -955,6 +955,61 @@ textarea.input { resize: vertical; min-height: 72px; line-height: 1.6; }
 .fw-advice-item b { color: var(--green-deep); font-size: 12.5px; }
 .fw-advice-item span { font-size: 12.5px; color: var(--ink-soft); line-height: 1.55; }
 .fw-advice-flag { margin-top: 8px; background: var(--green-soft); border-radius: 8px; padding: 6px 10px; font-size: 12.5px; color: var(--green-deep); }
+
+/* 飞哪儿 v2：条件 chips / 分段控件 / 工具栏 / 目的地卡片 / 查询记录 */
+.fw-chiprow { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 12px; }
+.fw-chip { font-size: 12px; color: var(--ink-soft); background: var(--bg-soft); border: 1px solid var(--line); border-radius: 999px; padding: 3px 11px; white-space: nowrap; }
+.fw-chip-btn { cursor: pointer; font-family: inherit; color: var(--green-deep); border-color: var(--line-strong); }
+.fw-chip-btn:hover { border-color: var(--green); }
+.fw-spacer { flex: 1; }
+.fw-seg { display: inline-flex; border: 1.5px solid var(--line-strong); border-radius: 10px; overflow: hidden; background: var(--card); }
+.fw-seg button { border: 0; background: transparent; padding: 8px 16px; font-size: 13px; color: var(--ink-soft); cursor: pointer; font-family: inherit; }
+.fw-seg button + button { border-left: 1px solid var(--line); }
+.fw-seg button.on { background: var(--green); color: #fff; font-weight: 700; }
+.fw-step { display: inline-flex; align-items: center; border: 1.5px solid var(--line-strong); border-radius: 10px; overflow: hidden; background: #fffef9; }
+.fw-step button { width: 34px; align-self: stretch; border: 0; background: transparent; font-size: 16px; color: var(--ink-soft); cursor: pointer; font-family: inherit; }
+.fw-step button:hover { background: var(--green-soft); color: var(--green-deep); }
+.fw-step input { width: 44px; align-self: stretch; border: 0; text-align: center; font-size: 14px; background: transparent; outline: none; color: var(--ink); -moz-appearance: textfield; appearance: textfield; }
+.fw-step input::-webkit-outer-spin-button, .fw-step input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.fw-pref { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; margin-top: 12px; padding-top: 12px; border-top: 1px dashed var(--line); }
+.fw-filterbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 10px; }
+.fw-mini { width: auto !important; min-width: 0; padding: 6px 10px !important; font-size: 12.5px; }
+.fw-advice-target { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; font-size: 13px; color: var(--ink); }
+.fw-advice-target b { font-family: var(--serif); font-size: 14.5px; }
+.fw-restore {
+  display: flex; gap: 10px; align-items: center; flex-wrap: wrap;
+  background: var(--orange-soft); border: 1px solid #ecd9bf; color: #8a5a1f;
+  border-radius: 10px; padding: 8px 12px; font-size: 12.5px; margin-bottom: 12px;
+}
+.fw-dests { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 10px; margin-top: 10px; }
+.fw-dest { background: var(--card-warm); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; display: flex; flex-direction: column; gap: 7px; }
+.fw-dest-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.fw-code { font-family: var(--mono); font-size: 11px; font-weight: 700; color: #fff; background: var(--ink); border-radius: 6px; padding: 3px 6px; }
+.fw-dest-city { font-size: 15.5px; }
+.fw-dest-price { margin-left: auto; font-family: var(--serif); font-size: 18px; font-weight: 800; color: var(--orange); }
+.fw-dest-meta { font-size: 12px; color: var(--ink-soft); line-height: 1.7; }
+.fw-dest-ops { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.fw-dest-combos { display: flex; flex-direction: column; gap: 8px; margin-top: 4px; }
+.fw-dest-combos .fw-card { background: var(--card); margin-bottom: 0; }
+.fw-tag-visited { font-size: 11px; color: var(--green-deep); background: var(--green-soft); border: 1px solid #d3e2d4; border-radius: 999px; padding: 1px 8px; }
+.fw-legs { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 5px; }
+.fw-leg { flex: 1; min-width: 150px; }
+.fw-leg-cap { font-size: 11px; color: var(--ink-faint); display: flex; justify-content: space-between; margin-bottom: 2px; }
+.fw-leg-line { font-family: var(--mono); font-size: 14.5px; color: var(--ink); display: flex; align-items: center; gap: 7px; white-space: nowrap; }
+.fw-leg-line .arrow { flex: 1; min-width: 24px; border-top: 1.5px dashed var(--line-strong); }
+.fw-leg-air { font-size: 11.5px; color: var(--ink-soft); margin-top: 2px; }
+.fw-hist-item { border: 1px solid var(--line); border-radius: 12px; padding: 10px 14px; margin-top: 8px; background: var(--card-warm); }
+.fw-hist-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.fw-hist-title { font-weight: 700; font-size: 14px; }
+.fw-hist-time { margin-left: auto; font-size: 11.5px; color: var(--ink-faint); font-family: var(--mono); }
+.fw-hist-meta { font-size: 12.5px; color: var(--ink-soft); margin: 3px 0 8px; }
+.fw-fee-list { padding-left: 18px; margin: 6px 0 0; }
+.fw-fee-list li { font-size: 13px; color: var(--ink-soft); line-height: 1.8; }
+.fw-fee-list b { color: var(--ink); }
+.fw-foot { text-align: center; font-size: 12px; color: var(--ink-faint); margin: 16px 0 6px; }
+[data-theme='dark'] .fw-restore { border-color: #4c3a22; color: var(--orange); }
+[data-theme='dark'] .fw-step { background: var(--card); }
+[data-theme='dark'] .fw-tag-visited { border-color: var(--line-strong); }
 
 /* 日志图片与攻略收藏 */
 .journal-thumbs { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }

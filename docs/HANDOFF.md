@@ -7,7 +7,7 @@
 
 | 项 | 值 |
 |---|---|
-| 生产 | `https://gotrip.pocketbay.app`，部署 #7281（2026-09-11），`/health` 正常，飞哪里双人数回归通过 |
+| 生产 | `https://gotrip.pocketbay.app`，部署 #7281（2026-09-11），`/health` 正常，飞哪儿双人数回归通过 |
 | 最近提交 | `1a3b09a` fix: review 修复——db 迁移去重、日志 thumb 规范化、飞哪里 502 友好化、冒烟 88 项 |
 | 仓库 | Gitee `ice-colaa/go-trip`，分支 `master` |
 | 数据库 | PocketBay 托管 PostgreSQL（生产）／SQLite（本地回退） |
@@ -19,7 +19,7 @@
 2. **跳转修复**：高德跳转保持正确；小红书搜索词智能构造（≥4 字独立地名单独搜、短地名拼城市、互含不重复拼接）。
 3. **上云**：迁移到 PocketBay 托管 PostgreSQL（读 `DATABASE_URL`，双方言 DDL，启动自动建表）；keepalive 脚本对抗闲置休眠。
 4. **AI 接入**：OpenAI 兼容接口接智谱 GLM（`GOTRIP_AI_*` 三个变量）；AI 解析攻略 / 生成行程 / 使用助手悬浮球（拖拽、隐藏、找回）；生成过程加进度反馈。
-5. **飞哪里 FlyWhere**（与「我的旅程」并列的一级 Tab）：移植 `icecolaa/flywhere`，飞猪 AI 开放平台机票低价探索，`FLYAI_API_KEY` 走环境变量；串行队列 + 429 退避 + 双层缓存（FlyAI 原始结果 10 分钟、搜索结果 30 分钟）；缺 Key 时接口返回友好 400。
+5. **飞哪儿 FlyWhere**（与「我的旅程」并列的一级 Tab；2026-09-12 起界面由「飞哪里」更名为「飞哪儿」）：移植 `icecolaa/flywhere`，飞猪 AI 开放平台机票低价探索，`FLYAI_API_KEY` 走环境变量；串行队列 + 429 退避 + 双层缓存（FlyAI 原始结果 10 分钟、搜索结果 30 分钟）；缺 Key 时接口返回友好 400。
 6. **内容收藏**：旅行日志支持多图上传（前端 canvas 压缩 1600/400 双尺寸，JPEG 0.85）+ 缩略图；新增「攻略」Tab 收藏小红书/公众号链接。
 7. **质量**：多轮代码 review 修复；`scripts/smoke.sh` 冒烟 85 项；验收报告归档。
 

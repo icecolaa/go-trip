@@ -77,7 +77,7 @@ export function TopBar({ me }: { me: { nickname: string; avatarColor: string; tr
           <span className="mark">🧭</span>出发吧<small>GOTRIP</small>
         </Link>
         <div style={{ flex: 1 }} />
-        <Link to="/flywhere" className="btn sm ghost" title="按票价探索目的地">✈️ 飞哪里</Link>
+        <Link to="/flywhere" className="btn sm ghost" title="按票价探索目的地">✈️ 飞哪儿</Link>
         <ThemeToggle />
         {me && (
           <>

@@ -27,7 +27,7 @@ node scripts/keepalive.mjs  # PocketBay 保活心跳
 ## 红线（违反即事故）
 
 1. **密钥只存两处**：本地 `.env`（已 gitignore）与 PocketBay 控制台。绝不提交仓库、绝不写进对话、**绝不打进部署包**（免配对部署接口会拒绝带 `.env` 的包，报 `config_policy_violation`）。
-2. **缓存键必须包含所有影响结果的参数**。教训：飞哪里 `searchCacheKey` 漏 `passengers`，9 人缓存污染 2 人查询，最低总价错误。
+2. **缓存键必须包含所有影响结果的参数**。教训：飞哪儿 `searchCacheKey` 漏 `passengers`，9 人缓存污染 2 人查询，最低总价错误。
 3. **中文 curl 测试**：Windows Git Bash 会把中文 body 按 GBK 损坏——一律先写成 UTF-8 文件再 `curl --data-binary @file`；临时文件路径用 `$TEMP`（Git Bash `/tmp` 与 python/node 解析不一致）。
 4. **数据库 schema 变更**：双方言同步改（SQLite 段 try/catch 兜底重复执行，PG 段 `IF NOT EXISTS`/独立 try），并在 fresh DB 上冒烟验证。
 5. **提交前**：`npm run check` 通过 + 相关冒烟通过；commit message 用 `feat:/fix:/docs:/style:` 前缀、中文一句话讲清动机。
