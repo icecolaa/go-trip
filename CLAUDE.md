@@ -31,6 +31,7 @@ node scripts/keepalive.mjs  # PocketBay 保活心跳
 3. **中文 curl 测试**：Windows Git Bash 会把中文 body 按 GBK 损坏——一律先写成 UTF-8 文件再 `curl --data-binary @file`；临时文件路径用 `$TEMP`（Git Bash `/tmp` 与 python/node 解析不一致）。
 4. **数据库 schema 变更**：双方言同步改（SQLite 段 try/catch 兜底重复执行，PG 段 `IF NOT EXISTS`/独立 try），并在 fresh DB 上冒烟验证。
 5. **提交前**：`npm run check` 通过 + 相关冒烟通过；commit message 用 `feat:/fix:/docs:/style:` 前缀、中文一句话讲清动机。
+6. **提交后**：立即对本次提交的 diff 做一轮 review——明显 Bug、是否破坏已有功能、未使用变量/调试代码、测试缺口；发现问题先列问题清单再改文件，修复重新验证后追加 fix 提交，不留到下次。
 
 ## 部署（PocketBay）
 
