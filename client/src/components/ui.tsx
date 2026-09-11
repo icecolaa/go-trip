@@ -41,9 +41,9 @@ export function Toasts() {
   );
 }
 
-/* ---------- 主题（亮 / 暗） ---------- */
+/* ---------- 主题（暗为默认，亮为可选） ---------- */
 export function currentTheme(): 'light' | 'dark' {
-  return document.documentElement.dataset.theme === 'dark' ? 'dark' : 'light';
+  return document.documentElement.dataset.theme === 'light' ? 'light' : 'dark';
 }
 export function applyTheme(t: 'light' | 'dark') {
   document.documentElement.dataset.theme = t;

@@ -91,7 +91,8 @@ function TripCard({ t, onClick }: { t: TripCardInfo; onClick: () => void }) {
   const cd = countdownText(t);
   return (
     <div className="card trip-card" onClick={onClick}>
-      <div className="trip-cover" style={{ background: `linear-gradient(135deg, ${t.coverColor}, ${shade(t.coverColor)})` }}>
+      {/* DESIGN.md：禁止彩色整块底，用户封面色降为左侧竖条 */}
+      <div className="trip-cover" style={{ ['--cover-accent' as string]: t.coverColor }}>
         <span className="emoji">{t.coverEmoji}</span>
         <div className="cover-date">
           {t.startDate}<br />~ {t.endDate}
@@ -111,16 +112,4 @@ function TripCard({ t, onClick }: { t: TripCardInfo; onClick: () => void }) {
       </div>
     </div>
   );
-}
-
-function shade(hex: string): string {
-  try {
-    const n = parseInt(hex.slice(1), 16);
-    const r = Math.max(0, ((n >> 16) & 255) - 40);
-    const g = Math.max(0, ((n >> 8) & 255) - 30);
-    const b = Math.max(0, (n & 255) - 20);
-    return `rgb(${r},${g},${b})`;
-  } catch {
-    return hex;
-  }
 }

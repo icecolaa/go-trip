@@ -94,7 +94,7 @@ export default function BudgetTab({ bundle, reload, canEdit }: TabCtx) {
                   <b style={{ color: 'var(--red)' }}>{from?.displayName}</b>
                   <span>→ 转账 →</span>
                   <b style={{ color: 'var(--green-deep)' }}>{to?.displayName}</b>
-                  <span style={{ marginLeft: 'auto', fontWeight: 800, color: 'var(--orange)' }}>{yuan(s.amount)}</span>
+                  <span style={{ marginLeft: 'auto', fontWeight: 500, color: 'var(--orange)' }}>{yuan(s.amount)}</span>
                 </div>
               );
             })}
@@ -115,7 +115,7 @@ export default function BudgetTab({ bundle, reload, canEdit }: TabCtx) {
               <div key={e.id} className="ticket-row">
                 <span style={{ fontSize: 20 }}>{EXPENSE_CAT_ICON[e.category] || '📌'}</span>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontWeight: 700, fontSize: 14.5 }}>{e.title}</div>
+                  <div style={{ fontWeight: 500, fontSize: 14.5 }}>{e.title}</div>
                   <div className="muted" style={{ marginTop: 2 }}>
                     {e.date} · {payer?.displayName || '未知'} 垫付 · {e.splitMode === 'payer' ? '自付' : `全体均摊（${e.participants.length || members.length} 人）`}
                   </div>

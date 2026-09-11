@@ -39,7 +39,7 @@ function markerIcon(label: string, color: string): L.DivIcon {
       background:${color};transform:rotate(-45deg);
       box-shadow:0 3px 8px rgba(40,30,10,.35);
       border:2.5px solid #fffdf6;display:flex;align-items:center;justify-content:center;">
-      <span style="transform:rotate(45deg);color:#fff;font-size:11.5px;font-weight:800;">${label}</span>
+      <span style="transform:rotate(45deg);color:#fff;font-size:11.5px;font-weight:400;">${label}</span>
     </div>`,
     iconSize: [30, 30],
     iconAnchor: [15, 30],
@@ -106,7 +106,7 @@ export default function MapView({
     if (showRoute && valid.length > 1) {
       L.polyline(
         valid.map(p => [p.lat, p.lng] as [number, number]),
-        { color: '#d9752b', weight: 2.5, dashArray: '7 8', opacity: .75 }
+        { color: '#ff9634', weight: 2.5, dashArray: '7 8', opacity: .75 }
       ).addTo(layer);
     }
     const bounds = L.latLngBounds(valid.map(p => [p.lat, p.lng] as [number, number]));

@@ -111,7 +111,7 @@ export default function ItineraryTab({ bundle, reload, weather, canEdit }: TabCt
           {checkup.findings.length ? (
             <ul className="fw-fee-list" style={{ marginTop: 6 }}>
               {checkup.findings.map((f, i) => (
-                <li key={i} style={{ color: f.level === 'warn' ? '#a05616' : undefined }}>
+                <li key={i} style={{ color: f.level === 'warn' ? 'var(--orange)' : undefined }}>
                   {f.level === 'warn' ? '⚠️' : '💡'} D{f.dayNumber}（{fmtDate(f.date)}）：{f.message}
                 </li>
               ))}

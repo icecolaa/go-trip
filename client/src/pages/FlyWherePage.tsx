@@ -430,7 +430,7 @@ export default function FlyWherePage() {
                 {minPrice != null && <> · 最低总价 <b style={{ color: 'var(--orange)' }}>¥{minPrice.toLocaleString()}</b></>}
                 {restoredTs != null && ' · 历史快照'}
                 {trend && !restoredTs && (
-                  <span className="tag" style={{ marginLeft: 8, color: trend.deltaPerPerson > 0 ? 'var(--green-deep)' : trend.deltaPerPerson < 0 ? '#a05616' : undefined }}>
+                  <span className="tag" style={{ marginLeft: 8, color: trend.deltaPerPerson > 0 ? 'var(--green-deep)' : trend.deltaPerPerson < 0 ? 'var(--orange)' : undefined }}>
                     {trend.deltaPerPerson > 0 ? `较上次 ↓¥${Math.abs(trend.deltaPerPerson).toLocaleString()}/人` : trend.deltaPerPerson < 0 ? `较上次 ↑¥${Math.abs(trend.deltaPerPerson).toLocaleString()}/人` : '与上次持平'}（{fmtTs(new Date(trend.checkedAt).getTime())} 查过）
                   </span>
                 )}

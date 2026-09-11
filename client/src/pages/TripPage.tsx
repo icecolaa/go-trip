@@ -127,7 +127,7 @@ export default function TripPage() {
             <div className="meta">
               <span>📍 {trip.destination || '目的地待定'}</span>
               <span>🗓️ {trip.startDate} ~ {trip.endDate}</span>
-              <span style={{ color: 'var(--orange)', fontWeight: 700 }}>{countdownText(trip)}</span>
+              <span style={{ color: 'var(--orange)', fontWeight: 500 }}>{countdownText(trip)}</span>
               {trip.budget > 0 && <span>💰 预算 {yuan(trip.budget)} · 已花 {yuan(bundle.budget.total)}</span>}
               {onlineCount > 0 && <span className="tag"><span className="dot-online" aria-hidden="true" /> {onlineCount} 人在线</span>}
             </div>
@@ -138,7 +138,7 @@ export default function TripPage() {
                 <span key={m.id} style={{ position: 'relative' }}>
                   <Avatar name={m.displayName} color={m.avatarColor} />
                   {m.userId && bundle.onlineMemberIds.includes(m.userId) && (
-                    <span style={{ position: 'absolute', right: -1, bottom: -1, width: 11, height: 11, borderRadius: '50%', background: '#47b56d', border: '2px solid var(--card)' }} />
+                    <span style={{ position: 'absolute', right: -1, bottom: -1, width: 11, height: 11, borderRadius: '50%', background: 'var(--green)', border: '2px solid var(--card)' }} />
                   )}
                 </span>
               ))}
