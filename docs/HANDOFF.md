@@ -8,7 +8,7 @@
 | 项 | 值 |
 |---|---|
 | 生产 | `https://gotrip.pocketbay.app`，部署 #7563（2026-09-12），`/health` 正常，飞哪儿双人数回归通过 |
-| 最近提交 | `df0f24b` feat: 行程体检 + 飞哪儿价格记忆（源自 github-idea 发现报告） |
+| 最近提交 | `9292b63` style: 飞哪儿出发城市默认值改为北京 |
 | 仓库 | Gitee `ice-colaa/go-trip` + GitHub `icecolaa/go-trip`（私有镜像），分支 `master`；origin 配了双 push URL，`git push origin master` 一条命令两边同步 |
 | 数据库 | PocketBay 托管 PostgreSQL（生产）／SQLite（本地回退） |
 | 验收 | `acceptance/REPORT.md` + `acceptance/screenshots/`（85 项冒烟全过） |
