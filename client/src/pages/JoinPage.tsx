@@ -31,7 +31,7 @@ export default function JoinPage() {
     setBusy(true);
     try {
       const r = await api.post<{ tripId: number }>(`/api/invites/${code}/join`);
-      toast('加入成功，出发吧！🎉');
+      toast('加入成功');
       nav(`/trip/${r.tripId}`, { replace: true });
     } catch (e: any) {
       toast(e.message, true);

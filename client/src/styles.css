@@ -26,6 +26,7 @@
 }
 
 * { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
 html, body, #root { height: 100%; }
 
 /* ---------- 统一滚动条样式（Firefox 用 scrollbar-width/color，WebKit 用伪元素） ---------- */
@@ -49,11 +50,20 @@ body {
     radial-gradient(rgba(160, 140, 100, 0.05) 1px, transparent 1px);
   background-size: 22px 22px;
   -webkit-font-smoothing: antialiased;
+  font-variant-numeric: tabular-nums; /* 价格、预算等数字对齐不跳动 */
 }
-h1, h2, h3, .serif { font-family: var(--serif); letter-spacing: 0.02em; }
+h1, h2, h3, .serif { font-family: var(--serif); letter-spacing: 0.02em; text-wrap: balance; }
 a { color: var(--green); text-decoration: none; }
 button { font-family: inherit; cursor: pointer; }
 input, textarea, select { font-family: inherit; font-size: 14px; color: var(--ink); }
+
+/* 键盘可达性：统一的焦点环（鼠标点击不出现） */
+:where(a, button, [role='button'], input, textarea, select):focus-visible {
+  outline: 2px solid var(--green);
+  outline-offset: 2px;
+}
+/* 绿色底上的焦点环换金色，保证对比 */
+.btn.primary:focus-visible, .chip.on:focus-visible, .fw-seg button.on:focus-visible { outline-color: var(--gold); }
 
 /* ---------- 通用组件 ---------- */
 .btn {
@@ -64,10 +74,11 @@ input, textarea, select { font-family: inherit; font-size: 14px; color: var(--in
   border-radius: 10px;
   padding: 8px 16px;
   font-size: 14px;
-  transition: all .15s ease;
+  transition: background-color .15s ease, border-color .15s ease, color .15s ease, box-shadow .15s ease, transform .1s ease;
   white-space: nowrap;
 }
 .btn:hover { border-color: var(--green); color: var(--green); }
+.btn:active:not(:disabled) { transform: translateY(1px); }
 .btn.primary {
   background: var(--green); border-color: var(--green); color: #fff;
   box-shadow: 0 3px 10px rgba(47, 110, 79, .3);
@@ -190,7 +201,10 @@ textarea.input { resize: vertical; min-height: 72px; line-height: 1.6; }
 .chip {
   border: 1px solid var(--line-strong); background: var(--card); border-radius: 999px;
   padding: 6px 14px; font-size: 13px; color: var(--ink-soft);
+  transition: background-color .15s ease, border-color .15s ease, color .15s ease, transform .1s ease;
 }
+.chip:hover { border-color: var(--green); color: var(--green); }
+.chip:active { transform: translateY(1px); }
 .chip.on { background: var(--green); border-color: var(--green); color: #fff; font-weight: 600; }
 
 /* ---------- 旅程详情 ---------- */
@@ -370,7 +384,7 @@ textarea.input { resize: vertical; min-height: 72px; line-height: 1.6; }
 }
 .modal {
   background: var(--card); border-radius: 18px; box-shadow: var(--shadow-lg);
-  width: 100%; max-width: 460px; max-height: 88vh; overflow: auto;
+  width: 100%; max-width: 460px; max-height: 88dvh; overflow: auto;
   padding: 22px 24px; animation: popIn .18s ease;
 }
 .modal h3 { margin: 0 0 16px; font-size: 19px; color: var(--green-deep); }
@@ -396,6 +410,28 @@ textarea.input { resize: vertical; min-height: 72px; line-height: 1.6; }
   border-radius: 50%; animation: spin .8s linear infinite; margin: 40px auto;
 }
 @keyframes spin { to { transform: rotate(360deg); } }
+
+/* 骨架屏：加载时占出与内容相近的形状，暖色微光扫过 */
+.skel {
+  position: relative; overflow: hidden; background: var(--bg-soft); border-radius: 10px;
+}
+.skel::after {
+  content: ''; position: absolute; inset: 0;
+  background: linear-gradient(100deg, transparent 30%, rgba(255, 253, 246, .75) 50%, transparent 70%);
+  animation: skelSweep 1.4s ease-in-out infinite;
+}
+@keyframes skelSweep { from { transform: translateX(-100%); } to { transform: translateX(100%); } }
+.skel-card { padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; overflow: hidden; }
+.skel-line { height: 13px; }
+.skel-line.w60 { width: 60%; }
+.skel-line.w40 { width: 40%; }
+.skel-cover { height: 96px; border-radius: 10px; margin: -14px -16px 0; }
+
+/* 在线状态小圆点（成员卡、在线人数标签共用） */
+.dot-online {
+  display: inline-block; width: 8px; height: 8px; border-radius: 50%;
+  background: #47b56d; box-shadow: 0 0 0 3px rgba(71, 181, 109, .18);
+}
 .weather-strip { display: flex; gap: 10px; overflow-x: auto; padding: 4px 2px 10px; }
 .weather-cell {
   min-width: 92px; text-align: center; padding: 10px 8px; border-radius: 12px;
@@ -963,7 +999,7 @@ textarea.input { resize: vertical; min-height: 72px; line-height: 1.6; }
 .fw-chip-btn:hover { border-color: var(--green); }
 .fw-spacer { flex: 1; }
 .fw-seg { display: inline-flex; border: 1.5px solid var(--line-strong); border-radius: 10px; overflow: hidden; background: var(--card); }
-.fw-seg button { border: 0; background: transparent; padding: 8px 16px; font-size: 13px; color: var(--ink-soft); cursor: pointer; font-family: inherit; }
+.fw-seg button { border: 0; background: transparent; padding: 8px 16px; font-size: 13px; color: var(--ink-soft); cursor: pointer; font-family: inherit; transition: background-color .15s ease, color .15s ease; }
 .fw-seg button + button { border-left: 1px solid var(--line); }
 .fw-seg button.on { background: var(--green); color: #fff; font-weight: 700; }
 .fw-step { display: inline-flex; align-items: center; border: 1.5px solid var(--line-strong); border-radius: 10px; overflow: hidden; background: #fffef9; }
@@ -1011,6 +1047,9 @@ textarea.input { resize: vertical; min-height: 72px; line-height: 1.6; }
 [data-theme='dark'] .fw-restore { border-color: #4c3a22; color: var(--orange); }
 [data-theme='dark'] .fw-step { background: var(--card); }
 [data-theme='dark'] .fw-tag-visited { border-color: var(--line-strong); }
+[data-theme='dark'] .skel::after {
+  background: linear-gradient(100deg, transparent 30%, rgba(233, 229, 216, .07) 50%, transparent 70%);
+}
 
 /* 日志图片与攻略收藏 */
 .journal-thumbs { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }

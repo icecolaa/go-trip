@@ -90,7 +90,7 @@ export default function ItineraryTab({ bundle, reload, weather, canEdit }: TabCt
         <button className="btn sm launch-tm" onClick={() => setTripMode(true)} disabled={!days.length}>🧭 出发模式</button>
         {canEdit && (
           <>
-            <button className="btn sm" onClick={() => setAiOpen(true)}>✨ AI 助手</button>
+            <button className="btn sm" onClick={() => setAiOpen(true)}>AI 助手</button>
             <button className="btn sm primary" onClick={() => setAddingToDay(days[0] || null)} disabled={!days.length}>＋ 添加行程</button>
           </>
         )}

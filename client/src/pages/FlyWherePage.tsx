@@ -330,11 +330,11 @@ export default function FlyWherePage() {
     <div className="page">
       <div className="dash-head">
         <div>
-          <h1>✈️ 飞哪儿</h1>
+          <h1>飞哪儿</h1>
           <div className="sub">根据票价，决定飞哪儿 —— 固定日期，探索低价目的地</div>
         </div>
         <div style={{ marginLeft: 'auto' }}>
-          <button className="btn" onClick={() => setHistoryOpen(true)}>🕘 查询记录{history.length ? ` · ${history.length}` : ''}</button>
+          <button className="btn" onClick={() => setHistoryOpen(true)}>查询记录{history.length ? ` · ${history.length}` : ''}</button>
         </div>
       </div>
 
@@ -377,7 +377,7 @@ export default function FlyWherePage() {
 
         <div className="row-ops" style={{ marginTop: 4 }}>
           <button className="btn primary" onClick={search} disabled={busy}>
-            {busy ? `搜索中… 已等待 ${elapsed} 秒` : '🔍 搜索低价目的地'}
+            {busy ? `搜索中… 已等待 ${elapsed} 秒` : '搜索低价目的地'}
           </button>
           <span className="muted">全国探索通常需要 10~40 秒（多轮真实航班查询）；指定目的地会更快</span>
         </div>
@@ -440,7 +440,7 @@ export default function FlyWherePage() {
               <button className={view === 'map' ? 'on' : ''} onClick={() => setView('map')}>地图</button>
               <button className={view === 'list' ? 'on' : ''} onClick={() => setView('list')}>列表</button>
             </div>
-            <button className="btn sm" onClick={askAdvice} disabled={adviceBusy}>{adviceBusy ? 'AI 分析中…' : '✨ AI 建议'}</button>
+            <button className="btn sm" onClick={askAdvice} disabled={adviceBusy}>{adviceBusy ? 'AI 分析中…' : 'AI 建议'}</button>
             <button className="btn sm ghost" onClick={openFee}>价格说明</button>
           </div>
 
@@ -477,7 +477,7 @@ export default function FlyWherePage() {
           {advice && adviceOpen && (
             <div className="fw-advice">
               <div className="row-ops">
-                <div className="fw-advice-summary" style={{ flex: 1, minWidth: 200 }}>💡 {advice.summary}</div>
+                <div className="fw-advice-summary" style={{ flex: 1, minWidth: 200 }}>{advice.summary}</div>
                 <button className="btn sm ghost" onClick={askAdvice} disabled={adviceBusy}>{adviceBusy ? '生成中…' : '重新生成'}</button>
                 <button className="btn sm ghost" onClick={() => setAdviceOpen(false)}>收起</button>
               </div>

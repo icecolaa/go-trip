@@ -20,10 +20,10 @@ export default function LoginPage() {
     try {
       if (mode === 'login') {
         await login(username, password);
-        toast('欢迎回来，出发吧！✈️');
+        toast('欢迎回来');
       } else {
         await register(username, password, nickname);
-        toast('注册成功，开始规划第一段旅程吧！');
+        toast('注册成功，开始规划第一段旅程吧');
       }
       nav(redirect, { replace: true });
     } catch (err: any) {

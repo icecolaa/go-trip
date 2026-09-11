@@ -44,7 +44,7 @@ export default function DashboardPage() {
           </div>
         </div>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          <button className="btn lg" onClick={() => setGuideOpen(true)}>📖 使用说明</button>
+          <button className="btn lg" onClick={() => setGuideOpen(true)}>使用说明</button>
           <button className="btn primary lg" onClick={() => setCreating(true)}>＋ 创建旅程</button>
         </div>
       </div>
@@ -56,7 +56,15 @@ export default function DashboardPage() {
       </div>
 
       {loading ? (
-        <div className="spin" />
+        <div className="trip-grid" aria-hidden="true">
+          {[0, 1, 2].map(i => (
+            <div className="card skel-card" key={i}>
+              <div className="skel skel-cover" />
+              <div className="skel skel-line w60" />
+              <div className="skel skel-line w40" />
+            </div>
+          ))}
+        </div>
       ) : shown.length === 0 ? (
         <div className="card empty">
           <span className="big">🗺️</span>

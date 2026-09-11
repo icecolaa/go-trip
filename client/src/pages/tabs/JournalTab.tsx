@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { api } from '../../api';
 import { useApp } from '../../store';
 import { Modal, Avatar, timeAgo, fmtDate } from '../../components/ui';
@@ -67,7 +67,7 @@ export default function JournalTab({ bundle, reload, canEdit }: TabCtx) {
       });
       setContent('');
       setImages([]);
-      toast('日志已发布 📝');
+      toast('日志已发布');
       reload();
     } catch (e: any) {
       toast(e.message, true);
@@ -95,6 +95,12 @@ export default function JournalTab({ bundle, reload, canEdit }: TabCtx) {
 
   /** 点击缩略图查看大图 */
   const [lightbox, setLightbox] = useState<string | null>(null);
+  useEffect(() => {
+    if (!lightbox) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setLightbox(null); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [lightbox]);
 
   return (
     <div>
@@ -122,7 +128,7 @@ export default function JournalTab({ bundle, reload, canEdit }: TabCtx) {
                 onChange={e => pickImages(e.target.files)} />
               <div className="row-ops" style={{ marginTop: 8 }}>
                 <button className="btn sm ghost" onClick={() => fileRef.current?.click()} disabled={uploading || images.length >= 9}>
-                  🖼️ {uploading ? '上传中…' : '添加图片'}{images.length ? `（${images.length}/9）` : ''}
+                  {uploading ? '上传中…' : '添加图片'}{images.length ? `（${images.length}/9）` : ''}
                 </button>
                 <span className="muted">最多 9 张，自动压缩</span>
               </div>
@@ -130,8 +136,8 @@ export default function JournalTab({ bundle, reload, canEdit }: TabCtx) {
                 <div className="journal-thumbs">
                   {images.map((im, i) => (
                     <div className="journal-thumb" key={im.full + i}>
-                      <img src={im.thumb} alt="" onClick={() => setLightbox(im.full)} />
-                      <span className="journal-thumb-x" role="button" onClick={() => removeImage(i)}>×</span>
+                      <img src={im.thumb} alt={`待发布的日志配图 ${i + 1}`} onClick={() => setLightbox(im.full)} />
+                      <span className="journal-thumb-x" role="button" aria-label="移除图片" onClick={() => removeImage(i)}>×</span>
                     </div>
                   ))}
                 </div>

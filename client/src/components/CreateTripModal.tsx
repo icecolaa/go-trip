@@ -45,12 +45,12 @@ export default function CreateTripModal({ onClose, onCreated }: { onClose: () =>
         try {
           const guide = await api.post<any>(`/api/trips/${r.id}/ai/parse-guide`, { text: guideText });
           await api.post(`/api/trips/${r.id}/ai/apply`, { guide, replaceDays: true });
-          toast(`创建成功！AI 识别出 ${guide.days.length} 天行程（${guide.source === 'ai' ? 'AI 解析' : '智能模板解析'}）`);
+          toast(`创建成功，AI 识别出 ${guide.days.length} 天行程（${guide.source === 'ai' ? 'AI 解析' : '智能模板解析'}）`);
         } catch {
           toast('创建成功，但攻略解析失败，可稍后在行程页重试', true);
         }
       } else {
-        toast('创建成功，出发吧！🎉');
+        toast('旅程已创建');
       }
       onCreated(r.id);
     } catch (e: any) {

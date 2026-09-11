@@ -129,7 +129,7 @@ export default function TripPage() {
               <span>🗓️ {trip.startDate} ~ {trip.endDate}</span>
               <span style={{ color: 'var(--orange)', fontWeight: 700 }}>{countdownText(trip)}</span>
               {trip.budget > 0 && <span>💰 预算 {yuan(trip.budget)} · 已花 {yuan(bundle.budget.total)}</span>}
-              {onlineCount > 0 && <span className="tag">🟢 {onlineCount} 人在线</span>}
+              {onlineCount > 0 && <span className="tag"><span className="dot-online" aria-hidden="true" /> {onlineCount} 人在线</span>}
             </div>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -159,7 +159,7 @@ export default function TripPage() {
             </Link>
           ))}
           <div style={{ marginTop: 8, padding: '8px 12px', display: 'flex', flexDirection: 'column', gap: 6 }}>
-            <button className="ug-nav-btn muted" style={{ fontSize: 12.5 }} onClick={() => setGuideOpen(true)}>📖 使用说明</button>
+            <button className="ug-nav-btn muted" style={{ fontSize: 12.5 }} onClick={() => setGuideOpen(true)}>使用说明</button>
             <Link to="/" className="muted" style={{ fontSize: 12.5 }}>← 返回全部旅程</Link>
           </div>
         </nav>

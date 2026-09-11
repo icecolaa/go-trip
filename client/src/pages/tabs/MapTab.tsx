@@ -173,7 +173,7 @@ export default function MapTab({ bundle, reload, canEdit }: TabCtx) {
           </div>
         )}
         {canEdit && !panelOpen && (
-          <button className="btn sm" style={{ position: 'absolute', top: 12, right: 12, zIndex: 500 }} onClick={() => setPanelOpen(true)}>🔍 搜索地点</button>
+          <button className="btn sm" style={{ position: 'absolute', top: 12, right: 12, zIndex: 500 }} onClick={() => setPanelOpen(true)}>搜索地点</button>
         )}
         <div className="map-legend">
           {bundle.days.slice(0, 8).map(d => (

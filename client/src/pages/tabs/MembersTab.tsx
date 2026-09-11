@@ -81,8 +81,8 @@ export default function MembersTab({ bundle, reload, canEdit }: TabCtx) {
     <div>
       <div className="row-ops" style={{ marginBottom: 14 }}>
         <h2 className="section-title" style={{ margin: 0, flex: 1 }}>旅行成员 · {members.length} 人</h2>
-        <button className="btn sm" onClick={shareLocation}>📍 共享我的位置</button>
-        {isAdmin && <button className="btn sm" onClick={() => setInviteOpen(true)}>🔗 邀请好友</button>}
+        <button className="btn sm" onClick={shareLocation}>共享我的位置</button>
+        {isAdmin && <button className="btn sm" onClick={() => setInviteOpen(true)}>邀请好友</button>}
         {isAdmin && <button className="btn sm primary" onClick={() => setAddOpen(true)}>＋ 添加成员</button>}
       </div>
 

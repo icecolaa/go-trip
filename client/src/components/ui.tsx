@@ -21,7 +21,7 @@ export function Modal({ title, onClose, children, width }: { title: string; onCl
   }, [onClose]);
   return (
     <div className="modal-mask" onMouseDown={e => { if (e.target === e.currentTarget) onClose(); }}>
-      <div className="modal" style={width ? { maxWidth: width } : undefined}>
+      <div className="modal" role="dialog" aria-modal="true" aria-label={title} style={width ? { maxWidth: width } : undefined}>
         <h3>{title}</h3>
         {children}
       </div>
@@ -77,7 +77,7 @@ export function TopBar({ me }: { me: { nickname: string; avatarColor: string; tr
           <span className="mark">🧭</span>出发吧<small>GOTRIP</small>
         </Link>
         <div style={{ flex: 1 }} />
-        <Link to="/flywhere" className="btn sm ghost" title="按票价探索目的地">✈️ 飞哪儿</Link>
+        <Link to="/flywhere" className="btn sm ghost" title="按票价探索目的地">飞哪儿</Link>
         <ThemeToggle />
         {me && (
           <>
