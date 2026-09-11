@@ -8,19 +8,9 @@
     <meta property="og:title" content="出发吧 GoTrip" />
     <meta property="og:description" content="和朋友一起规划每一次出发：行程、预算、清单、地图，一个都不少。" />
     <meta property="og:type" content="website" />
-    <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
-    <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)" />
-    <meta name="color-scheme" content="dark light" />
+    <meta name="theme-color" content="#ffffff" />
+    <meta name="color-scheme" content="light" />
     <title>出发吧 GoTrip · 一起规划每一次出发</title>
-    <script>
-      // 尽早应用已保存的主题；暗色是默认（不设属性），仅亮色需要标记，避免闪屏
-      try {
-        var t = localStorage.getItem('gotrip_theme');
-        if (t === 'light' || (!t && matchMedia('(prefers-color-scheme: light)').matches)) {
-          document.documentElement.dataset.theme = 'light';
-        }
-      } catch (e) {}
-    </script>
   </head>
   <body>
     <div id="root"></div>

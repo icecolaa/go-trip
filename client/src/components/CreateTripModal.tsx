@@ -93,7 +93,7 @@ export default function CreateTripModal({ onClose, onCreated }: { onClose: () =>
         <div className="row-ops" style={{ marginTop: 6 }}>
           {COLORS.map(c => (
             <button key={c} type="button" onClick={() => setColor(c)}
-              style={{ width: 26, height: 26, borderRadius: '50%', background: c, border: color === c ? '3px solid var(--gold)' : '2px solid #fff', boxShadow: '0 1px 4px rgba(0,0,0,.2)' }} />
+              style={{ width: 26, height: 26, borderRadius: '50%', background: c, border: color === c ? '3px solid var(--ink)' : '1px solid var(--line-strong)' }} />
           ))}
         </div>
       </div>
