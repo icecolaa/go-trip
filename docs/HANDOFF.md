@@ -7,11 +7,11 @@
 
 | 项 | 值 |
 |---|---|
-| 生产 | `https://gotrip.pocketbay.app`，部署 #7563（2026-09-12），`/health` 正常，飞哪儿双人数回归通过 |
-| 最近提交 | `9994576` feat: 飞哪儿跨平台比价工作台（参考 flight-price-assistant） |
+| 生产 | `https://gotrip.pocketbay.app`，部署 #7573（2026-09-12），`/health` 正常；比价接口已下线（404）、飞哪儿双人数回归通过 |
+| 最近提交 | `84a07b4` style: 全站去 AI 味设计升级（前置 `1028e91` feat: 移除跨平台比价工作台） |
 | 仓库 | Gitee `ice-colaa/go-trip` + GitHub `icecolaa/go-trip`（私有镜像），分支 `master`；origin 配了双 push URL，`git push origin master` 一条命令两边同步 |
 | 数据库 | PocketBay 托管 PostgreSQL（生产）／SQLite（本地回退） |
-| 验收 | `acceptance/REPORT.md` + `acceptance/screenshots/`（85 项冒烟全过） |
+| 验收 | `acceptance/REPORT.md` + `acceptance/screenshots/`；冒烟 `scripts/smoke.sh` 91 项全过（2026-09-12） |
 
 ## 2026-08~09 主要交付（按主题）
 
@@ -20,9 +20,10 @@
 3. **上云**：迁移到 PocketBay 托管 PostgreSQL（读 `DATABASE_URL`，双方言 DDL，启动自动建表）；keepalive 脚本对抗闲置休眠。
 4. **AI 接入**：OpenAI 兼容接口接智谱 GLM（`GOTRIP_AI_*` 三个变量）；AI 解析攻略 / 生成行程 / 使用助手悬浮球（拖拽、隐藏、找回）；生成过程加进度反馈。
 5. **飞哪儿 FlyWhere**（与「我的旅程」并列的一级 Tab；2026-09-12 起界面由「飞哪里」更名为「飞哪儿」）：移植 `icecolaa/flywhere`，飞猪 AI 开放平台机票低价探索，`FLYAI_API_KEY` 走环境变量；串行队列 + 429 退避 + 双层缓存（FlyAI 原始结果 10 分钟、搜索结果 30 分钟）；缺 Key 时接口返回友好 400。**2026-09-12 前端改版**：时间与偏好（去/回程时间段）、条件 chips、地图/列表切换、按目的地分组（航司数/组合数/天气/标记已去过）、筛选排序、AI 建议三栏卡片、价格说明（费率接口）、本地查询记录（localStorage 快照，恢复不重新请求）。
-8. **参考落地（源自 GitHub 发现报告，见 `work/github-idea-report.md`）**：①行程体检 `server/src/checkup.ts` + `GET /api/trips/:id/checkup`（时间重叠/转场紧张/深夜极早/未排时/满日程检查，参考 roadtrip-skill 校验思路），前端「每日行程」页 🩺 按钮；②飞哪儿价格记忆 `flywhere_watch` 表（双方言），按路线记最低单人价，重查返回 `trend` 涨跌提示（参考 flight-finder price history）；③结算建议（最小转账）项目原有能力，与 actual/firefly-iii 同类；④**跨平台比价工作台** `client/src/components/FlyCompare.tsx` + `flywhere_compare` 表（参考 flight-price-assistant，MIT）：四平台一键检索（去哪儿/同程带参深链，携程/飞猪开首页+剪贴板参数）、报价录入（票面/税费/价格类型：含税已校验·公开·会员·券后·起步）、跨平台分组与可信度（航班号一致 95%/起降一致 80%/仅航线 60%）、服务器历史快照与分位数高低位。注意：参考原型是 Chrome 扩展（tabs/scripting 注入读价），Web 应用无法自动读第三方页面，故「自动读取」降级为参数带入+人工确认。
+8. **参考落地（源自 GitHub 发现报告，见 `work/github-idea-report.md`）**：①行程体检 `server/src/checkup.ts` + `GET /api/trips/:id/checkup`（时间重叠/转场紧张/深夜极早/未排时/满日程检查，参考 roadtrip-skill 校验思路），前端「每日行程」页 🩺 按钮；②飞哪儿价格记忆 `flywhere_watch` 表（双方言），按路线记最低单人价，重查返回 `trend` 涨跌提示（参考 flight-finder price history）；③结算建议（最小转账）项目原有能力，与 actual/firefly-iii 同类；④跨平台比价工作台（参考 flight-price-assistant，MIT）——**2026-09-12 已整体移除**（组件、`/api/flywhere/compare` 接口、`flywhere_compare` 表 DDL 与冒烟段一并删除，线上 404），原因是功能与飞哪儿核心流程脱节、自动读价在 Web 端无法实现导致价值有限。
+9. **全站去 AI 味设计升级（2026-09-12，保持纸质手账风不变）**：键盘焦点环（`:focus-visible`，绿底元素换金色环）、按钮/chips 按压反馈（translateY）、全局 `tabular-nums` 表格数字、标题 `text-wrap: balance`、仪表盘骨架屏替代圆圈 spinner、`transition: all` 精确化、弹窗 `88dvh` 与 `role="dialog"` 语义、日志灯箱 Esc 关闭、og/theme-color meta；清理按钮装饰 emoji（🔍✨🕘📖💡🟢→绿点样式）与成功文案感叹号，页面人格 emoji（logo/tab 图标/空状态/心情）保留。
 6. **内容收藏**：旅行日志支持多图上传（前端 canvas 压缩 1600/400 双尺寸，JPEG 0.85）+ 缩略图；新增「攻略」Tab 收藏小红书/公众号链接。
-7. **质量**：多轮代码 review 修复；`scripts/smoke.sh` 冒烟 85 项；验收报告归档。
+7. **质量**：多轮代码 review 修复；`scripts/smoke.sh` 冒烟 91 项；验收报告归档。
 
 ## 事故记录与根因（重要经验）
 

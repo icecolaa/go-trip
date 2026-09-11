@@ -9,7 +9,7 @@ npm run dev            # 同时启动 server(8787) + client(5173，Vite 代理)
 npm run build          # 构建前端到 client/dist
 npm start              # 生产启动（托管 client/dist，端口 8787）
 npm run check          # 前端 TypeScript 类型检查
-bash scripts/smoke.sh  # API 冒烟测试（88 项断言，需服务已启动）
+bash scripts/smoke.sh  # API 冒烟测试（91 项断言，需服务已启动）
 node scripts/keepalive.mjs  # PocketBay 保活心跳
 ```
 
