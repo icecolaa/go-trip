@@ -42,6 +42,7 @@ node scripts/keepalive.mjs  # PocketBay 保活心跳
 | 文档 | 内容 |
 |---|---|
 | [README.md](README.md) | 功能特性、快速开始、环境变量表、API 概览 |
+| [AGENTS.md](AGENTS.md) / [DESIGN.md](DESIGN.md) | AI 协作入口；**UI 代码必须遵循的设计规范（暗色单色编辑风）** |
 | [docs/HANDOFF.md](docs/HANDOFF.md) | 当前进度、任务过程记录、事故复盘、新会话开场指南 |
 | [docs/deployment-pocketbay.md](docs/deployment-pocketbay.md) | PocketBay 部署/运维、环境变量、验证清单、保活 |
 | [acceptance/REPORT.md](acceptance/REPORT.md) | 2026-09 验收报告（85 项）与截图 |
