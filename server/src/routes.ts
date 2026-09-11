@@ -3,6 +3,7 @@ import { db } from './db.ts';
 import { ApiError, json, readBody, nowISO, todayStr, addDays, daysBetween, randomCode } from './util.ts';
 import { requireAuth, getUserByToken, tokenFromRequest, hashPassword, verifyPassword, createSession, destroySession, setAuthCookie, clearAuthCookie, allocateTravelId, type SessionUser } from './auth.ts';
 import { calcBudget } from './budget.ts';
+import { checkupTrip } from './checkup.ts';
 import { searchPois } from './poi.ts';
 import { getWeather } from './weather.ts';
 import { saveDataUrlImage } from './uploads.ts';
@@ -920,6 +921,28 @@ route('DELETE', '/api/handbook/:id', true, async (_req, res, p, user) => {
   json(res, 200, { ok: true });
 });
 
+/* ======== 行程体检：轻量可行性检查（参考 roadtrip-skill 的校验思路，MIT） ======== */
+
+route('GET', '/api/trips/:id/checkup', true, async (_req, res, p, user) => {
+  const tripId = Number(p.id);
+  await requireMember(tripId, user, 'viewer');
+  const days = await db().prepare('SELECT * FROM days WHERE trip_id = ? ORDER BY day_number').all(tripId) as any[];
+  const activities = await db().prepare('SELECT * FROM activities WHERE trip_id = ? ORDER BY day_id, sort, id').all(tripId) as any[];
+  const dayList: TripDay[] = days.map(r => ({ id: r.id, tripId: r.trip_id, dayNumber: r.day_number, date: r.date, title: r.title || '', place: r.place || '' }));
+  const actList: Activity[] = activities.map(r => ({
+    id: r.id, dayId: r.day_id, tripId: r.trip_id, sort: r.sort, time: r.time, endTime: r.end_time,
+    kind: r.kind, title: r.title, place: r.place || '', lat: r.lat, lng: r.lng, cost: r.cost,
+    notes: r.notes || '', assigneeId: r.assignee_id, createdAt: r.created_at,
+  }));
+  const findings = checkupTrip(dayList, actList);
+  json(res, 200, {
+    findings,
+    warnCount: findings.filter(f => f.level === 'warn').length,
+    infoCount: findings.filter(f => f.level === 'info').length,
+    checkedActivities: actList.length,
+  });
+});
+
 /* ======== 飞哪里：机票低价探索 ======== */
 
 route('POST', '/api/flywhere/search', true, async (_req, res, _p, user, body) => {
@@ -942,6 +965,25 @@ route('POST', '/api/flywhere/search', true, async (_req, res, _p, user, body) =>
     console.error('[flywhere] 航班查询未知异常:', e);
     throw new ApiError(502, '航班查询暂时不可用，请稍后重试');
   }
+  // 价格记忆（参考 flight-finder 的 price history 思路，MIT）：按路线记录最低单人价，重查时报告涨跌
+  let trend: { deltaPerPerson: number; checkedAt: string } | null = null;
+  try {
+    const routeKey = [query.origin, query.destination || '*', query.trip, query.depDate, query.backDate || '*',
+      query.outTimeStart || '*', query.outTimeEnd || '*', query.backTimeStart || '*', query.backTimeEnd || '*'].join('|');
+    const prev = await db().prepare('SELECT min_per_person, checked_at FROM flywhere_watch WHERE route_key = ?').get(routeKey) as any;
+    if (results.length) {
+      const minPer = Math.min(...results.map(r => r.perPerson));
+      const now = nowISO();
+      if (prev) trend = { deltaPerPerson: Math.round((prev.min_per_person - minPer) * 100) / 100, checkedAt: prev.checked_at };
+      if (prev) {
+        await db().prepare('UPDATE flywhere_watch SET city = ?, min_per_person = ?, checked_at = ? WHERE route_key = ?').run(String(results[0]?.city || ''), minPer, now, routeKey);
+      } else {
+        await db().prepare('INSERT INTO flywhere_watch (route_key, city, min_per_person, checked_at) VALUES (?,?,?,?)').run(routeKey, String(results[0]?.city || ''), minPer, now);
+      }
+    }
+  } catch (e: any) {
+    console.error('[flywhere] 价格记忆失败:', e?.message || e); // 趋势失败不影响搜索结果
+  }
   // 为前 6 个目的城市附带天气（尽量走缓存），失败不影响结果
   try {
     const citySeen = new Set<string>();
@@ -954,7 +996,7 @@ route('POST', '/api/flywhere/search', true, async (_req, res, _p, user, body) =>
       item.weather = await getWeather(city, dates);
     }
   } catch { /* 天气失败不阻塞 */ }
-  json(res, 200, { results, count: results.length, minPrice: results[0]?.totalPrice ?? null });
+  json(res, 200, { results, count: results.length, minPrice: results[0]?.totalPrice ?? null, trend });
 });
 
 route('GET', '/api/flywhere/fee-policy', true, async (_req, res) => {

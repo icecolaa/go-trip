@@ -148,6 +148,25 @@ check "非法图片被过滤" "$(jget "$BUNDLE" "len([n for n in d['journal'] if
 check "thumb非法回退full" "$(jget "$BUNDLE" "[n for n in d['journal'] if n['id']==$J2][0]['images'][0]['thumb']")" '^/uploads/smoke_ok\.jpg$'
 check "动态流有记录" "$BUNDLE" '创建了旅程'
 
+echo "== 行程体检 =="
+R=$(curl -s -o /dev/null -w "%{http_code}" "$BASE/api/trips/1/checkup")
+check "体检未登录拦截(401)" "$R" '^401$'
+R=$(req POST /api/days/$DAY1/activities "$TA" '{"title":"体检重叠A","time":"09:00","endTime":"12:00","place":"西湖"}')
+CKA=$(jget "$R" "d['id']")
+R=$(req POST /api/days/$DAY1/activities "$TA" '{"title":"体检重叠B","time":"10:30","place":"灵隐寺"}')
+CKB=$(jget "$R" "d['id']")
+R=$(req POST /api/days/$DAY1/activities "$TA" '{"title":"体检转场C","time":"13:15","place":"断桥残雪"}')
+CKC=$(jget "$R" "d['id']")
+R=$(req GET /api/trips/$TRIP/checkup "$TA")
+check "体检接口(200)" "$(echo "$R" | head -c 20)" '"findings"'
+check "体检检出时间重叠" "$R" '时间重叠'
+check "体检检出转场紧张" "$R" '分钟转场'
+req DELETE /api/activities/$CKA "$TA" > /dev/null
+req DELETE /api/activities/$CKB "$TA" > /dev/null
+req DELETE /api/activities/$CKC "$TA" > /dev/null
+R=$(req GET /api/trips/$TRIP/checkup "$TA")
+check "清理后体检无冲突" "$(jget "$R" "d['warnCount']")" '^0$'
+
 echo "== POI / 天气 / AI =="
 R=$(req GET "/api/poi/search?q=%E8%A5%BF%E6%B9%96&city=%E6%9D%AD%E5%B7%9E" "$TA")
 check "POI搜索返回结果" "$R" 'lat'

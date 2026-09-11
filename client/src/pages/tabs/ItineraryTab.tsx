@@ -7,6 +7,16 @@ import type { TabCtx } from './tabCtx';
 import type { Activity, TripDay } from '@shared/types';
 import PoiSearch from '../../components/PoiSearch';
 
+/* 行程体检结果（与服务端 checkup.ts 的 CheckupFinding 对应） */
+interface CheckupFinding {
+  level: 'warn' | 'info';
+  dayId: number;
+  dayNumber: number;
+  date: string;
+  code: 'overlap' | 'tight-transfer' | 'late-night' | 'early-morning' | 'untimed' | 'packed-day' | 'no-activities';
+  message: string;
+}
+
 export default function ItineraryTab({ bundle, reload, weather, canEdit }: TabCtx) {
   const { toast } = useApp();
   const [editing, setEditing] = useState<Activity | null>(null);
@@ -14,6 +24,19 @@ export default function ItineraryTab({ bundle, reload, weather, canEdit }: TabCt
   const [aiOpen, setAiOpen] = useState(false);
   const [tripMode, setTripMode] = useState(false);
   const [dragId, setDragId] = useState<number | null>(null);
+  const [checkup, setCheckup] = useState<{ findings: CheckupFinding[]; warnCount: number; infoCount: number; checkedActivities: number } | null>(null);
+  const [checkupBusy, setCheckupBusy] = useState(false);
+
+  const runCheckup = async () => {
+    setCheckupBusy(true);
+    try {
+      setCheckup(await api.get(`/api/trips/${bundle.trip.id}/checkup`));
+    } catch (e: any) {
+      toast(e.message || '行程体检失败', true);
+    } finally {
+      setCheckupBusy(false);
+    }
+  };
 
   const { days, activities, members } = bundle;
   const actsByDay = useMemo(() => {
@@ -63,6 +86,7 @@ export default function ItineraryTab({ bundle, reload, weather, canEdit }: TabCt
     <div>
       <div className="row-ops" style={{ marginBottom: 14 }}>
         <h2 className="section-title" style={{ margin: 0, flex: 1 }}>每日行程</h2>
+        <button className="btn sm" onClick={runCheckup} disabled={checkupBusy}>{checkupBusy ? '体检中…' : '🩺 行程体检'}</button>
         <button className="btn sm launch-tm" onClick={() => setTripMode(true)} disabled={!days.length}>🧭 出发模式</button>
         {canEdit && (
           <>
@@ -73,6 +97,30 @@ export default function ItineraryTab({ bundle, reload, weather, canEdit }: TabCt
       </div>
 
       {days.length === 0 && <div className="card empty"><span className="big">🗓️</span>还没有行程日，点击「AI 助手」一键生成，或在旅程设置里调整日期。</div>}
+
+      {checkup && (
+        <div className="card" style={{ padding: '12px 16px', marginBottom: 14 }}>
+          <div className="row-ops">
+            <h3 style={{ margin: 0, flex: 1, fontSize: 15 }}>
+              🩺 行程体检 · {checkup.checkedActivities} 项安排
+              {checkup.warnCount > 0 ? <span className="tag orange" style={{ marginLeft: 8 }}>{checkup.warnCount} 个需注意</span> : <span className="tag" style={{ marginLeft: 8 }}>没有发现冲突</span>}
+              {checkup.infoCount > 0 && <span className="tag gray" style={{ marginLeft: 6 }}>{checkup.infoCount} 条建议</span>}
+            </h3>
+            <button className="btn sm ghost" onClick={() => setCheckup(null)}>收起</button>
+          </div>
+          {checkup.findings.length ? (
+            <ul className="fw-fee-list" style={{ marginTop: 6 }}>
+              {checkup.findings.map((f, i) => (
+                <li key={i} style={{ color: f.level === 'warn' ? '#a05616' : undefined }}>
+                  {f.level === 'warn' ? '⚠️' : '💡'} D{f.dayNumber}（{fmtDate(f.date)}）：{f.message}
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="muted" style={{ margin: '6px 0 0' }}>时间安排顺畅，没有发现重叠或转场过紧的问题。</p>
+          )}
+        </div>
+      )}
 
       {days.map(day => {
         const acts = actsByDay.get(day.id) || [];

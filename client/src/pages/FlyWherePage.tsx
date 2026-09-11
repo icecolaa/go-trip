@@ -69,6 +69,7 @@ export default function FlyWherePage() {
   const [busy, setBusy] = useState(false);
   const [elapsed, setElapsed] = useState(0);
   const [results, setResults] = useState<FlightResult[] | null>(null);
+  const [trend, setTrend] = useState<{ deltaPerPerson: number; checkedAt: string } | null>(null);
   const [restoredTs, setRestoredTs] = useState<number | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -117,11 +118,13 @@ export default function FlyWherePage() {
     setAdvice(null);
     setAdviceOpen(true);
     setResults(null);
+    setTrend(null);
     setRestoredTs(null);
     resetFilters();
     try {
-      const r = await api.post<{ results: FlightResult[]; count: number; minPrice: number | null }>('/api/flywhere/search', queryOf());
+      const r = await api.post<{ results: FlightResult[]; count: number; minPrice: number | null; trend?: { deltaPerPerson: number; checkedAt: string } | null }>('/api/flywhere/search', queryOf());
       setResults(r.results);
+      setTrend(r.trend || null);
       const entry: HistoryEntry = { id: Date.now(), ts: Date.now(), query: queryOf(), results: r.results };
       setHistory(prev => {
         const next = [entry, ...prev.filter(h => h.id !== entry.id)].slice(0, 12);
@@ -158,6 +161,7 @@ export default function FlyWherePage() {
     setBackWin(winKeyOf(h.query.backTimeStart, h.query.backTimeEnd));
     setResults(h.results);
     setAdvice(null);
+    setTrend(null);
     setRestoredTs(h.ts);
     resetFilters();
     setHistoryOpen(false);
@@ -425,6 +429,11 @@ export default function FlyWherePage() {
                 {tripLabel} · {form.passengers} 位成人
                 {minPrice != null && <> · 最低总价 <b style={{ color: 'var(--orange)' }}>¥{minPrice.toLocaleString()}</b></>}
                 {restoredTs != null && ' · 历史快照'}
+                {trend && !restoredTs && (
+                  <span className="tag" style={{ marginLeft: 8, color: trend.deltaPerPerson > 0 ? 'var(--green-deep)' : trend.deltaPerPerson < 0 ? '#a05616' : undefined }}>
+                    {trend.deltaPerPerson > 0 ? `较上次 ↓¥${Math.abs(trend.deltaPerPerson).toLocaleString()}/人` : trend.deltaPerPerson < 0 ? `较上次 ↑¥${Math.abs(trend.deltaPerPerson).toLocaleString()}/人` : '与上次持平'}（{fmtTs(new Date(trend.checkedAt).getTime())} 查过）
+                  </span>
+                )}
               </div>
             </div>
             <div className="fw-seg">
