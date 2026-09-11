@@ -947,7 +947,7 @@ route('GET', '/api/trips/:id/checkup', true, async (_req, res, p, user) => {
 
 route('POST', '/api/flywhere/search', true, async (_req, res, _p, user, body) => {
   const query = {
-    origin: String(body.origin || '广州').slice(0, 20),
+    origin: String(body.origin || '北京').slice(0, 20),
     destination: body.destination ? String(body.destination).slice(0, 20) : '',
     trip: body.trip === 'oneway' ? 'oneway' : 'round',
     depDate: String(body.depDate || ''), backDate: String(body.backDate || ''),

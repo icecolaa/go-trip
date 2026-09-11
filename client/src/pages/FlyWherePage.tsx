@@ -59,7 +59,7 @@ function fmtTs(ts: number): string {
 export default function FlyWherePage() {
   const { toast } = useApp();
   const [form, setForm] = useState({
-    origin: '广州', destination: '', trip: 'round' as 'round' | 'oneway',
+    origin: '北京', destination: '', trip: 'round' as 'round' | 'oneway',
     depDate: plusDays(7), backDate: plusDays(10), passengers: 1,
   });
   const [outWin, setOutWin] = useState('');
@@ -342,7 +342,7 @@ export default function FlyWherePage() {
         <div className="fw-grid">
           <div className="field">
             <label>出发城市</label>
-            <input className="input" value={form.origin} onChange={e => set({ origin: e.target.value })} placeholder="例如：广州" maxLength={20} />
+            <input className="input" value={form.origin} onChange={e => set({ origin: e.target.value })} placeholder="例如：北京" maxLength={20} />
           </div>
           <div className="field">
             <label>目的地（留空 = 全国探索）</label>

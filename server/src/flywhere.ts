@@ -218,7 +218,7 @@ function isDomesticDestination(item: NormalizedFlight) {
   return domesticCitySet.has(normalizedDomesticCityName(item?.city));
 }
 function stableExplorationTargets(query: FlightQuery, existingCities: Set<string>) {
-  const origin = normalizedDomesticCityName(query.origin || '广州');
+  const origin = normalizedDomesticCityName(query.origin || '北京');
   const pool = domesticExplorationCities.filter(city => city !== origin && !existingCities.has(city));
   const seed = `${origin}|${query.depDate || ''}|${query.backDate || ''}`;
   const hash = [...seed].reduce((v, ch) => ((v * 31) + ch.charCodeAt(0)) >>> 0, 0);
@@ -297,7 +297,7 @@ function validateTripDates(query: FlightQuery) {
 
 function searchCacheKey(query: FlightQuery) {
   return JSON.stringify({
-    origin: query.origin || '广州', destination: query.destination || 'all', trip: query.trip || 'round',
+    origin: query.origin || '北京', destination: query.destination || 'all', trip: query.trip || 'round',
     depDate: query.depDate, backDate: query.backDate || '',
     outTimeStart: query.outTimeStart || '', outTimeEnd: query.outTimeEnd || '',
     backTimeStart: query.backTimeStart || '', backTimeEnd: query.backTimeEnd || '',
@@ -309,7 +309,7 @@ const searchCache = new Map<string, { results: any[]; expiresAt: number }>();
 const searchInflight = new Map<string, Promise<any[]>>();
 
 async function searchFresh(query: FlightQuery) {
-  const origin = query.origin || '广州';
+  const origin = query.origin || '北京';
   const destination = query.destination && query.destination !== 'all' ? query.destination : null;
   const common = ['--origin', origin];
   if (query.outTimeStart) common.push('--dep-hour-start', String(Number(query.outTimeStart.slice(0, 2))));
