@@ -1116,33 +1116,74 @@ route('POST', '/api/trips/:id/ai/apply', true, async (_req, res, p, user, body) 
   if (!guide?.days?.length) throw new ApiError(400, '行程数据为空');
   const trip = await requireTrip(tripId);
   const replace = body.replaceDays !== false;
-  if (replace) {
-    await db().prepare('DELETE FROM activities WHERE trip_id = ?').run(tripId);
-    await db().prepare('DELETE FROM days WHERE trip_id = ?').run(tripId);
-  }
-  let baseNum = replace ? 0 : (await db().prepare('SELECT MAX(day_number) AS m FROM days WHERE trip_id = ?').get(tripId) as any).m || 0;
+  const targeted = body.targeted === true; // 只替换解析文本识别到的天（按各天的 dayNumber 定位）
   const insDay = await db().prepare('INSERT INTO days (trip_id, day_number, date, title, place) VALUES (?,?,?,?,?)');
   const insAct = await db().prepare('INSERT INTO activities (trip_id, day_id, sort, time, kind, title, place, lat, lng, cost, notes, created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)');
   let actCount = 0;
   const pending: GeocodeItem[] = [];
-  for (const gd of guide.days) {
-    baseNum += 1;
-    const date = gd.dayNumber && !replace ? addDays(trip.startDate, baseNum - 1) : addDays(trip.startDate, baseNum - 1);
-    const r = await insDay.run(tripId, baseNum, date, String(gd.title || '').slice(0, 40), String(gd.place || trip.destination || '').slice(0, 40));
-    const dayId = Number(r.lastInsertRowid);
-    const dayCity = String(gd.place || trip.destination || '').slice(0, 20);
-    let sort = 0;
-    for (const ga of gd.activities || []) {
-      const title = String(ga.title || '').trim().slice(0, 100);
-      if (!title) continue;
-      const place = String(ga.place || gd.place || '').slice(0, 60);
-      const r2 = await insAct.run(tripId, dayId, sort++, ga.time ? String(ga.time).replace('：', ':').slice(0, 5) : null,
-        String(ga.kind || 'sight'), title, place, null, null, 0,
-        String(ga.notes || '').slice(0, 200), nowISO());
-      // 每站用清洗后的标题作为定位查询（如「穿越科尔沁大草原」→「科尔沁大草原」），
-      // 避免整天共用当日地点查询导致坐标相同、站间距离恒为 0
-      pending.push({ id: Number(r2.lastInsertRowid), query: cleanActivityQuery(title), alt: place || undefined, city: dayCity });
-      actCount++;
+  let replacedDays: number[] = [];
+
+  if (targeted) {
+    // 按文字内容识别的天号，只重写这几天，其余天保持不变
+    const maxDay = ((await db().prepare('SELECT MAX(day_number) AS m FROM days WHERE trip_id = ?').get(tripId) as any)?.m) || 0;
+    if (!maxDay) throw new ApiError(400, '行程还没有任何天，请先用「覆盖现有行程」或「追加到行程」');
+    for (const gd of guide.days) {
+      const dn = Math.round(Number(gd.dayNumber) || 0);
+      if (!(dn >= 1 && dn <= maxDay)) throw new ApiError(400, `无法定位第 ${dn || '?'} 天：当前行程共 ${maxDay} 天`);
+    }
+    const existing = new Map<number, number>(); // day_number -> day_id
+    for (const row of await db().prepare('SELECT id, day_number FROM days WHERE trip_id = ?').all(tripId) as any[]) {
+      existing.set(Number(row.day_number), Number(row.id));
+    }
+    for (const gd of guide.days) {
+      const dn = Math.round(Number(gd.dayNumber));
+      const oldId = existing.get(dn);
+      if (oldId) {
+        await db().prepare('DELETE FROM activities WHERE day_id = ?').run(oldId);
+        await db().prepare('DELETE FROM days WHERE id = ?').run(oldId);
+      }
+      replacedDays.push(dn);
+      const r = await insDay.run(tripId, dn, addDays(trip.startDate, dn - 1), String(gd.title || '').slice(0, 40), String(gd.place || trip.destination || '').slice(0, 40));
+      const dayId = Number(r.lastInsertRowid);
+      const dayCity = String(gd.place || trip.destination || '').slice(0, 20);
+      let sort = 0;
+      for (const ga of gd.activities || []) {
+        const title = String(ga.title || '').trim().slice(0, 100);
+        if (!title) continue;
+        const place = String(ga.place || gd.place || '').slice(0, 60);
+        const r2 = await insAct.run(tripId, dayId, sort++, ga.time ? String(ga.time).replace('：', ':').slice(0, 5) : null,
+          String(ga.kind || 'sight'), title, place, null, null, 0,
+          String(ga.notes || '').slice(0, 200), nowISO());
+        pending.push({ id: Number(r2.lastInsertRowid), query: cleanActivityQuery(title), alt: place || undefined, city: dayCity });
+        actCount++;
+      }
+    }
+    replacedDays = [...new Set(replacedDays)].sort((a, b) => a - b);
+  } else {
+    if (replace) {
+      await db().prepare('DELETE FROM activities WHERE trip_id = ?').run(tripId);
+      await db().prepare('DELETE FROM days WHERE trip_id = ?').run(tripId);
+    }
+    let baseNum = replace ? 0 : (await db().prepare('SELECT MAX(day_number) AS m FROM days WHERE trip_id = ?').get(tripId) as any).m || 0;
+    for (const gd of guide.days) {
+      baseNum += 1;
+      const date = addDays(trip.startDate, baseNum - 1);
+      const r = await insDay.run(tripId, baseNum, date, String(gd.title || '').slice(0, 40), String(gd.place || trip.destination || '').slice(0, 40));
+      const dayId = Number(r.lastInsertRowid);
+      const dayCity = String(gd.place || trip.destination || '').slice(0, 20);
+      let sort = 0;
+      for (const ga of gd.activities || []) {
+        const title = String(ga.title || '').trim().slice(0, 100);
+        if (!title) continue;
+        const place = String(ga.place || gd.place || '').slice(0, 60);
+        const r2 = await insAct.run(tripId, dayId, sort++, ga.time ? String(ga.time).replace('：', ':').slice(0, 5) : null,
+          String(ga.kind || 'sight'), title, place, null, null, 0,
+          String(ga.notes || '').slice(0, 200), nowISO());
+        // 每站用清洗后的标题作为定位查询（如「穿越科尔沁大草原」→「科尔沁大草原」），
+        // 避免整天共用当日地点查询导致坐标相同、站间距离恒为 0
+        pending.push({ id: Number(r2.lastInsertRowid), query: cleanActivityQuery(title), alt: place || undefined, city: dayCity });
+        actCount++;
+      }
     }
   }
   // 应用时自动地理编码：优先高德 POI（按当日城市约束），回退内置城市库；
@@ -1156,9 +1197,11 @@ route('POST', '/api/trips/:id/ai/apply', true, async (_req, res, p, user, body) 
       located = coords.size;
     } catch { /* 定位失败不影响行程使用 */ }
   }
-  await logActivity(tripId, me, '用 AI 生成了行程', `${guide.days.length} 天 · ${actCount} 项安排`);
+  await logActivity(tripId, me, '用 AI 生成了行程', targeted ? `重写了第 ${replacedDays.join('、')} 天 · ${actCount} 项安排` : `${guide.days.length} 天 · ${actCount} 项安排`);
   notify(tripId, 'day', 'ai-apply', me.id);
-  json(res, 200, { ok: true, days: guide.days.length, activities: actCount, located });
+  json(res, 200, targeted
+    ? { ok: true, days: guide.days.length, activities: actCount, located, replacedDays }
+    : { ok: true, days: guide.days.length, activities: actCount, located });
 });
 
 /* ======== 天气 ======== */

@@ -190,6 +190,34 @@ if [ "$G_SRC" = "ai" ]; then
   check "AI生成的天数" "$(jget "$R" "len(d.get('days',[]))")" '^2$'
 fi
 
+echo "== AI 精准替换某几天 =="
+TARGET_JSON='{"text":"D1：10月1日：测试路线A-B\n8:00 冒烟活动甲\n14:00 冒烟活动乙"}'
+printf '%s' "$TARGET_JSON" > "$BJ"
+R=$(curl -s -X POST "$BASE/api/trips/$TRIP/ai/parse-guide" -H "Authorization: Bearer $TA" -H "Content-Type: application/json" --data-binary @"$BJ" --max-time 90)
+check "解析识别D1天号" "$(jget "$R" "d['days'][0]['dayNumber']")" '^1$'
+printf '%s' "$R" > "$BJ"
+APPLY_BODY=$(python -c "
+import json,sys
+g=json.load(open(sys.argv[1],encoding='utf-8'))
+print(json.dumps({'guide':g,'targeted':True},ensure_ascii=False))
+" "$BJ")
+printf '%s' "$APPLY_BODY" > "$BJ"
+R=$(curl -s -X POST "$BASE/api/trips/$TRIP/ai/apply" -H "Authorization: Bearer $TA" -H "Content-Type: application/json" --data-binary @"$BJ" --max-time 90)
+check "targeted替换识别天" "$(jget "$R" "d.get('replacedDays')")" '\[1\]'
+check "targeted写入活动" "$(jget "$R" "d.get('activities')")" '^2$'
+BAD_JSON='{"text":"D9：10月9日：越界的天\n10:00 不应写入"}'
+printf '%s' "$BAD_JSON" > "$BJ"
+R=$(curl -s -X POST "$BASE/api/trips/$TRIP/ai/parse-guide" -H "Authorization: Bearer $TA" -H "Content-Type: application/json" --data-binary @"$BJ" --max-time 90)
+printf '%s' "$R" > "$BJ"
+APPLY_BODY=$(python -c "
+import json,sys
+g=json.load(open(sys.argv[1],encoding='utf-8'))
+print(json.dumps({'guide':g,'targeted':True},ensure_ascii=False))
+" "$BJ")
+printf '%s' "$APPLY_BODY" > "$BJ"
+R=$(curl -s -X POST "$BASE/api/trips/$TRIP/ai/apply" -H "Authorization: Bearer $TA" -H "Content-Type: application/json" --data-binary @"$BJ" --max-time 90)
+check "targeted越界天号被拒" "$R" '无法定位第'
+
 echo "== 旅行锦囊 =="
 R=$(req GET /api/trips/$TRIP/handbook "$TA")
 check "锦囊初始为空" "$R" '^\[\]$'

@@ -376,12 +376,18 @@ function AiPanel({ bundle, reload, onClose }: { bundle: TabCtx['bundle']; reload
     }
   };
 
-  const apply = async (replaceDays: boolean) => {
+  const apply = async (mode: 'append' | 'replaceAll' | 'targeted') => {
     if (!preview || busy) return;
     setBusy(true);
     try {
-      const r = await api.post<{ ok: boolean; located: number }>(`/api/trips/${bundle.trip.id}/ai/apply`, { guide: preview, replaceDays });
-      toast(`已写入 ${preview.days.length} 天行程${r.located ? `，已自动定位 ${r.located} 个地点` : ''}${replaceDays ? '（已覆盖原行程）' : '（追加在行程后面）'}`);
+      const r = await api.post<{ ok: boolean; located: number; replacedDays?: number[] }>(
+        `/api/trips/${bundle.trip.id}/ai/apply`,
+        mode === 'targeted' ? { guide: preview, targeted: true } : { guide: preview, replaceDays: mode === 'replaceAll' },
+      );
+      const dayLabel = mode === 'targeted' && r.replacedDays?.length
+        ? `已重新生成第 ${r.replacedDays.join('、')} 天行程`
+        : `已写入 ${preview.days.length} 天行程`;
+      toast(`${dayLabel}${r.located ? `，已自动定位 ${r.located} 个地点` : ''}${mode === 'replaceAll' ? '（已覆盖原行程）' : mode === 'append' ? '（追加在行程后面）' : '（其余天保持不变）'}`);
       reload();
       onClose();
     } catch (e: any) {
@@ -390,6 +396,11 @@ function AiPanel({ bundle, reload, onClose }: { bundle: TabCtx['bundle']; reload
       setBusy(false);
     }
   };
+
+  // 解析出的天号与当前行程的可定位性（用于「只替换这几天」）
+  const dayNums = preview ? [...new Set<number>(preview.days.map((d: any) => Math.round(Number(d.dayNumber))))].sort((a, b) => a - b) : [];
+  const maxTripDay = bundle.days.reduce((m, d) => Math.max(m, d.dayNumber), 0);
+  const targetable = mode === 'parse' && dayNums.length > 0 && maxTripDay > 0 && dayNums.every((n: number) => n >= 1 && n <= maxTripDay);
 
   return (
     <Modal title="✨ AI 行程助手" onClose={onClose} width={560}>
@@ -430,14 +441,20 @@ function AiPanel({ bundle, reload, onClose }: { bundle: TabCtx['bundle']; reload
         </>
       ) : (
         <div className="field">
-          <label>粘贴攻略（支持 Day N / 第 N 天）</label>
+          <label>粘贴攻略（支持 Day N / 第 N 天 / D5：10月5日：路线）</label>
           <textarea className="input" rows={7} value={guideText} onChange={e => setGuideText(e.target.value)}
-            placeholder={'Day 1: 抵达大理，古城漫步\nDay 2: 洱海环湖骑行，喜洲午餐\nDay 3-4: 丽江古城、玉龙雪山'} />
+            placeholder={'Day 1: 抵达大理，古城漫步\nDay 2: 洱海环湖骑行，喜洲午餐\nD5：10月5日：室韦-驯鹿公园-额尔古纳湿地-海拉尔\n（只粘贴要重写的那几天即可，可精准替换对应天）'} />
         </div>
       )}
 
       <div className="modal-ops" style={{ justifyContent: 'space-between' }}>
-        <span className="muted">{preview ? `识别到 ${preview.days.length} 天行程（${preview.source === 'ai' ? 'AI 生成' : '内置模板'}）` : '未配置 AI 时自动使用内置规则，仍可生成合理框架'}</span>
+        <span className="muted">
+          {preview
+            ? mode === 'parse' && dayNums.length
+              ? `识别到第 ${dayNums.join('、')} 天行程（${preview.source === 'ai' ? 'AI 解析' : '内置模板'}）`
+              : `识别到 ${preview.days.length} 天行程（${preview.source === 'ai' ? 'AI 生成' : '内置模板'}）`
+            : '未配置 AI 时自动使用内置规则，仍可生成合理框架'}
+        </span>
         <div style={{ display: 'flex', gap: 8 }}>
           <button className="btn" onClick={run} disabled={busy}>{mode === 'generate' ? '生成预览' : '解析预览'}</button>
           {busy && (
@@ -458,7 +475,7 @@ function AiPanel({ bundle, reload, onClose }: { bundle: TabCtx['bundle']; reload
           <div style={{ maxHeight: 240, overflow: 'auto', fontSize: 13.5, lineHeight: 1.7 }}>
             {preview.days.map((d: any) => (
               <div key={d.dayNumber} style={{ marginBottom: 8 }}>
-                <b style={{ color: 'var(--green-deep)' }}>第 {d.dayNumber} 天{d.title ? ` · ${d.title}` : ''}{d.place ? `（${d.place}）` : ''}</b>
+                <b style={{ color: 'var(--green-deep)' }}>第 {d.dayNumber} 天{d.date ? `（${d.date}）` : ''}{d.title ? ` · ${d.title}` : ''}{d.place ? `（${d.place}）` : ''}</b>
                 <div style={{ color: 'var(--ink-soft)' }}>
                   {(d.activities || []).map((a: any, i: number) => (
                     <span key={i}>{a.time ? `${a.time} ` : ''}{a.title}{i < d.activities.length - 1 ? ' → ' : ''}</span>
@@ -468,9 +485,21 @@ function AiPanel({ bundle, reload, onClose }: { bundle: TabCtx['bundle']; reload
             ))}
           </div>
           <div className="modal-ops">
-            <button className="btn" onClick={() => apply(false)} disabled={busy}>追加到行程</button>
-            <button className="btn danger" onClick={() => apply(true)} disabled={busy}>覆盖现有行程</button>
+            <button className="btn" onClick={() => apply('append')} disabled={busy}>追加到行程</button>
+            {targetable && (
+              <button className="btn primary" onClick={() => apply('targeted')} disabled={busy}>
+                只替换第 {dayNums.join('、')} 天
+              </button>
+            )}
+            <button className="btn danger" onClick={() => apply('replaceAll')} disabled={busy}>覆盖现有行程</button>
           </div>
+          {mode === 'parse' && !targetable && dayNums.length > 0 && (
+            <p className="muted" style={{ margin: '8px 0 0' }}>
+              {maxTripDay > 0
+                ? `提示：识别的天号（第 ${dayNums.join('、')} 天）需在当前行程的 1~${maxTripDay} 天范围内才能精准替换`
+                : '提示：当前行程还没有任何天，可先「覆盖现有行程」或「追加到行程」'}
+            </p>
+          )}
         </>
       )}
     </Modal>

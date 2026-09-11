@@ -92,7 +92,7 @@ function parseDayHeader(line: string): { day: number; title: string } | null {
   return null;
 }
 
-/** 内置攻略解析：识别 Day N / 第 N 天 结构，逐行拆活动 */
+/** 内置攻略解析：识别 Day N / 第 N 天 / D5：10月5日： 结构，逐行拆活动 */
 export function builtinParseGuide(text: string): ParsedGuide {
   const lines = (text || '').split(/\r?\n/).map(l => l.trim()).filter(Boolean);
   const days: ParsedGuide['days'] = [];
@@ -102,14 +102,26 @@ export function builtinParseGuide(text: string): ParsedGuide {
     const header = parseDayHeader(line);
     if (header) {
       seq = header.day;
-      current = { dayNumber: seq, title: header.title, place: '', activities: [] };
-      // 「Day 1: 抵达大理，古城漫步」单行写法：标题同时作为当天的一项活动
-      if (header.title) {
-        current.activities.push({ title: header.title, kind: guessKind(header.title) });
+      let title = header.title || '';
+      // 剥离标题中的日期前缀（如「10月5日：」），记入 date
+      let date = '';
+      const dm = title.match(/^\s*(\d{1,2})月(\d{1,2})日\s*[:：、.]?\s*/);
+      if (dm) {
+        date = `${Number(dm[1])}-${Number(dm[2])}`;
+        title = title.slice(dm[0].length).trim();
       }
+      // 路线型标题（如「室韦-驯鹿公园-恩河」或「通辽-北京芍药居」）只作当天主题，不再重复成活动
+      const isRoute = /^[\u4e00-\u9fa5A-Za-z]{2,10}[-—–][\u4e00-\u9fa5A-Za-z]/.test(title) || (title.match(/-/g) || []).length >= 2;
+      current = { dayNumber: seq, title, place: '', activities: [] };
+      if (date) current.date = date;
       days.push(current);
+      if (title && !isRoute) {
+        current.activities.push({ title, kind: guessKind(title) });
+      }
       continue;
     }
+    // 日程汇总行（餐：/行：/游：/住：/总计）是概要信息，具体条目已在正文，跳过
+    if (/^[餐行游住吃][:：]/.test(line) || /^总计/.test(line)) continue;
     if (!current) {
       seq += 1;
       current = { dayNumber: seq, title: '', place: '', activities: [] };
@@ -117,7 +129,7 @@ export function builtinParseGuide(text: string): ParsedGuide {
     }
     const item: ParsedGuide['days'][number]['activities'][number] = {};
     let rest = line;
-    const tm = rest.match(/^([01]?\d[:：][0-5]\d)\s*[-–—~至]?\s*([01]?\d[:：][0-5]\d)?\s*/);
+    const tm = rest.match(/^([0-2]?\d[:：][0-5]\d)\s*[-–—~至]?\s*([0-2]?\d[:：][0-5]\d)?\s*/);
     if (tm) {
       item.time = tm[1].replace('：', ':');
       rest = rest.slice(tm[0].length);
@@ -203,8 +215,8 @@ interface PoiLike { name: string; desc: string }
 /* ================= AI 主路径 ================= */
 
 const PARSE_SYSTEM = `你是旅行攻略结构化助手。把用户粘贴的旅行攻略文本解析成 JSON：
-{"days":[{"dayNumber":1,"title":"当天主题（可空）","place":"当天主要城市/地点（可空）","activities":[{"time":"HH:mm 可空","title":"活动名称","kind":"sight|food|hotel|transport|shopping|show|other","notes":"补充可空"}]}]}
-规则：识别 Day N / 第 N 天 / D N 等分天标记；无法分天时按内容合理切分；保留原文信息，不要编造具体价格；只输出 JSON。`;
+{"days":[{"dayNumber":1,"date":"MM-DD 可空","title":"当天主题（可空）","place":"当天主要城市/地点（可空）","activities":[{"time":"HH:mm 可空","title":"活动名称","kind":"sight|food|hotel|transport|shopping|show|other","notes":"补充可空"}]}]}
+规则：识别 Day N / 第 N 天 / 「D5：10月5日：路线A-路线B」等分天标记，D5 即 dayNumber 5，日期写入 date 字段；严格保留原文的活动顺序与时间，不要重排、不要补「待定」；行程概要行（餐：/行：/游：/住：/总计 开头）并入当天最后一条活动的 notes，没有对应活动就忽略；保留原文信息，不要编造具体价格；只输出 JSON。`;
 
 const GENERATE_SYSTEM = `你是资深中国旅行规划师。为用户生成行程计划，输出 JSON：
 {"days":[{"dayNumber":1,"title":"当日主题","place":"当日主要城市/地点","activities":[{"time":"HH:mm","title":"活动","kind":"sight|food|hotel|transport|shopping|show|other","notes":"提示（开放时间/交通/注意）"}]}]}
@@ -220,6 +232,7 @@ export async function parseGuide(text: string): Promise<ParsedGuide> {
         return {
           days: json.days.map((d: any, i: number) => ({
             dayNumber: Number(d.dayNumber) || i + 1,
+            date: d.date ? String(d.date).slice(0, 5) : undefined,
             title: String(d.title || ''),
             place: String(d.place || ''),
             activities: (d.activities || []).map((a: any) => ({
