@@ -8,7 +8,8 @@
 | 项 | 值 |
 |---|---|
 | 生产 | `https://gotrip.pocketbay.app`，部署 #7591（2026-09-13），`/health` 正常；飞哪儿页对齐 flywhere 原版布局，全站切换 flywhere 暖白色板（线上 CSS 已验证） |
-| 最近提交 | `0ff8af4` style: 飞哪儿页对齐 flywhere 原版并全站换暖白配色 |
+| 最近提交 | `8e9ddac` feat: 旅程卡片新增编辑入口（创建弹窗扩展编辑模式） |
+| 旅程编辑 | 卡片封面 hover ✏️ 按钮（owner/admin）→ 编辑弹窗（预填/改日期自动对齐天数），提交 #7595 |
 | 仓库 | Gitee `ice-colaa/go-trip` + GitHub `icecolaa/go-trip`（私有镜像），分支 `master`；origin 配了双 push URL，`git push origin master` 一条命令两边同步 |
 | 数据库 | PocketBay 托管 PostgreSQL（生产）／SQLite（本地回退） |
 | 验收 | `acceptance/REPORT.md` + `acceptance/screenshots/`；冒烟 `scripts/smoke.sh` 91 项全过（2026-09-12） |
