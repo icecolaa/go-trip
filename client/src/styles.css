@@ -223,6 +223,16 @@ textarea.input { resize: vertical; min-height: 72px; line-height: 1.6; }
 }
 .trip-cover .emoji { font-size: 44px; filter: none; }
 .trip-cover .cover-date { color: var(--ink-faint); font-size: 12px; text-align: right; line-height: 1.5; font-family: var(--mono); }
+/* 卡片编辑入口：桌面 hover 显示，触屏常显 */
+.trip-edit-btn {
+  position: absolute; left: 12px; bottom: 10px; z-index: 2;
+  width: 30px; height: 30px; border-radius: var(--radius-ctl);
+  border: 1px solid var(--line); background: var(--card); font-size: 14px;
+  cursor: pointer; opacity: 0; transition: opacity .15s ease;
+}
+.trip-card:hover .trip-edit-btn { opacity: 1; }
+.trip-edit-btn:hover { border-color: var(--ink); }
+@media (hover: none) { .trip-edit-btn { opacity: .9; } }
 .trip-body { padding: 14px 16px 15px; display: flex; flex-direction: column; gap: 10px; flex: 1; }
 .trip-title { font-size: 16px; font-weight: 500; color: var(--ink); }
 .trip-dest { color: var(--ink-soft); font-size: 13px; display: flex; align-items: center; gap: 5px; }

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { api } from '../api';
+import { api, type TripCardInfo } from '../api';
 import { useApp } from '../store';
 import { Modal } from './ui';
 
@@ -13,17 +13,24 @@ function plusDays(n: number): string {
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
 }
 
-export default function CreateTripModal({ onClose, onCreated }: { onClose: () => void; onCreated: (id: number) => void }) {
+/** 创建旅程；传入 trip 时进入编辑模式（预填并调用 PATCH，无粘贴攻略区） */
+export default function CreateTripModal({ trip, onClose, onCreated, onSaved }: {
+  trip?: TripCardInfo;
+  onClose: () => void;
+  onCreated?: (id: number) => void;
+  onSaved?: () => void;
+}) {
+  const editing = Boolean(trip);
   const { toast } = useApp();
-  const [title, setTitle] = useState('');
-  const [destination, setDestination] = useState('');
-  const [startDate, setStartDate] = useState(plusDays(7));
-  const [endDate, setEndDate] = useState(plusDays(10));
-  const [budget, setBudget] = useState('');
-  const [emoji, setEmoji] = useState('🧭');
-  const [color, setColor] = useState(COLORS[0]);
+  const [title, setTitle] = useState(trip?.title || '');
+  const [destination, setDestination] = useState(trip?.destination || '');
+  const [startDate, setStartDate] = useState(trip?.startDate || plusDays(7));
+  const [endDate, setEndDate] = useState(trip?.endDate || plusDays(10));
+  const [budget, setBudget] = useState(trip?.budget ? String(trip.budget) : '');
+  const [emoji, setEmoji] = useState(trip?.coverEmoji || '🧭');
+  const [color, setColor] = useState(trip?.coverColor || COLORS[0]);
   const [guideText, setGuideText] = useState('');
-  const [busy, setBusy] = useState<'' | 'creating' | 'parsing'>('');
+  const [busy, setBusy] = useState<'' | 'creating' | 'parsing' | 'saving'>('');
 
   const create = async () => {
     if (busy) return;
@@ -52,15 +59,39 @@ export default function CreateTripModal({ onClose, onCreated }: { onClose: () =>
       } else {
         toast('旅程已创建');
       }
-      onCreated(r.id);
+      onCreated?.(r.id);
     } catch (e: any) {
       toast(e.message || '创建失败', true);
       setBusy('');
     }
   };
 
+  const save = async () => {
+    if (!trip || busy) return;
+    if (!title.trim()) { toast('给旅程起个名字吧', true); return; }
+    if (endDate < startDate) { toast('结束日期不能早于开始日期', true); return; }
+    setBusy('saving');
+    try {
+      await api.patch(`/api/trips/${trip.id}`, {
+        title: title.trim(),
+        destination: destination.trim(),
+        startDate,
+        endDate,
+        budget: Number(budget) || 0,
+        coverEmoji: emoji,
+        coverColor: color,
+      });
+      toast('旅程已更新');
+      onSaved?.();
+      onClose();
+    } catch (e: any) {
+      toast(e.message || '保存失败', true);
+      setBusy('');
+    }
+  };
+
   return (
-    <Modal title="创建一段新旅程" onClose={onClose} width={500}>
+    <Modal title={editing ? '编辑旅程' : '创建一段新旅程'} onClose={onClose} width={500}>
       <div className="field">
         <label>旅程名称</label>
         <input className="input" value={title} onChange={e => setTitle(e.target.value)} placeholder="例如：云南大理丽江 6 日慢游" maxLength={60} />
@@ -97,18 +128,34 @@ export default function CreateTripModal({ onClose, onCreated }: { onClose: () =>
           ))}
         </div>
       </div>
-      <div className="field" style={{ marginBottom: 4 }}>
-        <label>粘贴攻略（可选）</label>
-        <textarea className="input" value={guideText} onChange={e => setGuideText(e.target.value)} rows={5}
-          placeholder={'支持「Day 1: …」或「第 1 天：…」格式，粘贴后自动解析成每日行程。'} />
-        <span className="muted">创建时将调用 AI 智能识别；未配置 AI Key 时使用内置规则解析，同样可用。</span>
-      </div>
-      <div className="modal-ops">
-        <button className="btn" onClick={onClose}>取消</button>
-        <button className="btn primary" onClick={create} disabled={busy !== ''}>
-          {busy === 'creating' ? '创建中…' : busy === 'parsing' ? 'AI 解析攻略中…' : '创建旅程'}
-        </button>
-      </div>
+      {editing ? (
+        <>
+          <p className="muted" style={{ margin: '4px 0 0' }}>
+            修改出发/结束日期后，每日行程会自动按新日期对齐；天数变化时多余的天会保留内容并排在末尾。
+          </p>
+          <div className="modal-ops">
+            <button className="btn" onClick={onClose}>取消</button>
+            <button className="btn primary" onClick={save} disabled={busy !== ''}>
+              {busy === 'saving' ? '保存中…' : '保存修改'}
+            </button>
+          </div>
+        </>
+      ) : (
+        <>
+          <div className="field" style={{ marginBottom: 4, marginTop: 4 }}>
+            <label>粘贴攻略（可选）</label>
+            <textarea className="input" value={guideText} onChange={e => setGuideText(e.target.value)} rows={5}
+              placeholder={'支持「Day 1: …」「第 1 天：…」或「D5：10月5日：…」格式，粘贴后自动解析成每日行程。'} />
+            <span className="muted">创建时将调用 AI 智能识别；未配置 AI Key 时使用内置规则解析，同样可用。</span>
+          </div>
+          <div className="modal-ops">
+            <button className="btn" onClick={onClose}>取消</button>
+            <button className="btn primary" onClick={create} disabled={busy !== ''}>
+              {busy === 'creating' ? '创建中…' : busy === 'parsing' ? 'AI 解析攻略中…' : '创建旅程'}
+            </button>
+          </div>
+        </>
+      )}
     </Modal>
   );
 }

@@ -15,6 +15,7 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<Filter>('all');
   const [creating, setCreating] = useState(false);
+  const [editing, setEditing] = useState<TripCardInfo | null>(null);
   const [guideOpen, setGuideOpen] = useState(false);
 
   const load = () => {
@@ -72,7 +73,7 @@ export default function DashboardPage() {
         </div>
       ) : (
         <div className="trip-grid">
-          {shown.map(t => <TripCard key={t.id} t={t} onClick={() => nav(`/trip/${t.id}`)} />)}
+          {shown.map(t => <TripCard key={t.id} t={t} onClick={() => nav(`/trip/${t.id}`)} onEdit={() => setEditing(t)} />)}
         </div>
       )}
 
@@ -82,18 +83,36 @@ export default function DashboardPage() {
           onCreated={(id) => { setCreating(false); nav(`/trip/${id}`); }}
         />
       )}
+      {editing && (
+        <CreateTripModal
+          trip={editing}
+          onClose={() => setEditing(null)}
+          onSaved={() => { setEditing(null); load(); }}
+        />
+      )}
       {guideOpen && <UsageGuideModal onClose={() => setGuideOpen(false)} />}
     </div>
   );
 }
 
-function TripCard({ t, onClick }: { t: TripCardInfo; onClick: () => void }) {
+function TripCard({ t, onClick, onEdit }: { t: TripCardInfo; onClick: () => void; onEdit: () => void }) {
   const cd = countdownText(t);
+  const canEdit = t.myRole === 'owner' || t.myRole === 'admin';
   return (
     <div className="card trip-card" onClick={onClick}>
       {/* DESIGN.md：禁止彩色整块底，用户封面色降为左侧竖条 */}
       <div className="trip-cover" style={{ ['--cover-accent' as string]: t.coverColor }}>
         <span className="emoji">{t.coverEmoji}</span>
+        {canEdit && (
+          <button
+            className="trip-edit-btn"
+            title="编辑旅程"
+            aria-label="编辑旅程"
+            onClick={e => { e.stopPropagation(); onEdit(); }}
+          >
+            ✏️
+          </button>
+        )}
         <div className="cover-date">
           {t.startDate}<br />~ {t.endDate}
         </div>
