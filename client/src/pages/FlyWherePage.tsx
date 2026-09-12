@@ -330,6 +330,7 @@ export default function FlyWherePage() {
     <div className="page">
       <div className="dash-head">
         <div>
+          <div className="fw-eyebrow">PRICE-LED FLIGHT DISCOVERY</div>
           <h1>飞哪儿</h1>
           <div className="sub">根据票价，决定飞哪儿 —— 固定日期，探索低价目的地</div>
         </div>
@@ -373,13 +374,12 @@ export default function FlyWherePage() {
               <button onClick={() => set({ passengers: Math.min(9, form.passengers + 1) })} title="增加">＋</button>
             </div>
           </div>
-        </div>
-
-        <div className="row-ops" style={{ marginTop: 4 }}>
-          <button className="btn primary" onClick={search} disabled={busy}>
-            {busy ? `搜索中… 已等待 ${elapsed} 秒` : '搜索低价目的地'}
-          </button>
-          <span className="muted">全国探索通常需要 10~40 秒（多轮真实航班查询）；指定目的地会更快</span>
+          <div className="field">
+            <label>开始探索</label>
+            <button className="btn fw-search" onClick={search} disabled={busy} title="全国探索通常需要 10~40 秒（多轮真实航班查询）；指定目的地会更快">
+              {busy ? `搜索中… ${elapsed}s` : '搜索低价目的地'}
+            </button>
+          </div>
         </div>
 
         <div className="fw-chiprow">
@@ -420,28 +420,34 @@ export default function FlyWherePage() {
 
       {results && (
         <div className="card" style={{ padding: '14px 18px', marginBottom: 14 }}>
-          <div className="row-ops">
-            <div style={{ flex: 1, minWidth: 220 }}>
-              <h2 className="section-title" style={{ margin: 0 }}>
-                探索结果 · {uniqCities} 个目的地 / {filtered.length} 组组合
-              </h2>
-              <div className="muted" style={{ marginTop: 4 }}>
-                {tripLabel} · {form.passengers} 位成人
-                {minPrice != null && <> · 最低总价 <b style={{ color: 'var(--orange)' }}>¥{minPrice.toLocaleString()}</b></>}
+          <div className="fw-result-head">
+            <span className="fw-count-badge">{uniqCities}</span>
+            <div className="fw-result-title">
+              <h2>探索结果 · {uniqCities} 个目的地</h2>
+              <div className="muted">
+                {filtered.length} 组匹配组合 · {tripLabel} · {form.passengers} 位成人
+                {minPrice != null && <> · 最低总价 <b style={{ color: 'var(--fw-accent)' }}>¥{minPrice.toLocaleString()}</b></>}
                 {restoredTs != null && ' · 历史快照'}
                 {trend && !restoredTs && (
-                  <span className="tag" style={{ marginLeft: 8, color: trend.deltaPerPerson > 0 ? 'var(--green-deep)' : trend.deltaPerPerson < 0 ? 'var(--orange)' : undefined }}>
+                  <span className="tag" style={{ marginLeft: 8, color: trend.deltaPerPerson > 0 ? 'var(--fw-green)' : trend.deltaPerPerson < 0 ? 'var(--fw-accent)' : undefined }}>
                     {trend.deltaPerPerson > 0 ? `较上次 ↓¥${Math.abs(trend.deltaPerPerson).toLocaleString()}/人` : trend.deltaPerPerson < 0 ? `较上次 ↑¥${Math.abs(trend.deltaPerPerson).toLocaleString()}/人` : '与上次持平'}（{fmtTs(new Date(trend.checkedAt).getTime())} 查过）
                   </span>
                 )}
               </div>
             </div>
-            <div className="fw-seg">
-              <button className={view === 'map' ? 'on' : ''} onClick={() => setView('map')}>地图</button>
-              <button className={view === 'list' ? 'on' : ''} onClick={() => setView('list')}>列表</button>
+            <div className="fw-result-ops">
+              <div className="fw-seg">
+                <button className={view === 'map' ? 'on' : ''} onClick={() => setView('map')}>地图</button>
+                <button className={view === 'list' ? 'on' : ''} onClick={() => setView('list')}>列表</button>
+              </div>
+              {view === 'list' && (
+                <div className="fw-seg">
+                  <button className={mode === 'dest' ? 'on' : ''} onClick={() => setMode('dest')}>按目的地</button>
+                  <button className={mode === 'all' ? 'on' : ''} onClick={() => setMode('all')}>全部组合</button>
+                </div>
+              )}
+              <button className="btn sm fw-ai-pill" onClick={askAdvice} disabled={adviceBusy}>{adviceBusy ? 'AI 分析中…' : 'AI 建议'}</button>
             </div>
-            <button className="btn sm" onClick={askAdvice} disabled={adviceBusy}>{adviceBusy ? 'AI 分析中…' : 'AI 建议'}</button>
-            <button className="btn sm ghost" onClick={openFee}>价格说明</button>
           </div>
 
           <div className="fw-filterbar">
@@ -466,12 +472,8 @@ export default function FlyWherePage() {
               <option value={8}>≤ 8 小时</option>
             </select>
             {hasActiveFilter && <button className="btn sm ghost" onClick={() => resetFilters()}>清除筛选</button>}
-            {view === 'list' && (
-              <div className="fw-seg" style={{ marginLeft: 'auto' }}>
-                <button className={mode === 'dest' ? 'on' : ''} onClick={() => setMode('dest')}>按目的地</button>
-                <button className={mode === 'all' ? 'on' : ''} onClick={() => setMode('all')}>全部组合</button>
-              </div>
-            )}
+            <span style={{ flex: 1 }} />
+            <button className="fw-ghost-link" onClick={openFee}>价格说明</button>
           </div>
 
           {advice && adviceOpen && (
@@ -537,7 +539,10 @@ export default function FlyWherePage() {
         <div className="card empty"><span className="big">🛫</span>没有找到符合条件的结果，试试调整日期或目的地</div>
       )}
 
-      <p className="fw-foot">最终价格与余票以飞猪下单页为准 · 天气预报来自 Open-Meteo · 数据仅供出行决策参考</p>
+      <p className="fw-foot">
+        <span>飞哪儿 FlyWhere / 真实航班反向探索</span>
+        <span>最终价格与余票以飞猪下单页为准 · 天气预报来自 Open-Meteo · 数据仅供出行决策参考</span>
+      </p>
 
       {historyOpen && (
         <Modal title="查询记录" onClose={() => setHistoryOpen(false)} width={560}>

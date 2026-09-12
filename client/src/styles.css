@@ -1,31 +1,35 @@
 /* ============ GoTrip 设计系统 —— 遵循根目录 DESIGN.md（Apple 亮色风） ============ */
 /* 雾灰画布 + 白色卡片 + 碳黑文字 + 苹果蓝唯一交互色；药丸按钮 980px、卡片/输入 8px、无阴影 */
 :root {
-  /* 表面：Frost 画布 → Ice 洗染 → Pebble 按钮底 */
-  --bg: #f5f5f7;
-  --bg-soft: #e2e2e5;   /* Pebble：按钮底、禁用面 */
-  --card: #ffffff;
-  --card-warm: #f4f8fb; /* Ice：嵌套面板淡蓝洗染 */
-  --frost: #f4f8fb;
-  /* 文本：Carbon / Smoke / Ash */
-  --ink: #1d1d1f;
-  --ink-soft: #333333;
-  --ink-faint: #707070;
-  /* 发丝边框 */
-  --line: #d2d2d7;
-  --line-strong: #333333;
+  /* 表面：对齐 flywhere 原版（paper 画布 / surface 卡片 / surface-2 次表面） */
+  --bg: #f3f1eb;
+  --bg-soft: #f7f5ef;
+  --card: #fffdf8;
+  --card-warm: #f7f5ef;
+  --frost: #f7f5ef;
+  /* 文本：flywhere ink / muted */
+  --ink: #1e2421;
+  --ink-soft: #47504a;
+  --ink-faint: #6f7772;
+  /* 边框：flywhere line / line-dark */
+  --line: #dcded8;
+  --line-strong: #1e2421;
+  /* flywhere 橙红强调（价格、eyebrow、hover）与绿色（机场码） */
+  --fw-accent: #e45f36;
+  --fw-accent-soft: #f9e7df;
+  --fw-green: #37715a;
   /* 交互色：填充蓝 / 描边蓝 / 装饰蓝 */
   --cta: #0071e3;
-  --cta-ink: #f4f8fb;
+  --cta-ink: #fffdf8;
   --link: #0066cc;
   --signal: #2997ff;
   /* 旧令牌退役映射（收敛为碳黑系，避免第二交互色） */
-  --green: #1d1d1f;
-  --green-deep: #1d1d1f;
-  --green-soft: #e2e2e5;
-  --orange: #1d1d1f;
-  --orange-soft: #e2e2e5;
-  --red: #1d1d1f;
+  --green: #1e2421;
+  --green-deep: #1e2421;
+  --green-soft: #f7f5ef;
+  --orange: #e45f36;
+  --orange-soft: #f9e7df;
+  --red: #1e2421;
   --gold: #858585;
   --blue: #0066cc;
   --violet: #2997ff;
@@ -174,13 +178,13 @@ textarea.input { resize: vertical; min-height: 72px; line-height: 1.6; }
   height: 48px; display: flex; align-items: center; gap: 14px;
 }
 /* 导航内元素统一转浅色小字链接（Global Nav 规范） */
-.topbar .btn { background: transparent; border: none; color: #f5f5f7; font-size: 12.5px; font-weight: 400; padding: 6px 10px; }
+.topbar .btn { background: transparent; border: none; color: #fffdf8; font-size: 12.5px; font-weight: 400; padding: 6px 10px; }
 .topbar .btn:hover { color: #fff; text-decoration: none; opacity: .85; }
 .topbar .btn.primary { background: var(--cta); color: #fff; padding: 4px 12px; }
 .topbar .btn.primary:hover { opacity: .9; }
 .topbar .muted { color: #858585; }
 .logo { font-family: var(--sans); font-size: 16px; font-weight: 600; color: var(--ink); display: flex; align-items: center; gap: 8px; letter-spacing: -0.01em; }
-.topbar .logo { color: #f5f5f7; }
+.topbar .logo { color: #fffdf8; }
 .topbar .logo small { color: #858585; }
 .logo .mark { font-size: 18px; }
 .logo small { font-size: 10px; color: var(--ink-faint); font-weight: 400; margin-left: 2px; letter-spacing: .12em; font-family: var(--mono); }
@@ -908,6 +912,39 @@ textarea.input { resize: vertical; min-height: 72px; line-height: 1.6; }
   .chip { padding: 5px 11px; font-size: 12px; }
 }
 
+/* flywhere 风格：eyebrow 小字 + 黑药丸搜索按钮 + 结果头徽标 + 橙红描边 AI 药丸 */
+.fw-eyebrow {
+  font-size: 11px; font-weight: 700; letter-spacing: .18em;
+  color: var(--fw-accent); text-transform: uppercase; margin-bottom: 6px;
+}
+.fw-search {
+  background: var(--ink); border-color: var(--ink); color: #fff;
+  padding: 10px 18px; font-weight: 600; width: 100%;
+}
+.fw-search:hover { background: var(--fw-accent); border-color: var(--fw-accent); color: #fff !important; opacity: 1; }
+.fw-search:disabled { background: var(--ink); border-color: var(--ink); color: #fff; opacity: .55; }
+.fw-count-badge {
+  width: 38px; height: 38px; border-radius: 50%; flex-shrink: 0;
+  background: var(--fw-accent-soft); color: var(--fw-accent);
+  font-size: 15px; font-weight: 700;
+  display: inline-flex; align-items: center; justify-content: center;
+}
+.fw-result-head { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.fw-result-title { display: flex; flex-direction: column; gap: 2px; min-width: 200px; }
+.fw-result-title h2 { margin: 0; }
+.fw-result-ops { margin-left: auto; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.fw-ai-pill {
+  border: 1px solid var(--fw-accent); color: var(--fw-accent);
+  background: var(--card); border-radius: var(--radius-ctl);
+}
+.fw-ai-pill:hover { background: var(--fw-accent); border-color: var(--fw-accent); color: #fff !important; opacity: 1; }
+.fw-ghost-link {
+  background: none; border: none; color: var(--ink-soft);
+  font-size: 12.5px; text-decoration: underline; text-underline-offset: 3px;
+  cursor: pointer; font-family: inherit; padding: 4px 2px;
+}
+.fw-ghost-link:hover { color: var(--fw-accent); }
+
 /* AI 生成进度反馈 */
 .ai-progress {
   margin-top: 10px; padding: 8px 12px;
@@ -936,11 +973,11 @@ textarea.input { resize: vertical; min-height: 72px; line-height: 1.6; }
 .fw-rank {
   display: inline-flex; align-items: center; justify-content: center;
   min-width: 30px; height: 30px; border-radius: var(--radius-ctl);
-  background: var(--bg-soft); color: var(--ink); font-weight: 400; font-family: var(--mono);
+  background: var(--fw-accent-soft); color: var(--fw-accent); font-weight: 400; font-family: var(--mono);
 }
 .fw-city { font-size: 16px; font-weight: 500; display: flex; align-items: center; flex-wrap: wrap; gap: 4px; }
 .fw-price { text-align: right; }
-.fw-price-total { font-size: 24px; font-weight: 400; color: var(--orange); letter-spacing: -0.02em; }
+.fw-price-total { font-size: 24px; font-weight: 400; color: var(--fw-accent); letter-spacing: -0.02em; }
 .fw-card-foot { display: flex; align-items: center; justify-content: space-between; margin-top: 8px; padding-top: 8px; border-top: 1px dashed var(--line); }
 .fw-advice { margin-top: 10px; background: var(--card-warm); border: none; border-radius: var(--radius-ui); padding: 10px 14px; }
 .fw-advice-summary { font-size: 13.5px; color: var(--ink); margin-bottom: 8px; font-weight: 500; }
@@ -952,9 +989,9 @@ textarea.input { resize: vertical; min-height: 72px; line-height: 1.6; }
 
 /* 飞哪儿 v2：条件 chips / 分段控件 / 工具栏 / 目的地卡片 / 查询记录 */
 .fw-chiprow { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 12px; }
-.fw-chip { font-size: 12px; color: var(--ink-soft); background: var(--bg-soft); border: 1px solid transparent; border-radius: var(--radius-ctl); padding: 3px 11px; white-space: nowrap; }
-.fw-chip-btn { cursor: pointer; font-family: inherit; color: var(--link); background: var(--card); border-color: var(--line); }
-.fw-chip-btn:hover { border-color: var(--ink-soft); }
+.fw-chip { font-size: 12px; color: var(--ink-soft); background: var(--card); border: 1px solid var(--line); border-radius: var(--radius-ctl); padding: 3px 11px; white-space: nowrap; }
+.fw-chip-btn { cursor: pointer; font-family: inherit; color: var(--ink); background: var(--card); border-color: var(--line); }
+.fw-chip-btn:hover { border-color: var(--ink); color: var(--ink); }
 .fw-spacer { flex: 1; }
 .fw-seg { display: inline-flex; gap: 3px; padding: 3px; border: 1px solid var(--line); border-radius: var(--radius-ctl); background: var(--bg-soft); }
 .fw-seg button { border: 0; background: transparent; padding: 5px 16px; border-radius: var(--radius-ctl); font-size: 13px; color: var(--ink-faint); cursor: pointer; font-family: inherit; transition: background-color .15s ease, color .15s ease; }
@@ -979,12 +1016,12 @@ textarea.input { resize: vertical; min-height: 72px; line-height: 1.6; }
 .fw-dest-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .fw-code { font-family: var(--mono); font-size: 11px; font-weight: 400; color: var(--bg); background: var(--ink); border-radius: 4px; padding: 3px 6px; }
 .fw-dest-city { font-size: 15.5px; }
-.fw-dest-price { margin-left: auto; font-size: 18px; font-weight: 400; color: var(--orange); letter-spacing: -0.02em; }
+.fw-dest-price { margin-left: auto; font-size: 18px; font-weight: 400; color: var(--fw-accent); letter-spacing: -0.02em; }
 .fw-dest-meta { font-size: 12px; color: var(--ink-soft); line-height: 1.7; }
 .fw-dest-ops { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
 .fw-dest-combos { display: flex; flex-direction: column; gap: 8px; margin-top: 4px; }
 .fw-dest-combos .fw-card { background: var(--card); margin-bottom: 0; }
-.fw-tag-visited { font-size: 11px; color: var(--ink); background: var(--bg-soft); border: 1px solid transparent; border-radius: var(--radius-ctl); padding: 1px 8px; }
+.fw-tag-visited { font-size: 11px; color: var(--ink-soft); background: var(--card); border: 1px solid var(--line); border-radius: var(--radius-ctl); padding: 1px 8px; }
 .fw-legs { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 5px; }
 .fw-leg { flex: 1; min-width: 150px; }
 .fw-leg-cap { font-size: 11px; color: var(--ink-faint); display: flex; justify-content: space-between; margin-bottom: 2px; }
@@ -999,7 +1036,7 @@ textarea.input { resize: vertical; min-height: 72px; line-height: 1.6; }
 .fw-fee-list { padding-left: 18px; margin: 6px 0 0; }
 .fw-fee-list li { font-size: 13px; color: var(--ink-soft); line-height: 1.8; }
 .fw-fee-list b { color: var(--ink); }
-.fw-foot { text-align: center; font-size: 12px; color: var(--ink-faint); margin: 16px 0 6px; }
+.fw-foot { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; font-size: 12px; color: var(--ink-faint); margin: 16px 0 6px; }
 
 
 /* 日志图片与攻略收藏 */
