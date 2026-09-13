@@ -1,8 +1,8 @@
 /* ============ GoTrip 设计系统 —— 遵循根目录 DESIGN.md（Apple 亮色风） ============ */
 /* 雾灰画布 + 白色卡片 + 碳黑文字 + 苹果蓝唯一交互色；药丸按钮 980px、卡片/输入 8px、无阴影 */
 :root {
-  /* 表面：对齐 flywhere 原版（paper 画布 / surface 卡片 / surface-2 次表面） */
-  --bg: #f3f1eb;
+  /* 表面：flywhere 暖白 + 弥散奶油基底 */
+  --bg: #f7f1e6;
   --bg-soft: #f7f5ef;
   --card: #fffdf8;
   --card-warm: #f7f5ef;
@@ -73,6 +73,19 @@ body {
   background: var(--bg);
   -webkit-font-smoothing: antialiased;
   font-variant-numeric: tabular-nums; /* 价格、预算等数字对齐不跳动 */
+}
+
+/* 弥散式背景：奶油基底上的桃橙/粉光晕（fixed 层，滚动稳定，卡片浮在其上） */
+body::before {
+  content: '';
+  position: fixed; inset: 0; z-index: -1; pointer-events: none;
+  background:
+    radial-gradient(42rem 30rem at 10% -6%, rgba(248, 205, 168, 0.52), transparent 64%),
+    radial-gradient(38rem 26rem at 92% -4%, rgba(247, 196, 186, 0.46), transparent 62%),
+    radial-gradient(52rem 34rem at 48% 110%, rgba(250, 216, 172, 0.48), transparent 62%),
+    radial-gradient(30rem 22rem at 98% 74%, rgba(244, 186, 180, 0.32), transparent 60%),
+    radial-gradient(28rem 20rem at 2% 86%, rgba(252, 226, 192, 0.38), transparent 60%),
+    radial-gradient(60rem 40rem at 50% 42%, rgba(253, 247, 235, 0.5), transparent 70%);
 }
 h1, h2, h3, .serif {
   font-family: var(--sans);
