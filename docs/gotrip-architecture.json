@@ -1,0 +1,343 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "GoTrip 系统架构",
+    "locale": "zh-CN",
+    "quality_profile": "showcase",
+    "output": "docs/gotrip-architecture.html",
+    "repository": {
+      "url": "https://gitee.com/ice-colaa/go-trip",
+      "provider": "gitee",
+      "revision": "b432c33d008032d3fa6a7a88973d5b0d2184290a",
+      "link_mode": "web"
+    },
+    "views": [
+      {
+        "id": "request-path",
+        "label": "主请求路径",
+        "focus": [
+          "spa",
+          "api",
+          "db"
+        ],
+        "note": "浏览器经 Bearer 会话进入 Node 服务，完成 SQL 读写后返回 JSON。"
+      },
+      {
+        "id": "realtime",
+        "label": "实时协作",
+        "focus": [
+          "spa",
+          "ws",
+          "api"
+        ],
+        "note": "WebSocket 订阅与 presence，变更由服务端广播给同行成员。"
+      },
+      {
+        "id": "integrations",
+        "label": "外部依赖",
+        "focus": [
+          "flywhere",
+          "ai",
+          "flyai",
+          "glm",
+          "amap",
+          "meteo"
+        ],
+        "note": "机票、AI、POI 与天气均为出站调用，密钥只存环境变量。"
+      }
+    ],
+    "viewBox": [
+      1340,
+      400
+    ]
+  },
+  "components": [
+    {
+      "id": "spa",
+      "type": "frontend",
+      "label": "浏览器客户端",
+      "sublabel": "React 18 SPA · Vite",
+      "tag": "Hash 路由 · Leaflet",
+      "sources": [
+        {
+          "path": "client/src/main.tsx",
+          "label": "应用入口"
+        },
+        {
+          "path": "client/src/api.ts",
+          "label": "API 封装"
+        }
+      ],
+      "row": 1,
+      "col": 0
+    },
+    {
+      "id": "api",
+      "type": "backend",
+      "label": "GoTrip Node 服务",
+      "sublabel": "原生 HTTP · 无框架",
+      "tag": "route() 注册 · Bearer 会话",
+      "sources": [
+        {
+          "path": "server/src/index.ts",
+          "label": "服务入口"
+        },
+        {
+          "path": "server/src/routes.ts",
+          "label": "全部路由"
+        },
+        {
+          "path": "server/src/uploads.ts",
+          "label": "上传净化"
+        }
+      ],
+      "row": 1,
+      "col": 1
+    },
+    {
+      "id": "ws",
+      "type": "messagebus",
+      "label": "WebSocket 网关",
+      "sublabel": "/ws?token=",
+      "tag": "presence + 变更广播",
+      "sources": [
+        {
+          "path": "server/src/ws.ts",
+          "label": "WS 网关"
+        }
+      ],
+      "row": 2,
+      "col": 0
+    },
+    {
+      "id": "flywhere",
+      "type": "backend",
+      "label": "飞哪儿机票探索",
+      "sublabel": "flywhere.ts",
+      "tag": "队列 · 退避 · 缓存",
+      "sources": [
+        {
+          "path": "server/src/flywhere.ts",
+          "label": "机票探索"
+        }
+      ],
+      "row": 0,
+      "col": 2
+    },
+    {
+      "id": "ai",
+      "type": "backend",
+      "label": "AI 规划 / 助手",
+      "sublabel": "ai.ts · assistant.ts",
+      "tag": "攻略解析 · 行程生成 · 锦囊",
+      "sources": [
+        {
+          "path": "server/src/ai.ts",
+          "label": "解析与生成"
+        }
+      ],
+      "row": 0,
+      "col": 0
+    },
+    {
+      "id": "db",
+      "type": "database",
+      "label": "PostgreSQL（托管）",
+      "sublabel": "PocketBay · TLS",
+      "tag": "SQLite 本地回退",
+      "sources": [
+        {
+          "path": "server/src/db.ts",
+          "label": "建表与迁移"
+        }
+      ],
+      "row": 1,
+      "col": 2
+    },
+    {
+      "id": "flyai",
+      "type": "external",
+      "label": "飞猪 AI 开放平台",
+      "sublabel": "飞猪 AI 开放平台",
+      "row": 0,
+      "col": 3
+    },
+    {
+      "id": "glm",
+      "type": "external",
+      "label": "智谱 GLM",
+      "sublabel": "智谱开放平台",
+      "row": 0,
+      "col": 1
+    },
+    {
+      "id": "amap",
+      "type": "external",
+      "label": "高德开放平台",
+      "sublabel": "高德 POI 服务",
+      "row": 2,
+      "col": 1
+    },
+    {
+      "id": "meteo",
+      "type": "external",
+      "label": "Open-Meteo",
+      "sublabel": "Open-Meteo",
+      "row": 2,
+      "col": 3
+    }
+  ],
+  "boundaries": [
+    {
+      "kind": "region",
+      "label": "PocketBay 托管平台 · 密钥只存环境变量 / 休眠保活",
+      "wraps": [
+        "api",
+        "ws",
+        "flywhere",
+        "ai",
+        "db"
+      ]
+    },
+    {
+      "kind": "security-group",
+      "label": "GoTrip 信任边界 · 会话鉴权 / 成员角色 / 上传净化",
+      "wraps": [
+        "api",
+        "ws"
+      ]
+    },
+    {
+      "kind": "region",
+      "label": "外部第三方服务 · 出站 HTTPS",
+      "wraps": [
+        "flyai",
+        "glm",
+        "amap",
+        "meteo"
+      ]
+    }
+  ],
+  "connections": [
+    {
+      "id": "spa-to-api",
+      "from": "spa",
+      "to": "api",
+      "label": "REST /api/* · Bearer 会话",
+      "variant": "emphasis",
+      "width": 3,
+      "labelDy": 26
+    },
+    {
+      "id": "api-to-db",
+      "from": "api",
+      "to": "db",
+      "label": "SQL 读写（双方言）",
+      "variant": "emphasis",
+      "width": 3,
+      "labelDy": 26
+    },
+    {
+      "id": "spa-to-ws",
+      "from": "spa",
+      "to": "ws",
+      "label": "WS ⇄ 订阅 / 广播",
+      "variant": "dashed",
+      "fromSide": "bottom",
+      "labelDy": 46
+    },
+    {
+      "id": "api-to-flywhere",
+      "from": "api",
+      "to": "flywhere",
+      "label": "spawn 子进程",
+      "fromSide": "right",
+      "toSide": "left"
+    },
+    {
+      "id": "flywhere-to-flyai",
+      "from": "flywhere",
+      "to": "flyai",
+      "label": "航班查询（缓存+退避）"
+    },
+    {
+      "id": "api-to-ai",
+      "from": "api",
+      "to": "ai",
+      "label": "进程内模块调用",
+      "variant": "dashed"
+    },
+    {
+      "id": "ai-to-glm",
+      "from": "ai",
+      "to": "glm",
+      "label": "chat 调用"
+    },
+    {
+      "id": "api-to-amap",
+      "from": "api",
+      "to": "amap",
+      "label": "POI / 编码",
+      "labelDy": 34
+    },
+    {
+      "id": "api-to-meteo",
+      "from": "api",
+      "to": "meteo",
+      "label": "天气",
+      "labelDy": 34
+    }
+  ],
+  "cards": [
+    {
+      "dot": "emerald",
+      "title": "协作能力（行程域）",
+      "items": [
+        "行程 / 预算 / 清单 / 锦囊 / 日志，成员按 owner / admin / editor / viewer 协作",
+        "邀请码加入与只读分享链接（share_token）",
+        "AI 攻略解析：整册覆盖或精准重写某几天"
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "数据与迁移",
+      "items": [
+        "双方言 DDL：PG 顺序 await，SQLite try/catch 兜底；启动自动建表 + 种子",
+        "flywhere_watch 价格记忆：按路线记录最低单人价，重查返回涨跌"
+      ]
+    },
+    {
+      "dot": "orange",
+      "title": "飞哪儿链路",
+      "items": [
+        "spawn 飞猪子进程：串行队列 + 429 退避",
+        "双层缓存：原始 10 分钟 / 搜索 30 分钟，键含全部参数"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "安全与信任",
+      "items": [
+        "Bearer 会话 + 角色鉴权；上传 dataURL 校验与防穿越，body 上限 25MB",
+        "密钥只存环境变量，绝不进仓库与部署包"
+      ]
+    },
+    {
+      "dot": "cyan",
+      "title": "部署与保活",
+      "items": [
+        "PocketBay Docker + Cloudflare 边缘，闲置休眠靠 keepalive 心跳",
+        "client/dist 与 /guide 静态页由同一 Node 进程托管"
+      ]
+    }
+  ],
+  "layout": {
+    "mode": "grid",
+    "cols": 4,
+    "gapX": 80,
+    "gapY": 56,
+    "cellW": 200,
+    "cellH": 62
+  }
+}

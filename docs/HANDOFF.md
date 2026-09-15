@@ -9,6 +9,7 @@
 |---|---|
 | 生产 | `https://gotrip.pocketbay.app`，部署 #7591（2026-09-13），`/health` 正常；飞哪儿页对齐 flywhere 原版布局，全站切换 flywhere 暖白色板（线上 CSS 已验证） |
 | 最近提交 | `7f45ab1` style: 全站背景改弥散式暖色渐变（部署 #7932） |
+| 架构图 | `docs/gotrip-architecture.html`（Archify 生成，源规格 `docs/gotrip-architecture.json`，showcase 9/9 检查通过） |
 | 旅程编辑 | 卡片封面 hover ✏️ 按钮（owner/admin）→ 编辑弹窗（预填/改日期自动对齐天数），提交 #7595 |
 | 仓库 | Gitee `ice-colaa/go-trip` + GitHub `icecolaa/go-trip`（私有镜像），分支 `master`；origin 配了双 push URL，`git push origin master` 一条命令两边同步 |
 | 数据库 | PocketBay 托管 PostgreSQL（生产）／SQLite（本地回退） |
