@@ -3,3 +3,5 @@ dist/
 .swc/
 *.log
 .DS_Store
+*.key
+private.*.key

@@ -32,3 +32,20 @@ npm run dev:weapp     # 监听构建，产物在 dist/
 ## 与 server 的兼容性
 
 后端零改动：REST + Bearer、`/ws?token=` 查询参数鉴权、dataURL 图片提交均可由小程序等价调用。
+
+## 上传 / 预览（miniprogram-ci）
+
+免开发者工具，命令行直接上传代码或生成预览二维码：
+
+```bash
+npm run preview               # 生成 preview-qr.jpg，微信扫码打开体验版预览
+npm run upload -- 1.0.0       # 上传为开发版本（版本管理里可见）
+npm run upload -- 1.0.0 "修复预算页"
+```
+
+前置条件：
+
+1. 上传密钥 `private.<appid>.key` 放在本目录（已被 .gitignore 忽略，绝不提交）；
+2. 公众平台「开发设置 → IP 白名单」需包含当前机器出口 IP（动态 IP 建议关闭白名单或定期更新）。
+
+> 密钥/Secret 若曾离开本机，及时在公众平台重置。

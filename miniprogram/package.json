@@ -12,9 +12,15 @@
   "scripts": {
     "build:weapp": "taro build --type weapp",
     "dev:weapp": "npm run build:weapp -- --watch",
-    "check": "tsc --noEmit"
+    "check": "tsc --noEmit",
+    "preview": "node scripts/upload.js preview",
+    "upload": "node scripts/upload.js"
   },
-  "browserslist": ["last 3 versions", "Android >= 4.1", "ios >= 8"],
+  "browserslist": [
+    "last 3 versions",
+    "Android >= 4.1",
+    "ios >= 8"
+  ],
   "dependencies": {
     "@babel/runtime": "^7.24.4",
     "@tarojs/components": "3.6.25",
@@ -36,6 +42,7 @@
     "@types/webpack-env": "^1.18.4",
     "babel-preset-taro": "3.6.25",
     "typescript": "^5.4.5",
-    "webpack": "5.91.0"
+    "webpack": "5.91.0",
+    "miniprogram-ci": "^2.1.14"
   }
 }
