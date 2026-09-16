@@ -1,0 +1,115 @@
+import { useState } from 'react'
+import { View, Text, Input, Button, Picker } from '@tarojs/components'
+import Taro from '@tarojs/taro'
+import { api, ApiFail } from '../../api/request'
+
+interface FlightResult {
+  id: string; city: string; code: string; domestic: boolean
+  date: string; backDate: string; airline: string
+  out: string; outArr: string; back: string; backArr: string; direct: boolean
+  duration: number; totalPrice: number; passengers: number; rank: number
+  weather?: { date: string; icon: string; tempMax: number | null; tempMin: number | null }[]
+}
+
+function plusDays(n: number): string {
+  const d = new Date()
+  d.setDate(d.getDate() + n)
+  const p = (x: number) => String(x).padStart(2, '0')
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`
+}
+
+export default function FlyWhere() {
+  const [origin, setOrigin] = useState('北京')
+  const [destination, setDestination] = useState('')
+  const [depDate, setDepDate] = useState(plusDays(14))
+  const [backDate, setBackDate] = useState(plusDays(17))
+  const [round, setRound] = useState(true)
+  const [busy, setBusy] = useState(false)
+  const [elapsed, setElapsed] = useState(0)
+  const [results, setResults] = useState<FlightResult[] | null>(null)
+  const [error, setError] = useState('')
+
+  const search = async () => {
+    if (busy) return
+    if (!origin.trim()) { Taro.showToast({ title: '请填写出发城市', icon: 'none' }); return }
+    setBusy(true); setElapsed(0); setError(''); setResults(null)
+    const timer = setInterval(() => setElapsed(s => s + 1), 1000)
+    try {
+      const r = await api.post<{ results: FlightResult[]; count: number; minPrice: number | null }>(
+        '/api/flywhere/search',
+        {
+          origin: origin.trim(), destination: destination.trim(), trip: round ? 'round' : 'oneway',
+          depDate, backDate: round ? backDate : '', passengers: 1,
+        },
+      )
+      setResults(r.results)
+      if (!r.results.length) Taro.showToast({ title: '没有找到组合，试试调整日期', icon: 'none' })
+    } catch (e) {
+      setError(e instanceof ApiFail ? e.message : '搜索失败')
+    } finally {
+      clearInterval(timer); setBusy(false)
+    }
+  }
+
+  return (
+    <View className="page">
+      <View className="fw-eyebrow">PRICE-LED FLIGHT DISCOVERY</View>
+      <View className="panel">
+        <View className="field">
+          <Text className="label">出发城市</Text>
+          <Input className="input" value={origin} onInput={e => setOrigin(e.detail.value)} placeholder="例如：北京" maxlength={20} />
+        </View>
+        <View className="field">
+          <Text className="label">目的地（留空 = 全国探索）</Text>
+          <Input className="input" value={destination} onInput={e => setDestination(e.detail.value)} placeholder="留空探索全国低价" maxlength={20} />
+        </View>
+        <View className="row2">
+          <View className="field" style={{ flex: 1 }}>
+            <Text className="label">出发日期</Text>
+            <Picker mode="date" value={depDate} onChange={e => setDepDate(e.detail.value)}>
+              <View className="input picker">{depDate}</View>
+            </Picker>
+          </View>
+          <View className="field" style={{ flex: 1 }}>
+            <Text className="label">回程日期</Text>
+            <Picker mode="date" value={backDate} onChange={e => setBackDate(e.detail.value)}>
+              <View className="input picker">{backDate}</View>
+            </Picker>
+          </View>
+        </View>
+        <View className="row2" style={{ alignItems: 'center' }}>
+          <View className="fw-seg">
+            <Text className={`fw-seg-item ${round ? 'on' : ''}`} onClick={() => setRound(true)}>往返</Text>
+            <Text className={`fw-seg-item ${!round ? 'on' : ''}`} onClick={() => setRound(false)}>单程</Text>
+          </View>
+          <View style={{ flex: 1 }} />
+          <Button className="fw-search" size="mini" loading={busy} onClick={search}>搜索</Button>
+        </View>
+      </View>
+
+      {busy && <View className="panel"><Text className="muted">多轮真实航班查询中… 已等待 {elapsed} 秒（最长约 40 秒）</Text></View>}
+      {!!error && <View className="error">{error}</View>}
+
+      {results && results.length > 0 && (
+        <View>
+          <Text className="section">探索结果 · {results.length} 个目的地</Text>
+          {results.map(r => (
+            <View key={r.id} className="fw-result">
+              <View className="row-between">
+                <Text className="fw-city">{r.city}{r.domestic ? '' : '（国际/地区）'}</Text>
+                <Text className="fw-price">¥{r.totalPrice.toLocaleString()}</Text>
+              </View>
+              <View className="muted" style={{ marginTop: '6rpx' }}>
+                <Text>去 {r.out}–{r.outArr || '—'}{r.back && r.back !== '—' ? ` · 回 ${r.back}–${r.backArr || '—'}` : ''} · 飞 {r.duration} 小时 · {r.airline}</Text>
+              </View>
+              {!!r.weather && r.weather[0] && r.weather[0].tempMax != null && (
+                <View className="muted"><Text>{r.weather[0].icon} {r.weather[0].date} {r.weather[0].tempMax}° / {r.weather[0].tempMin}°</Text></View>
+              )}
+            </View>
+          ))}
+          <View className="hint-center"><Text>最终价格与余票以飞猪下单页为准</Text></View>
+        </View>
+      )}
+    </View>
+  )
+}

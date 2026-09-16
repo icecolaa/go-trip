@@ -51,6 +51,10 @@ export default function Trips() {
 
   return (
     <View className="page">
+      <View className="fw-entry" onClick={() => Taro.navigateTo({ url: '/pages/flywhere/index' })}>
+        <Text>✈️ 飞哪儿 · 按票价探索目的地</Text>
+        <Text className="muted">›</Text>
+      </View>
       <View className="head">
         <Text className="title">我的旅程</Text>
         <View style={{ display: 'flex', gap: '12rpx' }}>

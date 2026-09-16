@@ -8,6 +8,11 @@ export default defineAppConfig({
     'pages/budget/index',
     'pages/packing/index',
     'pages/journal/index',
+    'pages/handbook/index',
+    'pages/members/index',
+    'pages/flywhere/index',
+    'pages/trip-ai/index',
+    'pages/map/index',
   ],
   window: {
     backgroundTextStyle: 'light',

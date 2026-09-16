@@ -110,7 +110,10 @@ export default function Trip() {
           <Button className="chip" size="mini" onClick={goBudget}>💰 预算</Button>
           <Button className="chip" size="mini" onClick={goPacking}>🎒 清单</Button>
           <Button className="chip" size="mini" onClick={() => Taro.navigateTo({ url: `/pages/journal/index?tripId=${tripId}` })}>✍️ 日志</Button>
-          <Button className="chip" size="mini" onClick={() => Taro.showToast({ title: '成员页脚手架待接入', icon: 'none' })}>👥 成员</Button>
+          <Button className="chip" size="mini" onClick={() => Taro.navigateTo({ url: `/pages/handbook/index?tripId=${tripId}` })}>📖 锦囊</Button>
+          <Button className="chip" size="mini" onClick={() => Taro.navigateTo({ url: `/pages/members/index?tripId=${tripId}` })}>👥 成员</Button>
+          <Button className="chip" size="mini" onClick={() => Taro.navigateTo({ url: `/pages/map/index?tripId=${tripId}` })}>🗺️ 地图</Button>
+          <Button className="chip" size="mini" onClick={() => Taro.navigateTo({ url: `/pages/trip-ai/index?tripId=${tripId}&maxDay=${bundle.days.length}` })}>AI 解析</Button>
         </View>
       </View>
 
