@@ -7,21 +7,23 @@ import { hashPassword } from './auth.ts';
 import { buildHandbook } from './handbook.ts';
 
 /* ============================================================
- * 数据访问层：双驱动
+ * 数据访问层：三驱动
  *  - 设置 DATABASE_URL 时使用 PocketBay 托管 PostgreSQL（pg Pool，max 5，强制 TLS）
+ *  - 设置 MYSQL_ADDRESS 时使用微信云托管内置 MySQL（mysql2 连接池，自动建库建表）
  *  - 未设置时回退本地 SQLite（node:sqlite），本地开发零配置
  * 统一异步 API：db().prepare(sql) → { get, all, run }（均为 Promise），
- * run() 返回 { lastInsertRowid }（PG 通过 INSERT ... RETURNING id 模拟）
+ * run() 返回 { lastInsertRowid }（PG 通过 INSERT ... RETURNING id 模拟，MySQL 用 insertId）
  * ============================================================ */
 
-export type DbDriver = 'sqlite' | 'postgres';
+export type DbDriver = 'sqlite' | 'postgres' | 'mysql';
 let _driver: DbDriver = 'sqlite';
 let _sqlite: DatabaseSync | null = null;
 let _pg: any = null;
+let _mysql: any = null;
 
 export function dbDriver(): DbDriver { return _driver; }
 
-/** SQLite 占位符 ? → PostgreSQL $1..$n */
+/** SQLite 占位符 ? → PostgreSQL $1..$n（MySQL 原生就是 ?，无需转换） */
 function toPgSql(sql: string): string {
   let i = 0;
   return sql.replace(/\?/g, () => `$${++i}`);
@@ -54,6 +56,26 @@ export function db(): { prepare: (sql: string) => Stmt } {
           async run(...params: any[]) {
             const r = await _pg.query(finalSql, params);
             return { lastInsertRowid: isInsert ? Number(r.rows[0]?.id) : 0, changes: r.rowCount ?? 0 };
+          },
+        };
+      },
+    };
+  }
+  if (_driver === 'mysql') {
+    return {
+      prepare(sql: string): Stmt {
+        return {
+          async get(...params: any[]) {
+            const [rows] = await _mysql.query(sql, params.map((p: any) => p === undefined ? null : p));
+            return (rows as any[])[0];
+          },
+          async all(...params: any[]) {
+            const [rows] = await _mysql.query(sql, params.map((p: any) => p === undefined ? null : p));
+            return rows as any[];
+          },
+          async run(...params: any[]) {
+            const [r] = await _mysql.query(sql, params.map((p: any) => p === undefined ? null : p));
+            return { lastInsertRowid: Number((r as any).insertId) || 0, changes: (r as any).affectedRows ?? 0 };
           },
         };
       },
@@ -416,6 +438,172 @@ async function migratePg(pg: any): Promise<void> {
   `);
 }
 
+/** MySQL 建表（微信云托管内置 MySQL，语义与 SQLite/PG 版一致；首次部署即最新结构，无需补列 ALTER） */
+async function migrateMysql(m: any): Promise<void> {
+  await m.query(`
+  CREATE TABLE IF NOT EXISTS users (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    travel_id INT UNIQUE NOT NULL,
+    username VARCHAR(64) UNIQUE NOT NULL,
+    password_hash VARCHAR(128) NOT NULL,
+    nickname VARCHAR(64) NOT NULL,
+    avatar_color VARCHAR(16) NOT NULL DEFAULT '#2f6e4f',
+    bio VARCHAR(512) NOT NULL DEFAULT '',
+    created_at VARCHAR(32) NOT NULL
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+  CREATE TABLE IF NOT EXISTS sessions (
+    token VARCHAR(64) PRIMARY KEY,
+    user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    created_at VARCHAR(32) NOT NULL
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+  CREATE TABLE IF NOT EXISTS trips (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    owner_id INT NOT NULL REFERENCES users(id),
+    title VARCHAR(128) NOT NULL,
+    destination VARCHAR(128) NOT NULL DEFAULT '',
+    description VARCHAR(512) NOT NULL DEFAULT '',
+    start_date VARCHAR(16) NOT NULL,
+    end_date VARCHAR(16) NOT NULL,
+    cover_emoji VARCHAR(8) NOT NULL DEFAULT '🧭',
+    cover_color VARCHAR(16) NOT NULL DEFAULT '#2f6e4f',
+    budget DOUBLE NOT NULL DEFAULT 0,
+    visibility VARCHAR(16) NOT NULL DEFAULT 'private',
+    share_token VARCHAR(64) NULL,
+    created_at VARCHAR(32) NOT NULL,
+    updated_at VARCHAR(32) NOT NULL
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+  CREATE TABLE IF NOT EXISTS trip_members (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    trip_id INT NOT NULL REFERENCES trips(id) ON DELETE CASCADE,
+    user_id INT NULL REFERENCES users(id) ON DELETE SET NULL,
+    role VARCHAR(16) NOT NULL DEFAULT 'editor',
+    display_name VARCHAR(64) NOT NULL,
+    avatar_color VARCHAR(16) NOT NULL DEFAULT '#8a6d3b',
+    location VARCHAR(128) NULL,
+    location_lat DOUBLE NULL,
+    location_lng DOUBLE NULL,
+    location_at VARCHAR(32) NULL,
+    joined_at VARCHAR(32) NOT NULL,
+    UNIQUE(trip_id, user_id)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+  CREATE TABLE IF NOT EXISTS invites (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    trip_id INT NOT NULL REFERENCES trips(id) ON DELETE CASCADE,
+    code VARCHAR(32) UNIQUE NOT NULL,
+    created_by INT NOT NULL,
+    max_uses INT NOT NULL DEFAULT 0,
+    uses INT NOT NULL DEFAULT 0,
+    expires_at VARCHAR(32) NULL,
+    revoked TINYINT NOT NULL DEFAULT 0,
+    created_at VARCHAR(32) NOT NULL
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+  CREATE TABLE IF NOT EXISTS days (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    trip_id INT NOT NULL REFERENCES trips(id) ON DELETE CASCADE,
+    day_number INT NOT NULL,
+    date VARCHAR(16) NOT NULL,
+    title VARCHAR(128) NOT NULL DEFAULT '',
+    place VARCHAR(128) NOT NULL DEFAULT '',
+    UNIQUE(trip_id, day_number)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+  CREATE TABLE IF NOT EXISTS activities (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    trip_id INT NOT NULL REFERENCES trips(id) ON DELETE CASCADE,
+    day_id INT NOT NULL REFERENCES days(id) ON DELETE CASCADE,
+    sort INT NOT NULL DEFAULT 0,
+    time VARCHAR(8) NULL,
+    end_time VARCHAR(8) NULL,
+    kind VARCHAR(16) NOT NULL DEFAULT 'sight',
+    title VARCHAR(128) NOT NULL,
+    place VARCHAR(128) NOT NULL DEFAULT '',
+    lat DOUBLE NULL,
+    lng DOUBLE NULL,
+    cost DOUBLE NOT NULL DEFAULT 0,
+    notes TEXT NOT NULL,
+    assignee_id INT NULL,
+    created_at VARCHAR(32) NOT NULL
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+  CREATE TABLE IF NOT EXISTS expenses (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    trip_id INT NOT NULL REFERENCES trips(id) ON DELETE CASCADE,
+    payer_member_id INT NOT NULL,
+    amount DOUBLE NOT NULL,
+    category VARCHAR(16) NOT NULL DEFAULT '其他',
+    title VARCHAR(128) NOT NULL,
+    date VARCHAR(16) NOT NULL,
+    split_mode VARCHAR(16) NOT NULL DEFAULT 'equal',
+    participants TEXT NOT NULL,
+    created_by INT NULL,
+    created_at VARCHAR(32) NOT NULL
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+  CREATE TABLE IF NOT EXISTS packing_items (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    trip_id INT NOT NULL REFERENCES trips(id) ON DELETE CASCADE,
+    category VARCHAR(16) NOT NULL DEFAULT '其他',
+    title VARCHAR(128) NOT NULL,
+    done TINYINT NOT NULL DEFAULT 0,
+    assignee_member_id INT NULL,
+    quantity INT NOT NULL DEFAULT 1,
+    note VARCHAR(256) NOT NULL DEFAULT '',
+    created_at VARCHAR(32) NOT NULL
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+  CREATE TABLE IF NOT EXISTS journal_notes (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    trip_id INT NOT NULL REFERENCES trips(id) ON DELETE CASCADE,
+    day_id INT NULL,
+    author_member_id INT NOT NULL,
+    content TEXT NOT NULL,
+    mood VARCHAR(8) NOT NULL DEFAULT '🙂',
+    images TEXT NOT NULL,
+    created_at VARCHAR(32) NOT NULL,
+    updated_at VARCHAR(32) NOT NULL
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+  CREATE TABLE IF NOT EXISTS activity_log (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    trip_id INT NOT NULL REFERENCES trips(id) ON DELETE CASCADE,
+    user_id INT NULL,
+    member_name VARCHAR(64) NOT NULL,
+    avatar_color VARCHAR(16) NOT NULL DEFAULT '#2f6e4f',
+    action VARCHAR(64) NOT NULL,
+    detail VARCHAR(256) NOT NULL DEFAULT '',
+    created_at VARCHAR(32) NOT NULL
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+  CREATE TABLE IF NOT EXISTS guide_cards (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    trip_id INT NOT NULL REFERENCES trips(id) ON DELETE CASCADE,
+    category VARCHAR(16) NOT NULL DEFAULT 'tip',
+    icon VARCHAR(8) NOT NULL DEFAULT '📌',
+    title VARCHAR(128) NOT NULL,
+    summary VARCHAR(512) NOT NULL DEFAULT '',
+    items TEXT NOT NULL,
+    source VARCHAR(16) NOT NULL DEFAULT 'builtin',
+    sort INT NOT NULL DEFAULT 0,
+    created_at VARCHAR(32) NOT NULL
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+  CREATE INDEX idx_activities_day ON activities(day_id);
+  CREATE INDEX idx_members_trip ON trip_members(trip_id);
+  CREATE INDEX idx_guide_trip ON guide_cards(trip_id);
+  CREATE TABLE IF NOT EXISTS travel_links (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    trip_id INT NOT NULL REFERENCES trips(id) ON DELETE CASCADE,
+    type VARCHAR(16) NOT NULL DEFAULT 'web',
+    title VARCHAR(128) NOT NULL,
+    url VARCHAR(512) NOT NULL,
+    note VARCHAR(256) NOT NULL DEFAULT '',
+    created_by INT NULL,
+    created_at VARCHAR(32) NOT NULL
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+  CREATE INDEX idx_links_trip ON travel_links(trip_id);
+  CREATE TABLE IF NOT EXISTS flywhere_watch (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    route_key VARCHAR(128) UNIQUE NOT NULL,
+    city VARCHAR(64) NOT NULL DEFAULT '',
+    min_per_person DOUBLE NOT NULL,
+    checked_at VARCHAR(32) NOT NULL
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+  `);
+}
+
 function insertUser(d: { prepare: (sql: string) => Stmt }, travelId: number, username: string, hash: string, nickname: string, color: string, bio: string): Promise<number> {
   return (async () => {
     const r = await d.prepare('INSERT INTO users (travel_id, username, password_hash, nickname, avatar_color, bio, created_at) VALUES (?,?,?,?,?,?,?)')
@@ -540,9 +728,10 @@ async function seedDemo(d: { prepare: (sql: string) => Stmt }): Promise<void> {
   }
 }
 
-/** 初始化数据库：按 DATABASE_URL 选择驱动，建表并按需种子 */
+/** 初始化数据库：按环境变量选择驱动（DATABASE_URL=PG / MYSQL_ADDRESS=微信云托管内置 MySQL），建表并按需种子 */
 export async function initDb(): Promise<void> {
   const url = process.env.DATABASE_URL;
+  const mysqlAddr = process.env.MYSQL_ADDRESS; // 云托管注入 host:port
   if (url) {
     const { Pool } = await import('pg');
     // PocketBay 要求 TLS；连接串自带 sslmode 时交给驱动解析，否则默认安全 TLS
@@ -555,6 +744,26 @@ export async function initDb(): Promise<void> {
     await migratePg(_pg);
     await seedDemo(db());
     console.log(`  ➜ 数据库：PostgreSQL（托管）`);
+  } else if (mysqlAddr) {
+    const mysql = await import('mysql2/promise');
+    const [host, portStr] = mysqlAddr.split(':');
+    const base = {
+      host,
+      port: Number(portStr) || 3306,
+      user: process.env.MYSQL_USERNAME || '',
+      password: process.env.MYSQL_PASSWORD || '',
+      charset: 'utf8mb4',
+      connectionLimit: 5,
+    };
+    // 先用独立连接建库（内置 MySQL 初始只有系统库），再用连接池挂到 gotrip 库
+    const bootstrap = await mysql.createConnection(base);
+    await bootstrap.query('CREATE DATABASE IF NOT EXISTS gotrip CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci');
+    await bootstrap.end();
+    _mysql = mysql.createPool({ ...base, database: 'gotrip' });
+    _driver = 'mysql';
+    await migrateMysql(_mysql);
+    await seedDemo(db());
+    console.log(`  ➜ 数据库：MySQL（微信云托管内置）`);
   } else {
     const dbPath = process.env.GOTRIP_DB
       || (process.env.POCKETBAY_DATA_DIR ? path.join(process.env.POCKETBAY_DATA_DIR, 'gotrip.db') : '')

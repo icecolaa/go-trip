@@ -1,7 +1,7 @@
 # 交接文档（HANDOFF）
 
 > 面向下一个接手的开发者或 AI 会话。先读根目录 `CLAUDE.md`（规则手册），再读本文（现状、过程与经验）。
-> 更新：2026-09-12。
+> 更新：2026-09-17。
 
 ## 当前状态一览
 
@@ -12,7 +12,7 @@
 | 架构图 | `docs/gotrip-architecture.html`（Archify 生成，源规格 `docs/gotrip-architecture.json`，showcase 9/9 检查通过） |
 | 旅程编辑 | 卡片封面 hover ✏️ 按钮（owner/admin）→ 编辑弹窗（预填/改日期自动对齐天数），提交 #7595 |
 | 仓库 | Gitee `ice-colaa/go-trip` + GitHub `icecolaa/go-trip`（私有镜像），分支 `master`；origin 配了双 push URL，`git push origin master` 一条命令两边同步 |
-| 数据库 | PocketBay 托管 PostgreSQL（生产）／SQLite（本地回退） |
+| 数据库 | PocketBay 托管 PostgreSQL（生产）／SQLite（本地回退）／MySQL（微信云托管，`MYSQL_ADDRESS` 注入自动建库） |
 | 验收 | `acceptance/REPORT.md` + `acceptance/screenshots/`；冒烟 `scripts/smoke.sh` 91 项全过（2026-09-12） |
 
 ## 2026-08~09 主要交付（按主题）
@@ -28,6 +28,7 @@
 11. **AI 精准重写某几天行程（2026-09-13）**：行程页 AI 助手→解析攻略文本，粘贴带「D5：10月5日：路线A-B-C」标头的文字，自动识别天号并**只重写对应的那几天**（其余天不动）。实现：①解析器支持 D+数字 标头剥离日期入 `date` 字段、路线型标题（≥2 连字符或「地名-地名」开头）只作当天主题不重复成活动、跳过 餐：/行：/游：/住：/总计 概要行；修复 20~23 点时间被截断的预存正则 bug（`[01]?\d`→`[0-2]?\d`）；AI 提示词强制保留原文顺序与时间、不补「待定」。②`/ai/apply` 新增 `targeted:true` 模式：校验各 guide 天号 ∈ 1..maxDay（越界 400「无法定位第 N 天」），按天号删旧插新（date 按天号推导），返回 `replacedDays`。③弹窗预览显示「识别到第 X、Y 天」+ 蓝色主按钮「只替换第 X、Y 天」（天号超行程范围时隐藏并显示范围提示）。冒烟新增 4 项断言（共 95 项）。⚠️ 运维教训：**部署打包必须在仓库根目录执行**——一次在 client/ 子目录打包导致线上缺 server/（#7587），发现后根目录重打重部（#7588）。
 12. **飞哪儿页对齐 flywhere 原版 + 全站 flywhere 配色（2026-09-13，#7591）**：对比 icecolaa/flywhere 原版（单文件 index.html，`:root` 色板）后调整：①按钮——搜索主按钮改墨黑药丸（hover 橙红，flywhere `.search-button` 行为）并从表单下方移入表单行末、条件 chips 与「标记已去过」改白底细边药丸、「时间与偏好」改碳黑描边、结果卡头部重排（橙色圆形计数徽标 + 标题/副文堆叠 + 右侧控件一行：地图列表/按目的地全部组合/AI 建议橙红描边药丸）、「价格说明」改下划线 ghost link、页脚两端式（左：飞哪儿 FlyWhere / 右：价格与天气来源）、标题加 PRICE-LED FLIGHT DISCOVERY eyebrow。②全站配色切换 flywhere 色板：paper `#f3f1eb`（画布）/ surface `#fffdf8`（卡片）/ surface-2 `#f7f5ef`（次表面）/ line `#dcded8` / ink `#1e2421` / muted `#6f7772`；新增 `--fw-accent: #e45f36`（价格、排名徽标、趋势↑）。 Apple 蓝主按钮体系（创建旅程等）保留不动。
 13. **弥散式背景（2026-09-13，#7932）**：模仿用户参考图的弥散风格——`body::before` 固定层（z-index:-1，滚动稳定）叠 5 组 radial 光晕（左上桃橙、右上粉、底部奶油、右下粉调、左下暖黄）+ 中央提光，基底色调暖为 `#f7f1e6`。卡片/表面色不变（flywhere 白卡浮于弥散层上）。注意 `--bg` 同时是暗色表面的反色文字色，改色时需确认对比。
+14. **微信云托管适配（2026-09-17，feat/miniprogram 分支）**：目标——小程序走 `wx.cloud.callContainer`（免备案免鉴权）调云端，绕开小程序上线必须备案域名的硬门槛。①`server/src/db.ts` 升级三驱动：新增 MySQL 方言（检测云托管注入的 `MYSQL_ADDRESS`，mysql2 连接池，自动 `CREATE DATABASE gotrip` + 建表种子；缩容到 0 会销毁容器文件系统，SQLite 在云托管不可用）；`server/package.json` 加 `mysql2`。②小程序 `src/config.ts` 加 `CLOUD_ENV`/`WX_SERVICE`/`USE_CLOUD`（生产且填了环境 ID 才走云通道），`src/api/request.ts` 双通道（callContainer，timeout 15s 上限；或直连 API_BASE），`src/app.ts` useLaunch 里 `Taro.cloud.init`。③部署手册 `docs/deploy-wxcloudrun.md`（控制台步骤、环境变量表、TZ=Asia/Shanghai、WS 走默认域名 wss→备案域名、callContainer 约束表：15s 超时/1MiB 响应/基础库 2.23.0+）。⚠️ MySQL 方言过类型检查与代码审查但**未对真实 MySQL 集成测试**，首次云上部署看启动日志「数据库：MySQL（微信云托管内置）」并跑冒烟。
 6. **内容收藏**：旅行日志支持多图上传（前端 canvas 压缩 1600/400 双尺寸，JPEG 0.85）+ 缩略图；新增「攻略」Tab 收藏小红书/公众号链接。
 7. **质量**：多轮代码 review 修复；`scripts/smoke.sh` 冒烟 91 项；验收报告归档。
 

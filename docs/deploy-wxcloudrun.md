@@ -1,0 +1,150 @@
+# 微信云托管部署指南
+
+把 GoTrip 服务端部署到[微信云托管](https://developers.weixin.qq.com/miniprogram/dev/wxcloudservice/wxcloudrun/src/basic/intro.html)，让小程序通过 `wx.cloud.callContainer` 调用——**免备案、免配置服务器域名白名单**，走微信专线上报，天然携带用户 openid。
+
+本文写于 2026-09-17，对应小程序分支 `feat/miniprogram`。
+
+## 为什么选云托管 / 架构分工
+
+| 通道 | 用途 | 前置条件 |
+|---|---|---|
+| 云托管 `callContainer` | 小程序全部 HTTP 接口 | 无需备案（微信内网专线） |
+| 云托管默认域名 wss | 小程序 WebSocket（协作在线） | 测试期可用，正式建议备案域名 |
+| PocketBay（现状不动） | Web 客户端 `gotrip.pocketbay.app` | — |
+
+小程序上线本来要求 request 合法域名是**已备案域名**；走 callContainer 可完全绕开这一步，这是选云托管的核心原因。注意 callContainer 不支持长连接，WebSocket 仍需走域名直连（见下文「已知约束」）。
+
+## 关键设计决策：数据库用内置 MySQL
+
+云托管实例**缩容到 0 时容器会被销毁**，容器文件系统是临时的——本地 SQLite（`/app/server/data/gotrip.db`）在云托管上会丢数据，**不可用**。
+
+服务端为此已支持三种数据库驱动（`server/src/db.ts`，按环境变量自动选择）：
+
+| 环境变量 | 驱动 | 场景 |
+|---|---|---|
+| 不设置 | SQLite | 本地开发 |
+| `DATABASE_URL` | PostgreSQL | PocketBay 部署 |
+| `MYSQL_ADDRESS` | **MySQL（mysql2 连接池）** | **云托管** |
+
+云托管控制台开通内置 MySQL 后，平台自动向同环境服务注入 `MYSQL_ADDRESS`（host:port）、`MYSQL_USERNAME`、`MYSQL_PASSWORD`，服务启动时自动**建库（gotrip）建表种子数据**，零手工操作。⚠️ MySQL 路径已过代码审查与类型检查，但尚未对真实 MySQL 跑过集成测试——首次云上部署时看启动日志「数据库：MySQL（微信云托管内置）」+ 冒烟验证。
+
+## 部署步骤
+
+### 0. 前置条件
+
+- 已有小程序 AppID `wxea1150ef589e225f`（你已完成）
+- 微信开发者工具 / 小程序管理后台可登录
+- 仓库代码（本分支已含全部所需改动）
+
+### 1. 开通云托管环境
+
+1. 打开 [微信云托管控制台](https://cloud.weixin.qq.com/)，用小程序关联微信扫码开通。
+2. 选择「按量付费」，地域建议**上海**（与微信服务器链路最优），创建环境，记下**环境 ID**（形如 `gotrip-8g0xxxx`，小程序端要用）。
+
+### 2. 开通内置 MySQL
+
+控制台左侧「数据库管理 → MySQL」→ 开通（Serverless 版，有免费额度）。开通后不需要手动建库建表——服务首次启动会自动完成。
+
+### 3. 创建服务 gotrip
+
+控制台「服务列表 → 新建服务」：
+
+- 服务名称：`gotrip`（**必须**，小程序端 `WX_SERVICE` 常量与之对应）
+- 备注随意；公网访问开关先开启（便于验证，验证后可关）
+
+### 4. 上传代码并部署（版本配置）
+
+「服务列表 → gotrip → 版本配置 → 新建版本」，部署方式选「本地上传代码包」，代码构建方式选「**使用 Dockerfile 构建**」：
+
+1. 在**仓库根目录**打部署包（Windows Git Bash）：
+
+   ```bash
+   tar --exclude='.git' --exclude='node_modules' --exclude='client/dist' \
+       --exclude='server/data' --exclude='.pocketbay' --exclude='.env' \
+       --exclude='miniprogram/node_modules' --exclude='miniprogram/dist' \
+       --exclude='miniprogram/private.*.key' \
+       -czf $TEMP/gotrip-cloudrun.tar.gz .
+   ```
+
+   ⚠️ 红线：**必须排除 `.env` 和上传密钥 `*.key`**；必须在仓库根目录打包（历史上从子目录打包引发过线上缺文件事故 #7587）。
+
+2. 上传 `gotrip-cloudrun.tar.gz`（Dockerfile 在仓库根，云托管会自动识别并按其构建多阶段镜像）。
+3. 版本配置：
+   - **监听端口**：保持默认即可。云托管向容器注入 `PORT` 环境变量，服务端优先读它（`server/src/index.ts`：`Number(process.env.PORT) || GOTRIP_PORT || 8787`）。
+   - **CPU/内存**：建议 0.5C / 1G（飞哪儿检索会 spawn 子进程）。
+   - **实例副本数**：最小 0（缩容到 0 省钱，接受几秒冷启动）或 1（无冷启动，持续计费）。MVP 建议最小 0。
+4. 环境变量（控制台逐条添加，**只存控制台，不进仓库**）：
+
+   | 变量 | 值 | 说明 |
+   |---|---|---|
+   | `TZ` | `Asia/Shanghai` | 容器默认 UTC，不加会差 8 小时（日期/记账时间） |
+   | `GOTRIP_AMAP_KEY` | 高德 Key | POI 搜索 |
+   | `GOTRIP_AI_BASE_URL` / `GOTRIP_AI_API_KEY` / `GOTRIP_AI_MODEL` | 智谱 GLM | AI 行程规划/解析 |
+   | `FLYAI_API_KEY` | 飞哪儿 Key | 机票检索 |
+   | ~~`DATABASE_URL`~~ | **不要设** | 设了会切去 PG，云托管连不上 PocketBay |
+   | ~~`GOTRIP_PORT`~~ | **不要设** | 会覆盖平台注入的 `PORT` |
+
+5. 发布版本，等构建完成（首次约 3-5 分钟）。
+
+### 5. 验证服务
+
+- 服务详情页「公网访问地址」打开 `/health`，应返回 `{"ok":true}`。
+- 服务详情「运行日志」应出现 `➜ 数据库：MySQL（微信云托管内置）`。
+- 控制台「测试」或 curl 默认域名：
+
+  ```bash
+  curl -s -X POST https://<默认域名>/api/auth/login \
+    -H 'Content-Type: application/json' -d '{"username":"demo","password":"demo1234"}'
+  ```
+
+### 6. 小程序端接入 callContainer
+
+1. `miniprogram/src/config.ts` 把 `CLOUD_ENV` 填为第 1 步的环境 ID：
+
+   ```ts
+   export const CLOUD_ENV = 'gotrip-8g0xxxx'
+   ```
+
+   生产构建即走 callContainer（`USE_CLOUD = !isDev && CLOUD_ENV !== ''`），开发仍直连本机 :8787，互不影响。
+
+2. 重新构建并上传体验版：
+
+   ```bash
+   cd miniprogram
+   npm run build:weapp
+   npm run upload -- 0.2.0 "接入云托管 callContainer"
+   ```
+
+   （前提：控制台小程序用户已把出口 IP `222.131.164.61` 加入「开发设置 → IP 白名单」，或临时关闭白名单。）
+
+3. 真机打开体验版验证：登录 → 行程列表 → 打开行程 → 记账/打包清单各写一条。
+
+### 7. WebSocket（协作在线状态）
+
+callContainer 不支持长连接。小程序 WS 走 `WS_BASE` 直连：
+
+- **测试期**：把云托管服务的**默认公网域名**（服务设置里可见，`https://xxx.wxcloudrun.app`）的 wss 形式填入 `miniprogram/src/config.ts` 的 `WS_BASE`，并在小程序管理后台「开发设置 → 服务器域名 → socket 合法域名」加上该域名。
+- **正式期**：绑定已备案自定义域名（服务设置 → 自定义域名，CNAME 接入，HTTPS 证书自动签发），替换 `WS_BASE`。你本就计划备案域名，届时一并处理。
+- 开发者工具 `urlCheck: false` 不校验，可直接连。
+
+## 已知约束（callContainer 特性决定）
+
+| 约束 | 影响 | 现状/缓解 |
+|---|---|---|
+| 单次调用超时上限 **15 秒** | 飞哪儿首次检索（spawn 飞猪子进程）可能超时 | 服务端有缓存：首次失败重试即命中缓存；后续优化预热 |
+| 返回包上限 **1000KiB** | 行程 bundle 含游记图片（base64 dataURL），图片多了会超 | MVP 量级可控；长期把图片迁对象存储、接口只回 URL |
+| 请求体：JSON 对象上限 20MiB | 游记 9 图上传 | 现阶段够用 |
+| 基础库需 **≥ 2.23.0** | 低版本无法 callContainer | 管理后台「功能设置 → 基础库最低版本」设为 2.23.0 |
+| 缩容到 0 有冷启动 | 首个请求慢几秒 | 接受，或最小实例设 1 |
+
+## 费用
+
+按量付费 + 缩容到 0，MVP 流量基本落在免费额度内（含 MySQL Serverless 额度）。实例配额调高（最小 1）或流量上来后才产生明显费用，控制台可看用量明细。
+
+## 与 PocketBay 的关系
+
+两套部署**数据独立**（PG 与 MySQL 各自建库），互不同步。Web 客户端继续用 PocketBay 不动；小程序用云托管。若日后想合并，两种路径：① 云托管通过外网 `DATABASE_URL` 连 PocketBay PG（PocketBay 休眠时会连带挂，不推荐）；② 做一次数据迁移脚本把 PG 数据导入云托管 MySQL，之后 PocketBay 只跑 Web（共享数据库需绑定备案域名+公网，走防火墙白名单，复杂度高，暂不建议）。
+
+## 回滚
+
+云托管「版本列表」保留历史版本，出问题一键「回滚」到上一版本；数据库结构由启动迁移自动演进，回滚代码版本不会回滚数据。
