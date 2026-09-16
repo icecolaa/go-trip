@@ -1,6 +1,6 @@
-import type { PublicUser, MemberRole } from '@shared/types'
+import type { PublicUser, MemberRole, TripDay, Activity, Expense, PackingItem, TripMember } from '@shared/types'
 
-export type { TripBundle, PublicUser, Poi, ParsedGuide, WeatherDay, MemberRole } from '@shared/types'
+export type { TripBundle, PublicUser, Poi, ParsedGuide, WeatherDay, MemberRole, TripDay, Activity, Expense, PackingItem, TripMember } from '@shared/types'
 
 /** 与 client/src/api.ts 的 TripCardInfo 保持一致 */
 export interface TripCardInfo {

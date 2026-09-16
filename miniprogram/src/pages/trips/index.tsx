@@ -42,15 +42,21 @@ export default function Trips() {
   }
 
   const open = (id: number) => {
-    Taro.showToast({ title: '行程详情页脚手架待接入', icon: 'none' })
-    void id
+    Taro.navigateTo({ url: `/pages/trip/index?id=${id}` })
+  }
+
+  const goCreate = () => {
+    Taro.navigateTo({ url: '/pages/trip-create/index' })
   }
 
   return (
     <View className="page">
       <View className="head">
         <Text className="title">我的旅程</Text>
-        <Button className="ghost" size="mini" onClick={logout}>退出</Button>
+        <View style={{ display: 'flex', gap: '12rpx' }}>
+          <Button className="submit-inline" size="mini" onClick={goCreate}>＋ 新建</Button>
+          <Button className="ghost" size="mini" onClick={logout}>退出</Button>
+        </View>
       </View>
 
       {error && <View className="error">{error}</View>}
