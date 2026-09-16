@@ -109,6 +109,7 @@ export default function Trip() {
         <View className="btn-row">
           <Button className="chip" size="mini" onClick={goBudget}>💰 预算</Button>
           <Button className="chip" size="mini" onClick={goPacking}>🎒 清单</Button>
+          <Button className="chip" size="mini" onClick={() => Taro.navigateTo({ url: `/pages/journal/index?tripId=${tripId}` })}>✍️ 日志</Button>
           <Button className="chip" size="mini" onClick={() => Taro.showToast({ title: '成员页脚手架待接入', icon: 'none' })}>👥 成员</Button>
         </View>
       </View>

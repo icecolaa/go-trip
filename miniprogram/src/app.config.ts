@@ -7,6 +7,7 @@ export default defineAppConfig({
     'pages/activity/index',
     'pages/budget/index',
     'pages/packing/index',
+    'pages/journal/index',
   ],
   window: {
     backgroundTextStyle: 'light',
