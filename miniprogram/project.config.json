@@ -1,0 +1,21 @@
+{
+  "compileType": "miniprogram",
+  "miniprogramRoot": "dist/",
+  "projectname": "gotrip-miniprogram",
+  "description": "出发吧 GoTrip 微信小程序",
+  "appid": "touristappid",
+  "setting": {
+    "urlCheck": false,
+    "es6": false,
+    "enhance": true,
+    "compileHotReLoad": false,
+    "postcss": false,
+    "minified": false,
+    "babelSetting": {
+      "ignorePlugins": [],
+      "ignoreFiles": []
+    }
+  },
+  "libVersion": "3.4.3",
+  "condition": {}
+}
