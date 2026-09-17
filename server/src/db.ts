@@ -461,7 +461,7 @@ async function migrateMysql(m: any): Promise<void> {
     avatar_color VARCHAR(16) NOT NULL DEFAULT '#2f6e4f',
     bio VARCHAR(512) NOT NULL DEFAULT '',
     wechat_openid VARCHAR(64) NULL,
-    avatar_url TEXT NULL,
+    avatar_url MEDIUMTEXT NULL,
     created_at VARCHAR(32) NOT NULL
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
   CREATE TABLE IF NOT EXISTS sessions (
@@ -567,7 +567,7 @@ async function migrateMysql(m: any): Promise<void> {
     author_member_id INT NOT NULL,
     content TEXT NOT NULL,
     mood VARCHAR(8) NOT NULL DEFAULT '🙂',
-    images TEXT NOT NULL,
+    images MEDIUMTEXT NOT NULL DEFAULT ('[]'),
     created_at VARCHAR(32) NOT NULL,
     updated_at VARCHAR(32) NOT NULL
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
@@ -627,8 +627,12 @@ async function migrateMysql(m: any): Promise<void> {
   // 旧库平滑升级（MySQL 无 ADD COLUMN / CREATE INDEX IF NOT EXISTS，逐条 try/catch，可重复执行）
   for (const ddl of [
     'ALTER TABLE users ADD COLUMN wechat_openid VARCHAR(64) NULL',
-    'ALTER TABLE users ADD COLUMN avatar_url TEXT NULL',
+    'ALTER TABLE users ADD COLUMN avatar_url MEDIUMTEXT NULL',
     'CREATE UNIQUE INDEX idx_users_openid ON users(wechat_openid)',
+    // 头像 dataURL 允许 200KB、日志图片内联后更大，TEXT(64KB) 不够——升列宽（幂等）；
+    // images 补表达式默认值，修复 MySQL 严格模式下种子插入缺列报 1364
+    'ALTER TABLE users MODIFY avatar_url MEDIUMTEXT NULL',
+    "ALTER TABLE journal_notes MODIFY images MEDIUMTEXT NOT NULL DEFAULT ('[]')",
   ]) {
     try { await m.query(ddl); } catch { /* 已存在 */ }
   }
@@ -739,9 +743,9 @@ async function seedDemo(d: { prepare: (sql: string) => Stmt }): Promise<void> {
   ];
   for (const p of packing) await insPack.run(tripId, p[0], p[1], p[2], p[3], 1, p[4], nowISO());
 
-  const insNote = d.prepare('INSERT INTO journal_notes (trip_id, day_id, author_member_id, content, mood, created_at, updated_at) VALUES (?,?,?,?,?,?,?)');
-  await insNote.run(tripId, null, mDemo, '行程基本敲定！机票已出，民宿订单发群里了。大家记得带防晒，雪山那天的氧气瓶我来统一买。', '🎉', nowISO(), nowISO());
-  await insNote.run(tripId, null, mShu, '补了一份大理到丽江的动车时刻表，放在行程备注里了， 10 点那班时间最合适。', '📝', nowISO(), nowISO());
+  const insNote = d.prepare('INSERT INTO journal_notes (trip_id, day_id, author_member_id, content, mood, images, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?)');
+  await insNote.run(tripId, null, mDemo, '行程基本敲定！机票已出，民宿订单发群里了。大家记得带防晒，雪山那天的氧气瓶我来统一买。', '🎉', '[]', nowISO(), nowISO());
+  await insNote.run(tripId, null, mShu, '补了一份大理到丽江的动车时刻表，放在行程备注里了， 10 点那班时间最合适。', '📝', '[]', nowISO(), nowISO());
 
   const insLog = d.prepare('INSERT INTO activity_log (trip_id, user_id, member_name, avatar_color, action, detail, created_at) VALUES (?,?,?,?,?,?,?)');
   await insLog.run(tripId, demoId, '演示用户', '#2f6e4f', '创建了旅程', '云南大理丽江 · 6日慢游', nowISO());

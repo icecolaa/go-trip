@@ -1,6 +1,8 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import crypto from 'node:crypto';
-import { db } from './db.ts';
+import { readFileSync } from 'node:fs';
+import { db, dbDriver } from './db.ts';
+import { MIGRATE_TABLES, runImport, type DbAdapter, type DumpData } from './migrate.ts';
 import { ApiError, json, readBody, nowISO, todayStr, addDays, daysBetween, randomCode } from './util.ts';
 import { requireAuth, getUserByToken, tokenFromRequest, hashPassword, verifyPassword, createSession, destroySession, setAuthCookie, clearAuthCookie, allocateTravelId, type SessionUser } from './auth.ts';
 import { calcBudget } from './budget.ts';
@@ -1287,6 +1289,54 @@ route('GET', '/api/users/search', true, async (req, res, _p, _user) => {
   const rows = await db().prepare('SELECT id, travel_id, username, nickname, avatar_color FROM users WHERE travel_id = ? OR username = ? OR nickname = ? LIMIT 5')
     .all(Number(q) || -1, q, q) as any[];
   json(res, 200, rows.map(r => ({ id: r.id, travelId: r.travel_id, username: r.username, nickname: r.nickname, avatarColor: r.avatar_color })));
+});
+
+/* ======== 一次性数据迁移通道（PocketBay PG → 云托管 MySQL） ========
+ * 令牌放 server/src/admin-migrate-token.txt（gitignore 排除）：文件不存在或
+ * token 不匹配一律 404，常规构建与仓库部署天然不含该文件，通道关闭。
+ * 端到端用法见 server/src/migrate.ts 头部注释。 */
+function requireMigrateToken(req: IncomingMessage): void {
+  let token: string | null = null;
+  try {
+    token = readFileSync(new URL('./admin-migrate-token.txt', import.meta.url), 'utf8').trim();
+    if (!/^[0-9a-f]{64}$/.test(token)) token = null;
+  } catch { token = null; }
+  const url = new URL(req.url || '', 'http://localhost');
+  if (!token || url.searchParams.get('token') !== token) throw new ApiError(404, '接口不存在');
+}
+
+route('GET', '/api/admin/migrate/dump', false, async (req, res) => {
+  requireMigrateToken(req);
+  const tables: Record<string, any[]> = {};
+  const counts: Record<string, number> = {};
+  for (const t of MIGRATE_TABLES) {
+    tables[t] = await db().prepare(`SELECT * FROM ${t} ORDER BY id`).all();
+    counts[t] = tables[t].length;
+  }
+  json(res, 200, { driver: dbDriver(), exportedAt: nowISO(), counts, tables });
+});
+
+route('GET', '/api/admin/migrate/script', false, async (req, res) => {
+  requireMigrateToken(req);
+  const src = readFileSync(new URL('./migrate.ts', import.meta.url));
+  res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'no-store' });
+  res.end(src);
+});
+
+route('POST', '/api/admin/migrate/import', false, async (req, res, _p, _u, body) => {
+  requireMigrateToken(req);
+  if (dbDriver() !== 'mysql') throw new ApiError(400, '导入仅面向 MySQL 目标库（当前驱动 ' + dbDriver() + '）');
+  const dump = body?.tables?.users ? (body as DumpData) : null;
+  if (!dump) throw new ApiError(400, '请提交 /api/admin/migrate/dump 返回的完整导出');
+  const adapter: DbAdapter = {
+    driver: 'mysql',
+    rows: async (sql, params = []) => await db().prepare(sql).all(...params),
+    exec: async (sql, params = []) => { await db().prepare(sql).run(...params); },
+  };
+  const report = await runImport(adapter, dump, {
+    pbOrigin: String(body.pbOrigin || ''),
+  });
+  json(res, 200, report);
 });
 
 /* ------------------------- 分发 ------------------------- */
