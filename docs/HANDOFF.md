@@ -37,6 +37,9 @@
 
 | 事故 | 根因 | 教训 |
 |---|---|---|
+| 云托管部署两次失败（express-yo4c-007/009，feat/miniprogram） | ①mysql2 默认单语句，migrateMysql 整段 DDL 一次 query → ER_PARSE_ERROR 启动即崩；②重跑迁移时 `CREATE INDEX`（MySQL 无 IF NOT EXISTS）→ ER_DUP_KEYNAME | mysql2 迁移必须逐条执行 + 幂等（ER_DUP_KEYNAME 视为已就绪）；修复 6a7c701/99d3254，冒烟 95/0。**方言语义差异（pg/sqlite 可多语句）不等于 MySQL 可行，MySQL 路径必须真库验证** |
+| 云托管 zip 部署 gotrip-001「创建版本失败」 | PowerShell Compress-Archive 打的 zip 用反斜杠路径，Linux 侧解压异常；包里还混进根目录 data/（本地误生成的 db+uploads） | Windows 打 zip 用系统 bsdtar（`/c/Windows/System32/tar.exe -acf x.zip`，正斜杠）；打包排除清单加 `data/`、`miniprogram/.swc`、`2b5d6837*`（见 deploy-wxcloudrun.md 打包节） |
+| DevTools 模拟器白屏/飞哪儿入口消失 | Taro 构建先清空 dist 再写入，DevTools 监视 dist 恰逢清空窗口启动模拟器 → `dist/app.json not found` 挂死不自愈 | 构建完成后再点一次「编译」；日常保持 dev:weapp watch，避免 DevTools 开着时手动 build:weapp |
 | 生产 links 接口 500（PG 42P01 缺表） | `migratePg` 里迁移语句接在 `return` 之后成为死代码 | 双方言迁移务必 `await` 顺序执行；改完对照 fresh DB 冒烟 |
 | `db.ts` 出现重复函数定义 | 早期用补丁脚本对同一文件重复打补丁 | 改大文件优先「读最新 → 一次性重写该段」，不要反复追加；出问题用 `git show <commit>:<file>` 恢复后干净重放 |
 | 飞哪里「最低总价不对」（2 人查询显示 ¥12,060） | `searchCacheKey` 漏了 `passengers`，9 人缓存污染 2 人查询 | **缓存键必须包含所有影响结果的参数**；价格类缓存验收要跑多组参数交叉验证 |

@@ -56,17 +56,20 @@
 
 「服务列表 → gotrip → 版本配置 → 新建版本」，部署方式选「本地上传代码包」，代码构建方式选「**使用 Dockerfile 构建**」：
 
-1. 在**仓库根目录**打部署包（Windows Git Bash）：
+1. 在**仓库根目录**打部署包（Windows Git Bash）。⚠️ 必须 zip 且用 **bsdtar** 打（PowerShell Compress-Archive 会产生反斜杠路径的 zip，云上解压构建直接失败；`.tar.gz` 平台不收）：
 
    ```bash
-   tar --exclude='.git' --exclude='node_modules' --exclude='client/dist' \
-       --exclude='server/data' --exclude='.pocketbay' --exclude='.env' \
-       --exclude='miniprogram/node_modules' --exclude='miniprogram/dist' \
-       --exclude='miniprogram/private.*.key' \
-       -czf $TEMP/gotrip-cloudrun.tar.gz .
+   /c/Windows/System32/tar.exe -acf $TEMP/gotrip-cloudrun.zip \
+     --exclude=.git --exclude=node_modules --exclude=client/dist \
+     --exclude=server/data --exclude=.pocketbay --exclude=.env \
+     --exclude=miniprogram/node_modules --exclude=miniprogram/dist \
+     --exclude='miniprogram/private.*.key' \
+     --exclude=work --exclude=.zcode --exclude=data \
+     --exclude=miniprogram/.swc --exclude='miniprogram/2b5d6837*' \
+     .
    ```
 
-   ⚠️ 红线：**必须排除 `.env` 和上传密钥 `*.key`**；必须在仓库根目录打包（历史上从子目录打包引发过线上缺文件事故 #7587）。
+   ⚠️ 红线：**必须排除 `.env` 和上传密钥 `*.key`**（还有本地误生成的根目录 `data/` 数据库与上传图片）；必须在仓库根目录打包（历史上从子目录打包引发过线上缺文件事故 #7587）。打包后抽查：`tar -tf $TEMP/gotrip-cloudrun.zip | grep -iE "\.key|\.env$|^data/"` 应无输出。
 
 2. 上传 `gotrip-cloudrun.tar.gz`（Dockerfile 在仓库根，云托管会自动识别并按其构建多阶段镜像）。
 3. 版本配置：
