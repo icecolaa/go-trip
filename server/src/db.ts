@@ -616,7 +616,13 @@ async function migrateMysql(m: any): Promise<void> {
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
   `;
   for (const stmt of ddl.split(';').map(s => s.trim()).filter(Boolean)) {
-    await m.query(stmt);
+    try {
+      await m.query(stmt);
+    } catch (e: any) {
+      // MySQL 无 CREATE INDEX IF NOT EXISTS：重跑迁移时索引已存在属正常，其余错误照抛
+      if (e && e.code === 'ER_DUP_KEYNAME') continue;
+      throw e;
+    }
   }
   // 旧库平滑升级（MySQL 无 ADD COLUMN / CREATE INDEX IF NOT EXISTS，逐条 try/catch，可重复执行）
   for (const ddl of [
