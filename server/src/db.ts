@@ -448,9 +448,10 @@ async function migratePg(pg: any): Promise<void> {
   `);
 }
 
-/** MySQL 建表（微信云托管内置 MySQL，语义与 SQLite/PG 版一致；首次部署即最新结构，无需补列 ALTER） */
+/** MySQL 建表（微信云托管内置 MySQL，语义与 SQLite/PG 版一致；首次部署即最新结构，无需补列 ALTER）。
+ *  ⚠️ mysql2 默认单次只执行一条语句（multipleStatements 关闭），必须逐条拆分执行。 */
 async function migrateMysql(m: any): Promise<void> {
-  await m.query(`
+  const ddl = `
   CREATE TABLE IF NOT EXISTS users (
     id INT AUTO_INCREMENT PRIMARY KEY,
     travel_id INT UNIQUE NOT NULL,
@@ -613,7 +614,10 @@ async function migrateMysql(m: any): Promise<void> {
     min_per_person DOUBLE NOT NULL,
     checked_at VARCHAR(32) NOT NULL
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-  `);
+  `;
+  for (const stmt of ddl.split(';').map(s => s.trim()).filter(Boolean)) {
+    await m.query(stmt);
+  }
   // 旧库平滑升级（MySQL 无 ADD COLUMN / CREATE INDEX IF NOT EXISTS，逐条 try/catch，可重复执行）
   for (const ddl of [
     'ALTER TABLE users ADD COLUMN wechat_openid VARCHAR(64) NULL',
