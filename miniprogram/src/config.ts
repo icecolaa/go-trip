@@ -15,8 +15,8 @@ const isDev = process.env.NODE_ENV === 'development'
 /** 微信云托管环境 ID（prod 环境） */
 export const CLOUD_ENV = 'prod-9g9b12cyd5f63833'
 
-/** 云托管服务名（流水线部署的 Express 模板服务，绑定 Gitee ice-colaa/go-trip 自动发版） */
-export const WX_SERVICE = 'express-yo4c'
+/** 云托管服务名（GoTrip 主服务；express-yo4c 是早期的 Express 模板占位服务，待删除） */
+export const WX_SERVICE = 'gotrip'
 
 /** 直连地址（开发本机 / 或未接云托管时的生产域名） */
 export const API_BASE = isDev ? 'http://localhost:8787' : 'https://gotrip.pocketbay.app'
@@ -25,7 +25,7 @@ export const API_BASE = isDev ? 'http://localhost:8787' : 'https://gotrip.pocket
  *  测试期用云托管服务默认域名 wss；正式换备案自定义域名并同步改 socket 合法域名。 */
 export const WS_BASE = isDev
   ? 'ws://localhost:8787'
-  : 'wss://express-yo4c-1509709-1308923163.ap-shanghai.run.tcloudbase.com'
+  : 'wss://gotrip-1509709-1308923163.ap-shanghai.run.tcloudbase.com'
 
 /** 是否走 callContainer：仅生产且填了环境 ID 时生效，开发始终直连本机 */
 export const USE_CLOUD = !isDev && CLOUD_ENV !== ''

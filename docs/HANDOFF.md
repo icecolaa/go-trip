@@ -37,6 +37,7 @@
 
 | 事故 | 根因 | 教训 |
 |---|---|---|
+| 代码仓库部署显示「已完成」，但 gotrip 公网域名仍是 gotrip-003（SQLite）——探针实测：140 字符昵称完整落库（MySQL VARCHAR(64) 严格模式必 500 或截断）、`/api/auth/wechat` 返回 feat 代码的 400 | 仓库部署未在 gotrip 服务构建/发布成功（或版本未发布）；且 origin/master 缺 MySQL 方言与幂等守卫（无 mysql2 依赖），流水线若选 master 构建出的版本根本不认 MYSQL_* 环境变量；config.ts 的 WX_SERVICE 曾误指 express-yo4c（实为 Express 模板占位服务，callContainer 打过去全 404） | 部署「完成」必须用线上探针验证版本：`/api/auth/wechat` 探针区分 feat/master 代码、超长 nickname 登录回显长度区分 MySQL（截 64）/SQLite（存全长）；流水线分支必须选 feat/miniprogram（或先把 feat 合进 master）；WX_SERVICE/WS_BASE 必须与实际服务及其域名一致 |
 | 云托管部署两次失败（express-yo4c-007/009，feat/miniprogram） | ①mysql2 默认单语句，migrateMysql 整段 DDL 一次 query → ER_PARSE_ERROR 启动即崩；②重跑迁移时 `CREATE INDEX`（MySQL 无 IF NOT EXISTS）→ ER_DUP_KEYNAME | mysql2 迁移必须逐条执行 + 幂等（ER_DUP_KEYNAME 视为已就绪）；修复 6a7c701/99d3254，冒烟 95/0。**方言语义差异（pg/sqlite 可多语句）不等于 MySQL 可行，MySQL 路径必须真库验证** |
 | 云托管 zip 部署 gotrip-001「创建版本失败」 | PowerShell Compress-Archive 打的 zip 用反斜杠路径，Linux 侧解压异常；包里还混进根目录 data/（本地误生成的 db+uploads） | Windows 打 zip 用系统 bsdtar（`/c/Windows/System32/tar.exe -acf x.zip`，正斜杠）；打包排除清单加 `data/`、`miniprogram/.swc`、`2b5d6837*`（见 deploy-wxcloudrun.md 打包节） |
 | DevTools 模拟器白屏/飞哪儿入口消失 | Taro 构建先清空 dist 再写入，DevTools 监视 dist 恰逢清空窗口启动模拟器 → `dist/app.json not found` 挂死不自愈 | 构建完成后再点一次「编译」；日常保持 dev:weapp watch，避免 DevTools 开着时手动 build:weapp |
