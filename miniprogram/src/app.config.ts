@@ -12,6 +12,7 @@ export default defineAppConfig({
     'pages/members/index',
     'pages/flywhere/index',
     'pages/trip-ai/index',
+    'pages/profile/index',
     'pages/map/index',
   ],
   window: {

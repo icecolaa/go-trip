@@ -26,6 +26,7 @@ export interface SessionUser {
   nickname: string;
   avatarColor: string;
   bio: string;
+  avatarUrl: string;
 }
 
 export async function createSession(userId: number): Promise<string> {
@@ -42,10 +43,10 @@ export async function destroySession(token: string): Promise<void> {
 export async function getUserByToken(token: string): Promise<SessionUser | null> {
   if (!token) return null;
   const row = await db().prepare(
-    'SELECT u.id, u.travel_id, u.username, u.nickname, u.avatar_color, u.bio FROM sessions s JOIN users u ON u.id = s.user_id WHERE s.token = ?'
+    'SELECT u.id, u.travel_id, u.username, u.nickname, u.avatar_color, u.bio, u.avatar_url FROM sessions s JOIN users u ON u.id = s.user_id WHERE s.token = ?'
   ).get(token) as any;
   if (!row) return null;
-  return { id: row.id, travelId: row.travel_id, username: row.username, nickname: row.nickname, avatarColor: row.avatar_color, bio: row.bio };
+  return { id: row.id, travelId: row.travel_id, username: row.username, nickname: row.nickname, avatarColor: row.avatar_color, bio: row.bio, avatarUrl: row.avatar_url || '' };
 }
 
 export function tokenFromRequest(req: IncomingMessage): string {

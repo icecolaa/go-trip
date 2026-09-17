@@ -9,6 +9,8 @@ export interface PublicUser {
   nickname: string;
   avatarColor: string;
   bio?: string;
+  /** 头像图片（压缩后的 dataURL），微信静默注册用户在个人资料页设置 */
+  avatarUrl?: string;
 }
 
 export interface Me extends PublicUser {

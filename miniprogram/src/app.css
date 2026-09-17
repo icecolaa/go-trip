@@ -865,3 +865,15 @@
 .ai-day-title { font-weight: 600; font-size: 27rpx; }
 .ai-act { color: #47504a; font-size: 25rpx; margin-top: 4rpx; }
 .map { width: 100%; height: 60vh; border-radius: 16rpx; }
+
+/* ===== 个人资料页 ===== */
+.profile-card { display: flex; flex-direction: column; align-items: center; padding: 44rpx 32rpx 36rpx; }
+.avatar-btn { width: 144rpx; height: 144rpx; padding: 0; margin: 0 0 4rpx; border-radius: 50%; background: none; line-height: normal; }
+.avatar-btn::after { border: none; }
+.avatar-img { width: 144rpx; height: 144rpx; border-radius: 50%; }
+.avatar-fallback { width: 144rpx; height: 144rpx; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+.avatar-initial { color: #fff; font-size: 56rpx; font-weight: 600; }
+.avatar-hint { font-size: 22rpx; margin-bottom: 20rpx; }
+.field { width: 100%; margin-top: 8rpx; }
+.meta-line { font-size: 22rpx; margin: 12rpx 0 28rpx; }
+.profile-card .submit { width: 100%; }

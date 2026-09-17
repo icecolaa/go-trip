@@ -1,4 +1,5 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
+import crypto from 'node:crypto';
 import { db } from './db.ts';
 import { ApiError, json, readBody, nowISO, todayStr, addDays, daysBetween, randomCode } from './util.ts';
 import { requireAuth, getUserByToken, tokenFromRequest, hashPassword, verifyPassword, createSession, destroySession, setAuthCookie, clearAuthCookie, allocateTravelId, type SessionUser } from './auth.ts';
@@ -283,6 +284,34 @@ route('POST', '/api/auth/logout', false, async (req, res) => {
   json(res, 200, { ok: true });
 });
 
+/** 微信静默登录：云托管 callContainer 请求由微信网关注入 x-wx-openid（免备案免鉴权）。
+ *  安全边界：x-wx-* 头仅微信专线内网可信——生产必须在云托管控制台关闭公网访问，
+ *  否则任何人都能通过公网默认域名伪造该头冒充任意用户。 */
+route('POST', '/api/auth/wechat', false, async (req, res) => {
+  const openid = String(req.headers['x-wx-openid'] || '').trim();
+  if (!openid) throw new ApiError(400, '缺少微信身份（x-wx-openid），请通过微信云托管 callContainer 调用');
+  if (!String(req.headers['x-wx-source'] || '')) throw new ApiError(403, '非微信通道调用已拒绝');
+  const user = await db().prepare('SELECT * FROM users WHERE wechat_openid = ?').get(openid) as any;
+  if (user) {
+    const token = await createSession(user.id);
+    return json(res, 200, {
+      token,
+      user: { id: user.id, travelId: user.travel_id, username: user.username, nickname: user.nickname, avatarColor: user.avatar_color, bio: user.bio, avatarUrl: user.avatar_url || '' },
+    });
+  }
+  // 静默注册：密码为随机值且不外泄，等同于仅可通过微信登录
+  const username = `wx_${openid}`;
+  if (await db().prepare('SELECT 1 FROM users WHERE username = ?').get(username)) {
+    throw new ApiError(409, '微信账号绑定冲突，请改用账号密码登录');
+  }
+  const travelId = await allocateTravelId();
+  const r = await db().prepare('INSERT INTO users (travel_id, username, password_hash, nickname, avatar_color, bio, wechat_openid, created_at) VALUES (?,?,?,?,?,?,?,?)')
+    .run(travelId, username, hashPassword(crypto.randomBytes(24).toString('hex')), '微信用户', '#2f6e4f', '', openid, nowISO());
+  const userId = Number(r.lastInsertRowid);
+  const token = await createSession(userId);
+  json(res, 200, { token, user: { id: userId, travelId, username, nickname: '微信用户', avatarColor: '#2f6e4f', bio: '', avatarUrl: '' } });
+});
+
 route('GET', '/api/me', true, async (_req, res, _p, user) => {
   json(res, 200, { ...user, createdAt: nowISO() });
 });
@@ -291,14 +320,21 @@ route('PATCH', '/api/me', true, async (_req, res, _p, user, body) => {
   const nickname = body.nickname != null ? String(body.nickname).trim().slice(0, 20) : user.nickname;
   const avatarColor = body.avatarColor != null ? String(body.avatarColor).slice(0, 20) : user.avatarColor;
   const bio = body.bio != null ? String(body.bio).slice(0, 120) : user.bio;
-  await db().prepare('UPDATE users SET nickname = ?, avatar_color = ?, bio = ? WHERE id = ?').run(nickname || user.nickname, avatarColor, bio, user.id);
+  // 头像为压缩后的 dataURL（与游记图片同模式，避免依赖公网可访问的静态文件）
+  let avatarUrl = user.avatarUrl;
+  if (body.avatarUrl != null) {
+    const dataUrl = String(body.avatarUrl);
+    if (dataUrl && dataUrl.length > 200_000) throw new ApiError(400, '头像图片过大，请重新选择');
+    avatarUrl = dataUrl;
+  }
+  await db().prepare('UPDATE users SET nickname = ?, avatar_color = ?, bio = ?, avatar_url = ? WHERE id = ?').run(nickname || user.nickname, avatarColor, bio, avatarUrl, user.id);
   if (body.newPassword) {
     if (String(body.newPassword).length < 6) throw new ApiError(400, '新密码至少 6 位');
     const row = await db().prepare('SELECT password_hash FROM users WHERE id = ?').get(user.id) as any;
     if (!verifyPassword(String(body.oldPassword || ''), row.password_hash)) throw new ApiError(400, '原密码不正确');
     await db().prepare('UPDATE users SET password_hash = ? WHERE id = ?').run(hashPassword(String(body.newPassword)), user.id);
   }
-  json(res, 200, { id: user.id, travelId: user.travelId, username: user.username, nickname: nickname || user.nickname, avatarColor, bio });
+  json(res, 200, { id: user.id, travelId: user.travelId, username: user.username, nickname: nickname || user.nickname, avatarColor, bio, avatarUrl });
 });
 
 /* ======== 旅程 ======== */
