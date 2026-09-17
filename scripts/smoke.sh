@@ -333,6 +333,16 @@ check "指南页含标题" "$R" '图文使用说明'
 R=$(curl -s -o /dev/null -w "%{http_code}" "$BASE/guide/01-itinerary.png")
 check "指南配图可访问(200)" "$R" '^200$'
 
+echo "== 超长入参截断（MySQL 列宽对齐回归） =="
+LONG600=$(printf 'a%.0s' $(seq 1 600))
+R=$(req POST /api/trips "$TA" "{\"title\":\"冒烟截断\",\"description\":\"$LONG600\"}")
+check "超长行程描述截断不500(200)" "$R" '"id"'
+LNICK=$(printf 'a%.0s' $(seq 1 100))
+R=$(req POST /api/auth/register "" "{\"username\":\"capprobe$SUF\",\"password\":\"smoke-pass-123\",\"nickname\":\"$LNICK\"}")
+check "超长昵称截断不500(200)" "$R" '"travelId"'
+R=$(req POST /api/trips "$TA" "{\"title\":\"冒烟截断色值\",\"coverColor\":\"$(printf 'c%.0s' $(seq 1 20))\"}")
+check "超长封面色值截断不500(200)" "$R" '"id"'
+
 echo "== WebSocket 实时广播 =="
 NODE_BIN=$(command -v node || echo /d/nodeJs/node.exe)
 WS_OUT=$("$NODE_BIN" scripts/ws-test.mjs 2>&1 || true)

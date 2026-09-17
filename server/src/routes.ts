@@ -249,7 +249,7 @@ function route(method: string, pattern: string, auth: boolean, handler: Handler)
 route('POST', '/api/auth/register', false, async (_req, res, _p, _u, body) => {
   const username = String(body.username || '').trim().toLowerCase();
   const password = String(body.password || '');
-  const nickname = String(body.nickname || '').trim() || username;
+  const nickname = String(body.nickname || '').trim().slice(0, 64) || username;
   if (!/^[a-zA-Z0-9_]{3,24}$/.test(username)) throw new ApiError(400, '用户名需为 3-24 位字母、数字或下划线');
   if (password.length < 6) throw new ApiError(400, '密码至少 6 位');
   const exists = await db().prepare('SELECT 1 FROM users WHERE username = ?').get(username);
@@ -318,7 +318,7 @@ route('GET', '/api/me', true, async (_req, res, _p, user) => {
 
 route('PATCH', '/api/me', true, async (_req, res, _p, user, body) => {
   const nickname = body.nickname != null ? String(body.nickname).trim().slice(0, 20) : user.nickname;
-  const avatarColor = body.avatarColor != null ? String(body.avatarColor).slice(0, 20) : user.avatarColor;
+  const avatarColor = body.avatarColor != null ? String(body.avatarColor).slice(0, 16) : user.avatarColor;
   const bio = body.bio != null ? String(body.bio).slice(0, 120) : user.bio;
   // 头像为压缩后的 dataURL（与游记图片同模式，避免依赖公网可访问的静态文件）
   let avatarUrl = user.avatarUrl;
@@ -363,11 +363,11 @@ route('GET', '/api/trips', true, async (_req, res, _p, user) => {
 route('POST', '/api/trips', true, async (_req, res, _p, user, body) => {
   const title = String(body.title || '').trim().slice(0, 60) || '未命名旅程';
   const destination = String(body.destination || '').trim().slice(0, 60);
-  const description = String(body.description || '').slice(0, 600);
+  const description = String(body.description || '').slice(0, 512);
   const startDate = /^\d{4}-\d{2}-\d{2}$/.test(body.startDate || '') ? body.startDate : todayStr();
   const endDate = /^\d{4}-\d{2}-\d{2}$/.test(body.endDate || '') && body.endDate >= startDate ? body.endDate : startDate;
   const coverEmoji = String(body.coverEmoji || '🧭').slice(0, 8);
-  const coverColor = String(body.coverColor || '#2f6e4f').slice(0, 20);
+  const coverColor = String(body.coverColor || '#2f6e4f').slice(0, 16);
   const budget = Math.max(0, Number(body.budget) || 0);
   const now = nowISO();
   const r = await db().prepare('INSERT INTO trips (owner_id, title, destination, description, start_date, end_date, cover_emoji, cover_color, budget, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)')
@@ -402,7 +402,7 @@ route('PATCH', '/api/trips/:id', true, async (_req, res, p, user, body) => {
     if (body[k] != null) {
       let v = body[k];
       if (k === 'budget') v = Math.max(0, Number(v) || 0);
-      if (k === 'description') v = String(v).slice(0, 600);
+      if (k === 'description') v = String(v).slice(0, 512);
       if (k === 'title') v = String(v).trim().slice(0, 60) || trip.title;
       fields.push(`${col} = ?`);
       vals.push(v);
@@ -652,7 +652,7 @@ route('POST', '/api/days/:id/activities', true, async (_req, res, p, user, body)
   const lat = body.lat != null && isFinite(Number(body.lat)) ? Number(body.lat) : null;
   const lng = body.lng != null && isFinite(Number(body.lng)) ? Number(body.lng) : null;
   const r = await db().prepare('INSERT INTO activities (trip_id, day_id, sort, time, end_time, kind, title, place, lat, lng, cost, notes, assignee_id, created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)')
-    .run(day.trip_id, day.id, Number(maxSort.m || 0) + 1, time, null, String(body.kind || 'sight'), title,
+    .run(day.trip_id, day.id, Number(maxSort.m || 0) + 1, time, null, String(body.kind || 'sight').slice(0, 16), title,
       String(body.place || '').slice(0, 60), lat, lng, Math.max(0, Number(body.cost) || 0),
       String(body.notes || '').slice(0, 300), body.assigneeId != null ? Number(body.assigneeId) : null, nowISO());
   await logActivity(Number(day.trip_id), me, '添加了行程', title);
@@ -666,7 +666,7 @@ route('PATCH', '/api/activities/:id', true, async (_req, res, p, user, body) => 
   const me = await requireMember(Number(act.trip_id), user, 'editor');
   const time = body.time !== undefined ? (/^([01]?\d|2[0-3])[:：][0-5]\d$/.test(String(body.time || '')) ? String(body.time).replace('：', ':') : null) : act.time;
   const title = body.title != null ? String(body.title).trim().slice(0, 100) || act.title : act.title;
-  const kind = body.kind != null ? String(body.kind) : act.kind;
+  const kind = body.kind != null ? String(body.kind).slice(0, 16) : act.kind;
   const place = body.place != null ? String(body.place).slice(0, 60) : act.place;
   const cost = body.cost != null ? Math.max(0, Number(body.cost) || 0) : act.cost;
   const notes = body.notes != null ? String(body.notes).slice(0, 300) : act.notes;
@@ -723,7 +723,7 @@ route('POST', '/api/trips/:id/expenses', true, async (_req, res, p, user, body) 
   const title = String(body.title || '').trim().slice(0, 60) || '未命名支出';
   const payerMemberId = Number(body.payerMemberId) || me.id;
   const r = await db().prepare('INSERT INTO expenses (trip_id, payer_member_id, amount, category, title, date, split_mode, participants, created_by, created_at) VALUES (?,?,?,?,?,?,?,?,?,?)')
-    .run(tripId, payerMemberId, amount, String(body.category || '其他'), title,
+    .run(tripId, payerMemberId, amount, String(body.category || '其他').slice(0, 16), title,
       /^\d{4}-\d{2}-\d{2}$/.test(body.date || '') ? body.date : todayStr(),
       body.splitMode === 'payer' ? 'payer' : 'equal', JSON.stringify(Array.isArray(body.participants) ? body.participants : []), user.id, nowISO());
   await logActivity(tripId, me, '记了一笔账', `${title} ¥${amount}`);
@@ -737,7 +737,7 @@ route('PATCH', '/api/expenses/:id', true, async (_req, res, p, user, body) => {
   const me = await requireMember(Number(exp.trip_id), user, 'editor');
   const amount = body.amount != null ? Math.max(0, Number(body.amount) || 0) : exp.amount;
   const title = body.title != null ? String(body.title).trim().slice(0, 60) || exp.title : exp.title;
-  const category = body.category != null ? String(body.category) : exp.category;
+  const category = body.category != null ? String(body.category).slice(0, 16) : exp.category;
   const date = body.date != null && /^\d{4}-\d{2}-\d{2}$/.test(body.date) ? body.date : exp.date;
   const payerMemberId = body.payerMemberId != null ? Number(body.payerMemberId) : exp.payer_member_id;
   const splitMode = body.splitMode != null ? (body.splitMode === 'payer' ? 'payer' : 'equal') : exp.split_mode;
@@ -776,7 +776,7 @@ route('POST', '/api/trips/:id/packing', true, async (_req, res, p, user, body) =
   } else {
     const title = String(body.title || '').trim().slice(0, 60);
     if (!title) throw new ApiError(400, '请填写物品名称');
-    const r = await ins.run(tripId, String(body.category || '其他'), title, body.assigneeMemberId != null ? Number(body.assigneeMemberId) : null,
+    const r = await ins.run(tripId, String(body.category || '其他').slice(0, 16), title, body.assigneeMemberId != null ? Number(body.assigneeMemberId) : null,
       Math.max(1, Number(body.quantity) || 1), String(body.note || '').slice(0, 100), nowISO());
     ids.push(Number(r.lastInsertRowid));
   }
@@ -809,7 +809,7 @@ route('PATCH', '/api/packing/:id', true, async (_req, res, p, user, body) => {
   const me = await requireMember(Number(item.trip_id), user, 'editor');
   const done = body.done != null ? (body.done ? 1 : 0) : item.done;
   const title = body.title != null ? String(body.title).trim().slice(0, 60) || item.title : item.title;
-  const category = body.category != null ? String(body.category) : item.category;
+  const category = body.category != null ? String(body.category).slice(0, 16) : item.category;
   const assigneeMemberId = body.assigneeMemberId !== undefined ? (body.assigneeMemberId === null ? null : Number(body.assigneeMemberId)) : item.assignee_member_id;
   const note = body.note != null ? String(body.note).slice(0, 100) : item.note;
   const quantity = body.quantity != null ? Math.max(1, Number(body.quantity) || 1) : item.quantity;
@@ -1093,10 +1093,11 @@ route('POST', '/api/trips/:id/links', true, async (_req, res, p, user, body) => 
   let parsed: URL;
   try { parsed = new URL(url); } catch { throw new ApiError(400, '请填写有效的链接地址'); }
   if (!['http:', 'https:'].includes(parsed.protocol)) throw new ApiError(400, '链接仅支持 http/https');
+  const safeUrl = parsed.toString().slice(0, 512);
   const type = normalizeLinkType(body.type);
   const note = String(body.note || '').trim().slice(0, 200);
   const r = await db().prepare('INSERT INTO travel_links (trip_id, type, title, url, note, created_by, created_at) VALUES (?,?,?,?,?,?,?)')
-    .run(tripId, type, title, url, note, me.id, nowISO());
+    .run(tripId, type, title, safeUrl, note, me.id, nowISO());
   notify(tripId, 'link', 'create', me.id);
   json(res, 200, rowToLink(await db().prepare('SELECT * FROM travel_links WHERE id = ?').get(Number(r.lastInsertRowid)) as any));
 });
