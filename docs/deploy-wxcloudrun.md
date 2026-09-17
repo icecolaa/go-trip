@@ -135,9 +135,9 @@
 
 callContainer 不支持长连接。小程序 WS 走 `WS_BASE` 直连：
 
-- **测试期**：把云托管服务的**默认公网域名**（服务设置里可见，`https://xxx.wxcloudrun.app`）的 wss 形式填入 `miniprogram/src/config.ts` 的 `WS_BASE`，并在小程序管理后台「开发设置 → 服务器域名 → socket 合法域名」加上该域名。
-- **正式期**：绑定已备案自定义域名（服务设置 → 自定义域名，CNAME 接入，HTTPS 证书自动签发），替换 `WS_BASE`。你本就计划备案域名，届时一并处理。
-- 开发者工具 `urlCheck: false` 不校验，可直接连。
+- **测试期**：把云托管服务的**默认公网域名**（服务设置里可见，形如 `https://gotrip-<环境ID后缀>.ap-shanghai.run.tcloudbase.com`）的 wss 形式填入 `miniprogram/src/config.ts` 的 `WS_BASE`，并在小程序管理后台「开发设置 → 服务器域名 → socket 合法域名」加上该域名。实测：mp 后台保存 `*.tcloudbase.com` 会显示红字「**云托管域名仅用作测试使用，不可用在正式环境下**」——保存能通过，开发版/体验版可用，**正式版运行时会被拦**。
+- **正式期**：绑定已备案自定义域名（服务设置 → 自定义域名，CNAME 接入，HTTPS 证书自动签发），替换 `WS_BASE` 与 socket 合法域名。届时仅「协作在线状态」依赖此步，其余功能走 callContainer 不受影响。
+- 开发者工具 `urlCheck: false` 不校验，可直接连。WS 链路验证：向默认域名发升级请求（不带 token），服务端回 401 即代表域名→容器→`/ws` 鉴权整条链路通。
 
 ## 已知约束（callContainer 特性决定）
 
