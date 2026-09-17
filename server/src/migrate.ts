@@ -597,9 +597,17 @@ async function main(): Promise<void> {
   console.log('① 读取 dump…');
   let dump: DumpData;
   if (/^https?:\/\//.test(src)) {
-    const res = await fetch(src);
-    if (!res.ok) throw new Error(`拉取 dump 失败：HTTP ${res.status}`);
-    dump = await res.json();
+    // PocketBay 闲置会休眠（唤醒需几十秒），拉取带重试
+    let lastErr = '';
+    for (let i = 0; i < 4; i++) {
+      try {
+        const res = await fetch(src, { signal: AbortSignal.timeout(60_000) });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        dump = await res.json();
+        break;
+      } catch (e: any) { lastErr = e?.message || String(e); console.log(`   拉取失败（${lastErr}），${i < 3 ? '15 秒后重试（对方可能在唤醒）…' : '放弃'}`); await new Promise((r) => setTimeout(r, 15_000)); }
+    }
+    if (!dump) throw new Error(`拉取 dump 失败：${lastErr}`);
   } else {
     dump = JSON.parse(readFileSync(path.resolve(src), 'utf8'));
   }
