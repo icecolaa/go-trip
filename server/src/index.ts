@@ -7,6 +7,7 @@ import { handleApi } from './routes.ts';
 import { attachWs } from './ws.ts';
 import { json, ApiError } from './util.ts';
 import { readUpload } from './uploads.ts';
+import { purgeExpiredSessions } from './auth.ts';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 // PocketBay 等托管平台通过 PORT 注入端口；GOTRIP_PORT 为本地部署的备用变量
@@ -82,6 +83,9 @@ const server = http.createServer(async (req, res) => {
 });
 
 attachWs(server);
+
+// 定期清理过期会话行（校验在 getUserByToken 里做，这里只负责删数据控表体积）
+setInterval(() => { purgeExpiredSessions().catch(() => undefined); }, 6 * 60 * 60 * 1000).unref();
 
 server.listen(PORT, () => {
   console.log('');

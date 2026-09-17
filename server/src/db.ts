@@ -751,7 +751,7 @@ async function seedDemo(d: { prepare: (sql: string) => Stmt }): Promise<void> {
   await insLog.run(tripId, demoId, '演示用户', '#2f6e4f', '创建了旅程', '云南大理丽江 · 6日慢游', nowISO());
   await insLog.run(tripId, linId, '小方', '#b5543b', '加入了旅程', '受邀成为成员', nowISO());
   await insLog.run(tripId, shuId, '阿树', '#3b6ea5', '加入了旅程', '受邀成为成员', nowISO());
-  await insLog.run(tripId, mShu, '阿树', '#3b6ea5', '添加了 5 笔记账', '门票与住宿', nowISO());
+  await insLog.run(tripId, shuId, '阿树', '#3b6ea5', '添加了 5 笔记账', '门票与住宿', nowISO());
 
   // 演示旅程内置锦囊（大理 + 丽江两站内容）
   const insGuide = d.prepare('INSERT INTO guide_cards (trip_id, category, icon, title, summary, items, source, sort, created_at) VALUES (?,?,?,?,?,?,?,?,?)');

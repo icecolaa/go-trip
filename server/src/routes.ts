@@ -246,9 +246,26 @@ function route(method: string, pattern: string, auth: boolean, handler: Handler)
   routes.push({ method, re, auth, handler });
 }
 
+/* ======== 限速（内存计数，单实例足够，重启即清零） ========
+ * 只用于密码登录/注册：mini program 生产流量经 callContainer 出口 NAT 共享少数源 IP，
+ * 按 IP 限速会误伤全体小程序用户，故微信静默登录路由不限。 */
+
+const rateBuckets = new Map<string, { n: number; reset: number }>();
+
+function rateLimit(req: IncomingMessage, scope: string, max: number, windowMs = 60_000): void {
+  const ip = req.socket.remoteAddress || 'unknown';
+  const now = Date.now();
+  if (rateBuckets.size > 5000) for (const [k, b] of rateBuckets) if (b.reset < now) rateBuckets.delete(k);
+  const key = `${ip}:${scope}`;
+  const b = rateBuckets.get(key);
+  if (!b || b.reset < now) { rateBuckets.set(key, { n: 1, reset: now + windowMs }); return; }
+  if (++b.n > max) throw new ApiError(429, '尝试太频繁，请一分钟后再试');
+}
+
 /* ======== 认证 ======== */
 
-route('POST', '/api/auth/register', false, async (_req, res, _p, _u, body) => {
+route('POST', '/api/auth/register', false, async (req, res, _p, _u, body) => {
+  rateLimit(req, 'register', 10);
   const username = String(body.username || '').trim().toLowerCase();
   const password = String(body.password || '');
   const nickname = String(body.nickname || '').trim().slice(0, 64) || username;
@@ -265,8 +282,9 @@ route('POST', '/api/auth/register', false, async (_req, res, _p, _u, body) => {
   json(res, 200, { token, user: { id: userId, travelId, username, nickname, avatarColor: '#2f6e4f', bio: '' } });
 });
 
-route('POST', '/api/auth/login', false, async (_req, res, _p, _u, body) => {
+route('POST', '/api/auth/login', false, async (req, res, _p, _u, body) => {
   const username = String(body.username || '').trim().toLowerCase();
+  rateLimit(req, `login:${username}`, 10);
   const user = await db().prepare('SELECT * FROM users WHERE username = ?').get(username) as any;
   if (!user || !verifyPassword(String(body.password || ''), user.password_hash)) {
     throw new ApiError(401, '用户名或密码错误');

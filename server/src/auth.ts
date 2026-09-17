@@ -40,13 +40,23 @@ export async function destroySession(token: string): Promise<void> {
   await db().prepare('DELETE FROM sessions WHERE token = ?').run(token);
 }
 
+/** 会话有效期：过期能力等同未登录（Cookie 也写同样的 30 天） */
+const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000;
+
 export async function getUserByToken(token: string): Promise<SessionUser | null> {
   if (!token) return null;
+  const cutoff = new Date(Date.now() - SESSION_TTL_MS).toISOString();
   const row = await db().prepare(
-    'SELECT u.id, u.travel_id, u.username, u.nickname, u.avatar_color, u.bio, u.avatar_url FROM sessions s JOIN users u ON u.id = s.user_id WHERE s.token = ?'
-  ).get(token) as any;
+    'SELECT u.id, u.travel_id, u.username, u.nickname, u.avatar_color, u.bio, u.avatar_url FROM sessions s JOIN users u ON u.id = s.user_id WHERE s.token = ? AND s.created_at > ?'
+  ).get(token, cutoff) as any;
   if (!row) return null;
   return { id: row.id, travelId: row.travel_id, username: row.username, nickname: row.nickname, avatarColor: row.avatar_color, bio: row.bio, avatarUrl: row.avatar_url || '' };
+}
+
+/** 清理过期会话行（index.ts 定时调用） */
+export async function purgeExpiredSessions(): Promise<void> {
+  const cutoff = new Date(Date.now() - SESSION_TTL_MS).toISOString();
+  await db().prepare('DELETE FROM sessions WHERE created_at < ?').run(cutoff);
 }
 
 export function tokenFromRequest(req: IncomingMessage): string {
@@ -76,7 +86,8 @@ export async function allocateTravelId(): Promise<number> {
 }
 
 export function setAuthCookie(res: ServerResponse, token: string): void {
-  res.setHeader('Set-Cookie', `gotrip_token=${token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${60 * 60 * 24 * 30}`);
+  // localhost 上的 http 被浏览器视为安全上下文，Secure 不影响本地开发
+  res.setHeader('Set-Cookie', `gotrip_token=${token}; Path=/; HttpOnly; SameSite=Lax; Secure; Max-Age=${60 * 60 * 24 * 30}`);
 }
 
 export function clearAuthCookie(res: ServerResponse): void {

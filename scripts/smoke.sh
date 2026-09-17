@@ -343,6 +343,14 @@ check "超长昵称截断不500(200)" "$R" '"travelId"'
 R=$(req POST /api/trips "$TA" "{\"title\":\"冒烟截断色值\",\"coverColor\":\"$(printf 'c%.0s' $(seq 1 20))\"}")
 check "超长封面色值截断不500(200)" "$R" '"id"'
 
+echo "== 登录限速（同用户名 1 分钟 10 次上限） =="
+RL_USER="rl$SUF"
+RL_LAST=0
+for i in $(seq 1 11); do
+  RL_LAST=$(curl -s -o /dev/null -w "%{http_code}" -X POST "$BASE/api/auth/login" -H "Content-Type: application/json" --data-binary "{\"username\":\"$RL_USER\",\"password\":\"wrong-pass\"}")
+done
+check "登录限速生效(429)" "$RL_LAST" '^429$'
+
 echo "== WebSocket 实时广播 =="
 NODE_BIN=$(command -v node || echo /d/nodeJs/node.exe)
 WS_OUT=$("$NODE_BIN" scripts/ws-test.mjs 2>&1 || true)
