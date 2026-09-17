@@ -64,6 +64,7 @@
      --exclude=server/data --exclude=.pocketbay --exclude=.env \
      --exclude=miniprogram/node_modules --exclude=miniprogram/dist \
      --exclude='miniprogram/private.*.key' \
+     --exclude=server/src/admin-migrate-token.txt \
      --exclude=work --exclude=.zcode --exclude=data \
      --exclude=miniprogram/.swc --exclude='miniprogram/2b5d6837*' \
      .
@@ -157,6 +158,31 @@ callContainer 不支持长连接。小程序 WS 走 `WS_BASE` 直连：
 ## 与 PocketBay 的关系
 
 两套部署**数据独立**（PG 与 MySQL 各自建库），互不同步。Web 客户端继续用 PocketBay 不动；小程序用云托管。若日后想合并，两种路径：① 云托管通过外网 `DATABASE_URL` 连 PocketBay PG（PocketBay 休眠时会连带挂，不推荐）；② 做一次数据迁移脚本把 PG 数据导入云托管 MySQL，之后 PocketBay 只跑 Web（共享数据库需绑定备案域名+公网，走防火墙白名单，复杂度高，暂不建议）。
+
+## PocketBay → 云托管 MySQL 数据迁移（2026-09-17 已建通道）
+
+两侧数据库都不对公网开放直连，迁移走应用层，引擎在 `server/src/migrate.ts`（完整说明见文件头注释）。合并策略：
+
+- PocketBay 数据**原样落库**：显式保留 id / 密码哈希 / 时间戳，账号在两侧密码不变；
+- 两边各自种子出的演示数据（demo 等 + 种子旅程）以 **PocketBay 版本为准**；
+- 云托管独有用户（`wx_<openid>` 静默注册的微信账号）及其名下旅程/成员/记账**平移保留**（id 推到两侧最大值之上，`expenses.participants` 里的成员 id 同步重写）。注意不能按「id 与 dump 重复」判重丢弃——云侧新建旅程 id 几乎必然与 PocketBay 旅程 id 相撞，必须按所有者判；
+- 日志/头像引用的 `/uploads/` 图片拉取自 PocketBay 并内联为 dataURL（小程序无法访问对方静态文件；每旅程 600KB base64 预算防超 callContainer 1MiB 限制）；
+- 导入前自动把目标库全表备份为容器内 `data/migrate-backup-<时间戳>.json`，写库在单事务内，引用校验失败即中止不写半截。
+
+操作通道（令牌 `server/src/admin-migrate-token.txt`，gitignore 排除，文件不存在时接口一律 404）：
+
+1. **PocketBay 侧（导出）**：基于 master 打一次性包（补 migrate 接口块 + 令牌文件，本地全量自检后打包），`node scripts/pocketbay-deploy.mjs <tarball>` 部署，`GET https://gotrip.pocketbay.app/api/admin/migrate/dump?token=<令牌>` 拉全量 JSON，随后**立刻重部干净 master** 关闭通道（2026-09-17 实测 #8930 导出 → #8931 恢复，窗口约 90 秒）。
+2. **云托管侧（导入，控制台 Webshell）**：服务列表 → gotrip → 服务设置/更多 → Webshell，粘贴（需 PocketBay 处于一次性导出版本）：
+
+   ```bash
+   cd /app && curl -s 'https://gotrip.pocketbay.app/api/admin/migrate/script?token=<令牌>' -o migrate.ts \
+     && node migrate.ts 'https://gotrip.pocketbay.app/api/admin/migrate/dump?token=<令牌>'
+   ```
+
+   加 `--dry-run` 先试运行不写库；URL 源会自动作为图片拉取源。若云上部署了含此代码的版本（令牌文件在包内），也可直接 `POST /api/admin/migrate/import`（body 为 dump JSON）。
+3. **验证**：`node work/migration/cloud-verify.mjs`（公网探针：demo 登录、迁移旅程行数、bundle 体积、feat 代码在线）。真机小程序：账号密码登录 → 行程列表出现迁移旅程。
+
+历史数据怪癖（引擎已处理）：旧数据用 `0` 表示「未指派」→ 归一为 NULL；成员删除不清理记账/指派引用 → 孤儿保留原值仅告警（与现网行为一致）；`TEXT`(64KB) 装不下 200KB 头像 dataURL → `avatar_url`/`journal_notes.images` 升 `MEDIUMTEXT`；**MySQL 首次种子 journal INSERT 缺 images 列在严格模式必崩 1364**（云库此前种子残缺：有记账打包、无日志/动态/锦囊），已修。
 
 ## 回滚
 

@@ -29,7 +29,7 @@
        -czf /tmp/gotrip-deploy.tar.gz .
    ```
 
-2. 上传（multipart：`name`、`file`、`approved_config_paths` 传 `'[]'`；脚本可参考仓库部署时用过的临时上传脚本模式——读凭证、FormData、`POST https://pocketbay.com/api/ai/deploy`，`Authorization: Bearer <device_token>`）。
+2. 上传（multipart：`name`、`file`、`approved_config_paths` 传 `'[]'`；已脚本化：`node scripts/pocketbay-deploy.mjs <tarball>`——读凭证、FormData、`POST https://pocketbay.com/api/ai/deploy`、自动轮询到 running，2026-09-17 迁移期间实测 #8930/#8931）。
 3. 轮询 `GET /api/ai/projects/gotrip/status`（同一 token）到 `project_status == "running"`，再报告成功。失败时按响应里的 `error_category` / `repair_hint` 处理，常见：`config_policy_violation` → 检查包里是否混入 `.env`；413 → 减包；429 → 遵守 `Retry-After`。
 4. 健康检查：`GET /health` 返回 `{"ok":true}`（`/api/health` **不是**路由，会返回 `{"error":"接口不存在"}`，但这也证明服务在线）。
 
