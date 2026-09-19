@@ -1,6 +1,11 @@
 #!/bin/bash
 # GoTrip API 冒烟测试：认证、旅程、成员/邀请、行程、预算、清单、日志、AI、分享、天气
 # 说明：JSON 请求体一律先写入 UTF-8 临时文件再 --data-binary 上传，规避 Windows 控制台 GBK 编码问题
+# 同理，脚本里的 python -c 片段含中文字面量（如按 displayName 取成员 id）：Git Bash 会把
+# 命令行参数按 GBK 递交，python 侧比对失败 → 变量取空 → 接口路径缺段，伪装成「接口不存在」的假故障。
+# UTF-8 模式下 -c 源码与 stdio 都按 UTF-8 解码，Windows/Linux 一致。
+export PYTHONUTF8=1
+export PYTHONIOENCODING=utf-8
 BASE=http://localhost:8787
 PASS=0; FAIL=0
 BJ=/tmp/gt_body.json

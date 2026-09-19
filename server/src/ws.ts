@@ -1,7 +1,7 @@
 import { WebSocketServer, WebSocket } from 'ws';
 import type { IncomingMessage, Server } from 'node:http';
 import { getUserByToken, tokenFromRequest } from './auth.ts';
-import { db } from './db.ts';
+import { db, dbReady } from './db.ts';
 import type { WsClientMessage } from '../../shared/types.ts';
 
 interface Ctx {
@@ -22,6 +22,12 @@ export function attachWs(server: Server): void {
   server.on('upgrade', async (req: IncomingMessage, socket, head) => {
     const url = req.url || '';
     if (!url.startsWith('/ws')) {
+      socket.destroy();
+      return;
+    }
+    if (!dbReady()) {
+      // 建表还没完成，查 token 会打到空句柄；拒绝升级而不是抛错把进程带崩
+      socket.write('HTTP/1.1 503 Service Unavailable\r\n\r\n');
       socket.destroy();
       return;
     }

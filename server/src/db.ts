@@ -762,8 +762,53 @@ async function seedDemo(d: { prepare: (sql: string) => Stmt }): Promise<void> {
   }
 }
 
-/** 初始化数据库：按环境变量选择驱动（DATABASE_URL=PG / MYSQL_ADDRESS=微信云托管内置 MySQL），建表并按需种子 */
+/* ---------------- 启动就绪状态（HTTP 层据此决定 503，见 index.ts / ws.ts） ----------------
+ * 云托管内置 MySQL 是 Serverless：实例闲置后会暂停，首次连接要等它恢复（可达几十秒），
+ * 连接失败在这个平台上是常态而非致命错误。历史事故：initDb 抛错让进程退出 → 端口从未
+ * 监听 → 平台认为实例不可用 → 容器反复重启，公网域名一直 504、Webshell 也进不去。
+ * 所以 initDb 改成「无限退避重试 + 就绪标记」，由调用方先 listen 再后台补齐。 */
+let _ready = false;
+const _boot = { attempts: 0, lastError: '' };
+
+/** 数据库是否已建表就绪；未就绪时 db() 句柄不可用，上层必须先拦一道 */
+export function dbReady(): boolean { return _ready; }
+
+/** 未就绪期间的启动进度（重试次数、最后一次错误），供 /health 汇报 */
+export function dbBootStatus(): { attempts: number; lastError: string } { return { ..._boot }; }
+
 export async function initDb(): Promise<void> {
+  for (let attempt = 1; ; attempt++) {
+    _boot.attempts = attempt;
+    try {
+      await initDbOnce();
+      _ready = true;
+      _boot.lastError = '';
+      return;
+    } catch (e: any) {
+      _boot.lastError = String(e?.message || e);
+      // 半截连接池留着会越试越多，失败即关掉重来
+      await closePools();
+      const waitSec = Math.min(5 * attempt, 30);
+      console.error(`[db] 初始化失败（第 ${attempt} 次）：${_boot.lastError}`);
+      if (attempt === 3) {
+        console.error('     连续失败 3 次：请核对平台注入的数据库配置（云托管 MYSQL_ADDRESS/MYSQL_USERNAME/MYSQL_PASSWORD，'
+          + '或 DATABASE_URL）。若是内置 MySQL 冷启动暂停，通常再等 1~2 分钟会自动就绪。');
+      }
+      console.error(`     ${waitSec} 秒后重试（数据库未就绪期间接口返回 503）…`);
+      await new Promise((r) => setTimeout(r, waitSec * 1000));
+    }
+  }
+}
+
+async function closePools(): Promise<void> {
+  try { await _pg?.end(); } catch { /* 已断开 */ }
+  try { await _mysql?.end(); } catch { /* 已断开 */ }
+  _pg = null;
+  _mysql = null;
+}
+
+/** 单次初始化：按环境变量选择驱动（DATABASE_URL=PG / MYSQL_ADDRESS=微信云托管内置 MySQL），建表并按需种子 */
+async function initDbOnce(): Promise<void> {
   const url = process.env.DATABASE_URL;
   const mysqlAddr = process.env.MYSQL_ADDRESS; // 云托管注入 host:port
   if (url) {
@@ -772,6 +817,8 @@ export async function initDb(): Promise<void> {
     _pg = new Pool({
       connectionString: url,
       max: 5,
+      // 默认 0 = 连不上就一直挂着，会让启动卡死；给足冷启动时间又要能失败重试
+      connectionTimeoutMillis: 15_000,
       ssl: url.includes('sslmode=') ? undefined : { rejectUnauthorized: true },
     });
     _driver = 'postgres';
@@ -788,6 +835,7 @@ export async function initDb(): Promise<void> {
       password: process.env.MYSQL_PASSWORD || '',
       charset: 'utf8mb4',
       connectionLimit: 5,
+      connectTimeout: 15_000, // 内置 MySQL 暂停时 TCP 可能连得上但不回包，不能无限等
     };
     // 先用独立连接建库（内置 MySQL 初始只有系统库），再用连接池挂到 gotrip 库
     const bootstrap = await mysql.createConnection(base);

@@ -2,7 +2,7 @@ import http from 'node:http';
 import { readFileSync, existsSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { initDb } from './db.ts';
+import { initDb, dbReady, dbBootStatus, dbDriver } from './db.ts';
 import { handleApi } from './routes.ts';
 import { attachWs } from './ws.ts';
 import { json, ApiError } from './util.ts';
@@ -13,7 +13,9 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 // PocketBay 等托管平台通过 PORT 注入端口；GOTRIP_PORT 为本地部署的备用变量
 const PORT = Number(process.env.PORT) || Number(process.env.GOTRIP_PORT) || 8787;
 
-await initDb();
+// 数据库在后台初始化（失败按退避重试，见 db.ts 就绪状态注释）：端口必须先监听，
+// 否则云托管内置 MySQL 唤醒期间容器会被判为不健康反复重启，公网域名整段 504。
+void initDb().catch((e) => console.error('[db] 启动循环意外退出（接口将一直 503）：', e?.message || e));
 
 const CLIENT_DIST = path.resolve(__dirname, '../../client/dist');
 const MIME: Record<string, string> = {
@@ -56,7 +58,22 @@ const server = http.createServer(async (req, res) => {
   const url = req.url || '/';
   try {
     if (url === '/health' || url === '/healthz') {
-      json(res, 200, { ok: true });
+      // 永远 200：平台按状态码判定实例健康，503 会让冷启动期间一直被重启。
+      // 是否真的可用看 body 的 ok / db 字段（ok:false + db:"starting" = 数据库还没就绪）。
+      if (dbReady()) json(res, 200, { ok: true, db: 'ready', driver: dbDriver() });
+      else {
+        const boot = dbBootStatus();
+        json(res, 200, {
+          ok: false, db: 'starting', attempts: boot.attempts,
+          lastError: boot.lastError.slice(0, 200),
+        });
+      }
+      return;
+    }
+    // 数据库未就绪：接口一律 503，不能让请求打到还没建表的 db()。
+    // 静态资源放行——托管平台若用首页做探针，503 会被误判成实例故障。
+    if (!dbReady() && (url.startsWith('/api/') || url.startsWith('/uploads/'))) {
+      json(res, 503, { error: '服务启动中（数据库连接未就绪），请稍后重试' });
       return;
     }
     if (url.startsWith('/uploads/')) {
@@ -93,4 +110,5 @@ server.listen(PORT, () => {
   console.log(`  ➜ http://localhost:${PORT}`);
   console.log(`  ➜ 演示账号 demo / demo1234`);
   console.log('');
+  if (!dbReady()) console.log('  ⟳ 数据库初始化中（接口暂回 503，/health 可见进度）');
 });

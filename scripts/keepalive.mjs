@@ -21,7 +21,7 @@ async function ping() {
     const resp = await fetch(TARGET, { signal: AbortSignal.timeout(15000) });
     const ms = Date.now() - t0;
     const body = (await resp.text().catch(() => '')).trim();
-    if (resp.ok && body.includes('"ok"')) {
+    if (resp.ok && /"ok"\s*:\s*true/.test(body)) {
       okCount++;
       console.log(`[${new Date().toLocaleTimeString('zh-CN')}] ✓ 在线 ${ms}ms（连续正常 ${okCount}）`);
     } else if (resp.status === 204 || !body) {
@@ -30,6 +30,10 @@ async function ping() {
       console.log(`[${new Date().toLocaleTimeString('zh-CN')}] ⏳ 应用休眠中，请求主页触发唤醒…`);
       await fetch(TARGET.replace('/health', '/'), { signal: AbortSignal.timeout(25000) }).catch(() => {});
       console.log(`    （唤醒需 10~30 秒，下一轮心跳确认）`);
+    } else if (/"db"\s*:\s*"starting"/.test(body)) {
+      // 服务进程在线、数据库还没连上（冷启动/DB 暂停唤醒中），接口暂回 503
+      failCount++;
+      console.log(`[${new Date().toLocaleTimeString('zh-CN')}] ⏳ 数据库启动中 ${body.slice(0, 120)}`);
     } else {
       failCount++;
       console.log(`[${new Date().toLocaleTimeString('zh-CN')}] ! HTTP ${resp.status} ${body.slice(0, 40)}`);
