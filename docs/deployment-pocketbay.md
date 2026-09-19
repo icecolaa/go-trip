@@ -31,7 +31,7 @@
 
 2. 上传（multipart：`name`、`file`、`approved_config_paths` 传 `'[]'`；已脚本化：`node scripts/pocketbay-deploy.mjs <tarball>`——读凭证、FormData、`POST https://pocketbay.com/api/ai/deploy`、自动轮询到 running，2026-09-17 迁移期间实测 #8930/#8931）。
 3. 轮询 `GET /api/ai/projects/gotrip/status`（同一 token）到 `project_status == "running"`，再报告成功。失败时按响应里的 `error_category` / `repair_hint` 处理，常见：`config_policy_violation` → 检查包里是否混入 `.env`；413 → 减包；429 → 遵守 `Retry-After`。
-4. 健康检查：`GET /health` 返回 `{"ok":true}`（`/api/health` **不是**路由，会返回 `{"error":"接口不存在"}`，但这也证明服务在线）。
+4. 健康检查：`GET /health` 返回 `{"ok":true,"db":"ready","driver":"postgres"}`（`/api/health` **不是**路由，会返回 `{"error":"接口不存在"}`，但这也证明服务在线）。数据库尚未连上时 `/health` 仍回 200，body 为 `{"ok":false,"db":"starting","attempts":n,"lastError":"…"}`，`/api` 回 503（见 CLAUDE.md「启动顺序不可倒置」）。
 
 ## 部署后验证清单
 
@@ -52,6 +52,21 @@ PocketBay 免费托管闲置会回收实例，下次访问需在平台页点「�
 ```bash
 node scripts/keepalive.mjs   # 默认每 4 分钟心跳一次，Ctrl+C 停止
 ```
+
+### 判断「是睡了还是挂了」（2026-09-19 实测）
+
+- 休眠时应用域名一律回 **204 空响应**（`Server: cloudflare` + `x-pb-project`），POST 会被换成 403 的 `pb-shell` 挑战页（带 `pb_hs` cookie）。用浏览器 UA 也一样。
+- **脚本请求首页并不能触发唤醒**（连打 75 秒仍是 204），必须浏览器打开 `https://gotrip.pocketbay.app` 在平台横幅上点「唤醒并继续」。
+- 平台 API 不受休眠影响，可直接确认状态与最新部署号：
+
+  ```bash
+  node -e "const t=require(process.env.USERPROFILE+'/.pocketbay/credentials.json')['https://pocketbay.com']._device.token;
+  fetch('https://pocketbay.com/api/ai/projects',{headers:{Authorization:'Bearer '+t}}).then(r=>r.json())
+    .then(j=>{const g=j.find(p=>p.slug==='gotrip');console.log(g.status,'deployment',g.current_deployment_id,'slept_at',g.slept_at,'autosleep',g.autosleep_enabled)})"
+  ```
+
+  `project_status` 取值：`sleeping`（回收，需人工唤醒）/ `running`；`latest_deployment.status` 是构建结果，与服务是否在线无关。
+  没有 wake/resume 类接口（`/wake`、`/resume`、`/start`、`/keepalive` 实测均 404），`autosleep_enabled` 字段存在但接口未提供改它的入口。
 
 ## 数据库注意
 

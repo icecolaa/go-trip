@@ -9,7 +9,7 @@ npm run dev            # 同时启动 server(8787) + client(5173，Vite 代理)
 npm run build          # 构建前端到 client/dist
 npm start              # 生产启动（托管 client/dist，端口 8787）
 npm run check          # 前端 TypeScript 类型检查
-bash scripts/smoke.sh  # API 冒烟测试（91 项断言，需服务已启动）
+bash scripts/smoke.sh  # API 冒烟测试（99 项断言，需服务已启动；Windows 下脚本自带 PYTHONUTF8=1）
 node scripts/keepalive.mjs  # PocketBay 保活心跳
 ```
 
@@ -18,7 +18,8 @@ node scripts/keepalive.mjs  # PocketBay 保活心跳
 
 ## 架构要点
 
-- **双驱动数据库**（`server/src/db.ts`）：设了 `DATABASE_URL` 用 pg Pool（max 5, TLS），否则回退 `node:sqlite`。DDL 双方言；启动自动建表 + 种子。**PG 迁移语句必须 await 顺序执行**（历史上接在 return 后成为死代码，生产缺表 500）。
+- **双驱动数据库**（`server/src/db.ts`）：设了 `DATABASE_URL` 用 pg Pool（max 5, TLS），否则回退 `node:sqlite`；设了 `MYSQL_ADDRESS` 用云托管内置 MySQL（mysql2 池）。DDL 双方言；启动自动建表 + 种子。**PG 迁移语句必须 await 顺序执行**（历史上接在 return 后成为死代码，生产缺表 500）。
+- **启动顺序不可倒置**（`server/src/index.ts`）：先 `server.listen`、数据库后台 `initDb()` 退避重试，未就绪时 `/api` 与 `/uploads` 回 503、`/health` **恒 200**（可用性写在 body 的 `ok`/`db` 字段）。原因：托管平台按状态码判实例健康，早期「等 DB 再监听」遇 Serverless MySQL 唤醒慢会让容器反复重启、公网整段 504。新增路由/探针不要把这条改回去。
 - **后端零框架**（`server/src/index.ts` + `routes.ts`）：`route(method, path, needAuth, handler)`；错误抛 `ApiError(status, message)`，前端直接展示 message——不要裸 `throw new Error`（会变 500）。
 - **FlyAI 机票搜索**（`server/src/flywhere.ts`）：spawn 子进程调飞猪 bundle，串行队列 + 429 退避 + 双层内存缓存（FlyAI 原始结果 10 分钟、搜索结果 30 分钟）。
 - **读请求体** `readBody` 上限 25MB（日志多图 base64）。上传文件在 `server/src/uploads.ts`（dataURL 校验、basename 防穿越）。

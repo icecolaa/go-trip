@@ -172,7 +172,7 @@ callContainer 不支持长连接。小程序 WS 走 `WS_BASE` 直连：
 操作通道（令牌 `server/src/admin-migrate-token.txt`，gitignore 排除，文件不存在时接口一律 404）：
 
 1. **PocketBay 侧（导出）**：基于 master 打一次性包（补 migrate 接口块 + 令牌文件，本地全量自检后打包），`node scripts/pocketbay-deploy.mjs <tarball>` 部署，`GET https://gotrip.pocketbay.app/api/admin/migrate/dump?token=<令牌>` 拉全量 JSON，随后**立刻重部干净 master** 关闭通道（2026-09-17 实测 #8930 导出 → #8931 恢复，窗口约 90 秒）。
-2. **云托管侧（导入，控制台 Webshell）**：服务列表 → gotrip → 服务设置/更多 → Webshell，粘贴（需 PocketBay 处于一次性导出版本）：
+2. **云托管侧（导入，控制台 Webshell）**：服务列表 → gotrip → 服务设置/更多 → Webshell，粘贴（需 PocketBay 处于一次性导出版本）。现成的一行命令（含令牌）在 `work/migration/webshell-command.txt`（gitignore，勿提交）：
 
    ```bash
    cd /app && curl -s 'https://gotrip.pocketbay.app/api/admin/migrate/script?token=<令牌>' -o migrate.ts \
@@ -180,9 +180,36 @@ callContainer 不支持长连接。小程序 WS 走 `WS_BASE` 直连：
    ```
 
    加 `--dry-run` 先试运行不写库；URL 源会自动作为图片拉取源。若云上部署了含此代码的版本（令牌文件在包内），也可直接 `POST /api/admin/migrate/import`（body 为 dump JSON）。
-3. **验证**：`node work/migration/cloud-verify.mjs`（公网探针：demo 登录、迁移旅程行数、bundle 体积、feat 代码在线）。真机小程序：账号密码登录 → 行程列表出现迁移旅程。
+
+   ⚠️ 2026-09-19 现状：PocketBay 应用处于 `sleeping`（204 壳，需浏览器点「唤醒并继续」），且线上部署已到 **#8932**——比记录里「#8931 已恢复干净 master」又多一次部署，**导出通道是否还开着未知**（关窗与开窗都回 404，只能拿正确令牌探：`curl -s -o /dev/null -w "%{http_code} %{content_type}\n" "https://gotrip.pocketbay.app/api/admin/migrate/script?token=$(sed -n 's/.*script?token=\([0-9a-f]*\).*/\1/p' work/migration/webshell-command.txt)"` → 404＝已关，200＋`text/plain`＝令牌有效、通道开着，导入完必须重部干净 master 关掉）。两条路二选一：
+   - **A（推荐，与手册原设计一致）**：唤醒 PB → 若 `/script` 探针回 404，用现成的一次性包重开窗口：`node scripts/pocketbay-deploy.mjs work/migration/gotrip-oneoff-v2.tar.gz`（包已打好：master + 补丁路由 + 令牌文件，105 个文件，与 `webshell-command.txt` 里的令牌同一个）→ 云 Webshell 粘贴上面那条命令 → 导完立刻重部干净 master 关窗（窗口控制在 90 秒内）。
+   - **B（不依赖 PocketBay 活着）**：用已存档的 `work/migration/pocketbay-prod-dump.json`（2026-09-17T17:12Z：5 用户/4 旅程/112 行程项/0 图片）。粘贴物料已备好——照 `work/migration/offline/README.txt` 的顺序贴 `00-header → p1…p4 → 99-run`（先 `--dry-run`，去掉尾标即真导入），4 片重组与原 dump 已 `cmp` 校验字节一致。**前提**：容器里存在 `/app/server/src/migrate.ts`（feat 构建 4388b78 起自带，引擎只依赖 node 内置 + 镜像里的 mysql2）；没有就说明云上还是旧版本，回 A 路。**代价**：拿不到 09-17 之后新产生的数据，导入前先确认这段窗口 Web 端没写入。
+3. **验证**：`node work/migration/cloud-verify.mjs`（公网探针：demo 登录、迁移旅程行数、bundle 体积、feat 代码在线）。**该脚本走公网默认域名**——若已按安全要求关掉公网访问，改为在 Webshell 里 `curl -s localhost:8787/health` 与容器内跑同一份断言，或临时开公网验完再关。真机小程序：账号密码登录 → 行程列表出现迁移旅程。
 
 历史数据怪癖（引擎已处理）：旧数据用 `0` 表示「未指派」→ 归一为 NULL；成员删除不清理记账/指派引用 → 孤儿保留原值仅告警（与现网行为一致）；`TEXT`(64KB) 装不下 200KB 头像 dataURL → `avatar_url`/`journal_notes.images` 升 `MEDIUMTEXT`；**MySQL 首次种子 journal INSERT 缺 images 列在严格模式必崩 1364**（云库此前种子残缺：有记账打包、无日志/动态/锦囊），已修。
+
+## 故障排查：公网域名 504（容器起不来）
+
+先用一条命令分清是哪种故障（不需要控制台）：
+
+```bash
+curl -s -D - -o /dev/null --max-time 45 https://<默认域名>/health | grep -iE "^HTTP|x-cloudbase-upstream"
+```
+
+| 现象 | 含义 | 处理 |
+|---|---|---|
+| 504 + `x-cloudbase-upstream-status-code: -`，约 30 秒超时 | 网关从未拿到容器响应＝端口没监听（实例没起来/构建版本未发布/启动即崩） | 见下面四步 |
+| 502/500 且有 upstream 状态码 | 容器在跑但应用报错 | 看运行日志栈 |
+| 连接立刻被拒或 403 | 服务设置里公网访问已关（安全要求，正式版就该关） | 验证期临时开、验完关；或改用 Webshell 里 `curl localhost:8787` |
+
+504 的四步（控制台）：
+
+1. **服务列表 → gotrip → 版本配置**：确认有「已发布」版本。只有「构建成功未发布」→ 点发布（本项目的历史坑：仓库流水线显示完成但线上还是旧版本，见 HANDOFF 事故表）。
+2. **最小实例数临时设 1**：`0` 时冷启动要靠请求触发，一旦启动就慢/失败会陷入「请求→超时→再没起来」的死循环，调成 1 让它常驻便于看日志。
+3. **运行日志**：本仓库代码 2026-09-19 起是「先监听端口、数据库后台重试」，所以容器能起来；日志里找 `[db] 初始化失败（第 N 次）…`，第 3 次会直接提示核对 `MYSQL_ADDRESS/MYSQL_USERNAME/MYSQL_PASSWORD`。若反复 ECONNREFUSED/TIMEOUT，问题在数据库侧。
+4. **数据库管理 → MySQL**：看内置实例是否被暂停/回收/欠费（Serverless 闲置会暂停，首次连接要等它恢复，通常 1~2 分钟）。
+
+恢复判据：`/health` 返回 `{"ok":true,"db":"ready","driver":"mysql"}`；`/api/auth/wechat`（无头）返回 400 说明 feat 代码在线。**Webshell 也要求有运行中的实例**，504 期间进不去，所以迁移导入必须等服务先起来。
 
 ## 回滚
 

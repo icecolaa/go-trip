@@ -1,19 +1,19 @@
 # 交接文档（HANDOFF）
 
 > 面向下一个接手的开发者或 AI 会话。先读根目录 `CLAUDE.md`（规则手册），再读本文（现状、过程与经验）。
-> 更新：2026-09-17。
+> 更新：2026-09-19。
 
 ## 当前状态一览
 
 | 项 | 值 |
 |---|---|
-| 生产 | `https://gotrip.pocketbay.app`，部署 #7591（2026-09-13），`/health` 正常；飞哪儿页对齐 flywhere 原版布局，全站切换 flywhere 暖白色板（线上 CSS 已验证） |
-| 最近提交 | `7f45ab1` style: 全站背景改弥散式暖色渐变（部署 #7932） |
+| 生产 | Web 端 `https://gotrip.pocketbay.app`（当前 `sleeping`，浏览器点「唤醒并继续」恢复）；小程序端云托管 gotrip 服务**公网 504 待恢复**（见条目 18） |
+| 最近提交 | `ec9c2a3` fix: 云托管冷启动不再被数据库卡死——先监听端口再后台初始化 DB（feat/miniprogram，**未部署**） |
 | 架构图 | `docs/gotrip-architecture.html`（Archify 生成，源规格 `docs/gotrip-architecture.json`，showcase 9/9 检查通过） |
 | 旅程编辑 | 卡片封面 hover ✏️ 按钮（owner/admin）→ 编辑弹窗（预填/改日期自动对齐天数），提交 #7595 |
 | 仓库 | Gitee `ice-colaa/go-trip` + GitHub `icecolaa/go-trip`（私有镜像），分支 `master`；origin 配了双 push URL，`git push origin master` 一条命令两边同步 |
 | 数据库 | PocketBay 托管 PostgreSQL（生产）／SQLite（本地回退）／MySQL（微信云托管，`MYSQL_ADDRESS` 注入自动建库） |
-| 验收 | `acceptance/REPORT.md` + `acceptance/screenshots/`；冒烟 `scripts/smoke.sh` 91 项全过（2026-09-12） |
+| 验收 | `acceptance/REPORT.md` + `acceptance/screenshots/`；冒烟 `scripts/smoke.sh` **99 项全过**（2026-09-19 本地 SQLite 全新库） |
 
 ## 2026-08~09 主要交付（按主题）
 
@@ -32,6 +32,7 @@
 15. **微信静默登录（2026-09-17，feat/miniprogram）**：用户免注册登录，openid 即身份。①服务端：users 表加 `wechat_openid`（唯一索引）/`avatar_url`（dataURL）两列（三方言 DDL；MySQL 无 IF NOT EXISTS，用 try/catch 逐条 ALTER 平滑升级旧库）；`POST /api/auth/wechat` 读 `x-wx-openid` 找用户/静默注册（username=`wx_<openid>`、昵称「微信用户」、随机密码不可密码登录），缺 openid 400、缺 `x-wx-source` 403；`PATCH /api/me` 支持 avatarUrl（dataURL ≤200KB 入库——公网关闭时 `<Image>` 加载不了 `/uploads/`，dataURL 走 JSON 通道规避）。②小程序：行程列表无 token 先静默调 wechat 接口，失败兜底登录页（开发直连必 400，demo 账号不受影响）；新增「我的资料」页（官方头像昵称填写能力：Button openType=chooseAvatar 压缩 60 后存 dataURL + Input type=nickname 快捷填微信昵称），行程页头部加「我的」入口。③安全红线：`x-wx-*` 头仅微信专线可信，**生产必须在云托管控制台关闭公网访问**，否则公网域名可伪造头冒充任意用户（手册 6.5 节）。冒烟：wechat 登录 7 项断言 + 全量 95/0 PASS。
 16. **云托管 MySQL 版上线（2026-09-17，feat/miniprogram）**：用户开通内置 MySQL 并经 Gitee 仓库流水线部署 + 手动发布，gotrip 服务公网域名跑上 MySQL。上线验证用四个公网探针（不依赖控制台）：`/health` 200；**140 字符长昵称注册 500 = MySQL 严格模式生效**（SQLite 会存全长）；`/api/auth/wechat` 400 文案 = feat 代码在线（master 构建无此路由会 404）；旧 SQLite 探针账号 401 = 新旧库隔离。WS 链路：升级请求穿默认域名命中 `/ws` 并走 token 鉴权（无 token 服务端 401）即整条通；socket 合法域名实测——mp 后台存 `*.tcloudbase.com` 红字「仅测试使用」，可保存、开发版/体验版可用、**正式版会被拦**，正式需绑定已备案自定义域名。随线上切换暴露并修复 12 处入参截断宽松于 MySQL 列宽（nickname 64 / avatarColor·coverColor 16 / description 512 / kind·category 16 / 链接 url 512）——SQLite 时代静默截断，MySQL 严格模式直接 500；冒烟补 3 条超长入参回归（100/0）。config `WX_SERVICE`/`WS_BASE` 改指 gotrip 服务与域名（原 express-yo4c 实为 Express 模板占位，callContainer 打过去全 404）。待用户：正式版前备案域名、关公网、删 express-yo4c、重置 AppSecret/上传密钥。
 17. **PocketBay → 云托管 MySQL 数据迁移通道（2026-09-17，提交 4388b78）**：两侧库都不开放公网直连，走应用层。①引擎 `server/src/migrate.ts`：全量 dump/合并导入（PB 原样落库保留 id/哈希/时间戳；云侧 `wx_*` 用户及其旅程按**所有者**判保留并 id 平移——不能按 id 判重，云侧旅程 id 必与 PB 相撞；`expenses.participants` 成员 id 重写；/uploads 图片内联 dataURL；导入前全表备份 + 单事务 + 引用校验失败即中止）。②接口 `/api/admin/migrate/{dump,script,import}` 由 `server/src/admin-migrate-token.txt`（gitignore）守护，无令牌一律 404。③PocketBay 部署已脚本化 `scripts/pocketbay-deploy.mjs`（免配对 multipart + 轮询）。④本地 Docker MySQL 端到端 36 断言 + 冒烟 98/0 验证；生产 dump（5 用户 4 旅程 112 行程项，0 图片）已彩排导入成功。⑤流程实绩：PB 一次性版本部署 #8930 → 拉 dump → #8931 恢复干净 master（导出窗口 90 秒）。**待执行**：云托管 Webshell 粘贴一条命令完成导入（见 deploy-wxcloudrun.md 迁移节），随后 `node work/migration/cloud-verify.mjs` 验证。
+35. **云托管冷启动加固（2026-09-19，提交 ec9c2a3，未部署）**：接手时实测两侧生产都不可用——① PocketBay `sleeping`（应用域名一律回 204 空壳、POST 回 403 `pb_hs` 挑战页；平台 API `GET https://pocketbay.com/api/ai/projects` 用 `~/.pocketbay/credentials.json` 的设备 token 可正常读到 `status/autosleep_enabled/last_access_at/slept_at/latest_deployment`，最新部署已到 **#8932**，即恢复干净 master 之后又部过一次。唤醒仍需浏览器点「唤醒并继续」，脚本打 `/` 触发不了，接口名 wake/resume/start/keepalive 均 404）。② 云托管 gotrip 公网域名 `/health` **稳定 504**，响应头 `x-cloudbase-upstream-status-code: -` + 30.2 秒超时 = 网关始终没拿到容器响应，端口从未监听；Webshell 也要有运行实例才打得开，所以条目 34 的「粘贴一条命令导入」在这一步恢复前无法执行。根因（代码可确认的那半）：`index.ts` 在 `server.listen` 之前 `await initDb()`，而内置 MySQL 是 Serverless——闲置暂停后首次连接要几十秒，连接一抛错进程就退出 → 平台判实例不健康 → 反复重启 → 永远 504。修法：先 listen、DB 后台按 5~30 秒退避重试（失败先关半截连接池），`/health` 恒 200 并回报 `{"ok":false,"db":"starting","attempts":n,"lastError":"…"}`（不能用 503，否则平台照旧重启），未就绪期间 `/api` 与 `/uploads` 与 WS 升级回 503、静态资源放行；mysql2 `connectTimeout`/pg `connectionTimeoutMillis` 各 15 秒（默认会无限挂着）。验证：SQLite 全新库冒烟 99/0；`MYSQL_ADDRESS` 指死端口实测进程存活 + 上述状态码 + 退避日志 + 第 3 次给出配置核对提示。**MySQL 真库恢复路径本机无 MySQL 未测（Docker Desktop 未运行），与首启共用同一段代码**。附带修 `smoke.sh`：`export PYTHONUTF8=1`——Git Bash 按 GBK 递交 `python -c` 参数，脚本里 `displayName=='冒烟乙'` 比对失败使 `MEM_B` 取空、URL 缺段，把断言伪装成 6 项「接口不存在」的假故障（本机 2026-09-19 曾据此误判回归）。**下一步（需控制台）**：见 deploy-wxcloudrun.md「云托管 504 排查」，服务恢复后先部署本版再走导入。
 6. **内容收藏**：旅行日志支持多图上传（前端 canvas 压缩 1600/400 双尺寸，JPEG 0.85）+ 缩略图；新增「攻略」Tab 收藏小红书/公众号链接。
 7. **质量**：多轮代码 review 修复；`scripts/smoke.sh` 冒烟 91 项；验收报告归档。
 
@@ -43,6 +44,8 @@
 | 迁移引擎初版按「云侧旅程 id 与 dump 撞号」判重丢弃，本地彩排即翻车：云侧 wx 用户旅程 id=2 与 PB 旅程 id=2 相撞被误删 | 两边自增 id 各自从 1 起，撞号是必然而非巧合 | 跨库合并判重必须用业务归属（所有者是否为保留用户），id 只做平移不做判据 |
 | 代码仓库部署显示「已完成」，但 gotrip 公网域名仍是 gotrip-003（SQLite）——探针实测：140 字符昵称完整落库（MySQL VARCHAR(64) 严格模式必 500 或截断）、`/api/auth/wechat` 返回 feat 代码的 400 | 仓库部署未在 gotrip 服务构建/发布成功（或版本未发布）；且 origin/master 缺 MySQL 方言与幂等守卫（无 mysql2 依赖），流水线若选 master 构建出的版本根本不认 MYSQL_* 环境变量；config.ts 的 WX_SERVICE 曾误指 express-yo4c（实为 Express 模板占位服务，callContainer 打过去全 404） | 部署「完成」必须用线上探针验证版本：`/api/auth/wechat` 探针区分 feat/master 代码、超长 nickname 登录回显长度区分 MySQL（截 64）/SQLite（存全长）；流水线分支必须选 feat/miniprogram（或先把 feat 合进 master）；WX_SERVICE/WS_BASE 必须与实际服务及其域名一致 |
 | 云托管部署两次失败（express-yo4c-007/009，feat/miniprogram） | ①mysql2 默认单语句，migrateMysql 整段 DDL 一次 query → ER_PARSE_ERROR 启动即崩；②重跑迁移时 `CREATE INDEX`（MySQL 无 IF NOT EXISTS）→ ER_DUP_KEYNAME | mysql2 迁移必须逐条执行 + 幂等（ER_DUP_KEYNAME 视为已就绪）；修复 6a7c701/99d3254，冒烟 95/0。**方言语义差异（pg/sqlite 可多语句）不等于 MySQL 可行，MySQL 路径必须真库验证** |
+| 云托管公网域名一直 504、Webshell 进不去，数据迁移导入卡住 | `index.ts` 在 `listen` 前 `await initDb()`；内置 MySQL（Serverless）暂停/唤醒慢时连接抛错 → 进程退出 → 端口从未监听 → 平台反复重启。网关头 `x-cloudbase-upstream-status-code: -` 就是「上游从未响应」的判据 | 托管平台上「等依赖就绪再监听」是反模式：先 listen 让实例健康，依赖后台退避重试，未就绪用 503 挡接口；**健康检查接口自己不能失败**（/health 恒 200，可用性放 body 字段）。修复见条目 35 |
+| 冒烟本机一次报 6 项失败（「接口不存在」「请填写正确的金额」） | `scripts/smoke.sh` 里 `python -c` 含中文字面量，Git Bash 按 GBK 递交参数 → `displayName=='冒烟乙'` 匹配失败 → `MEM_B` 取空 → 请求 URL 缺段。是 红线 3 的同一类坑，只是这次踩在测试脚本自身 | 已在 smoke.sh 顶部 `export PYTHONUTF8=1`/`PYTHONIOENCODING=utf-8`；看冒烟失败先确认变量是否取空，别急着怀疑业务代码 |
 | 云托管 zip 部署 gotrip-001「创建版本失败」 | PowerShell Compress-Archive 打的 zip 用反斜杠路径，Linux 侧解压异常；包里还混进根目录 data/（本地误生成的 db+uploads） | Windows 打 zip 用系统 bsdtar（`/c/Windows/System32/tar.exe -acf x.zip`，正斜杠）；打包排除清单加 `data/`、`miniprogram/.swc`、`2b5d6837*`（见 deploy-wxcloudrun.md 打包节） |
 | DevTools 模拟器白屏/飞哪儿入口消失 | Taro 构建先清空 dist 再写入，DevTools 监视 dist 恰逢清空窗口启动模拟器 → `dist/app.json not found` 挂死不自愈 | 构建完成后再点一次「编译」；日常保持 dev:weapp watch，避免 DevTools 开着时手动 build:weapp |
 | 生产 links 接口 500（PG 42P01 缺表） | `migratePg` 里迁移语句接在 `return` 之后成为死代码 | 双方言迁移务必 `await` 顺序执行；改完对照 fresh DB 冒烟 |
@@ -56,7 +59,8 @@
 
 ## 已知限制 / 后续可做
 
-- **PocketBay 休眠**：平台机制，应用侧无法关闭，只能 keepalive 缓解（见 [deployment-pocketbay.md](deployment-pocketbay.md)）。
+- **PocketBay 休眠**：平台机制，应用侧无法关闭，只能 keepalive 缓解（见 [deployment-pocketbay.md](deployment-pocketbay.md)）。2026-09-19 补充实测：休眠时应用域名一律 204（POST 转 403 `pb_hs` 挑战页），脚本请求首页**触发不了唤醒**，必须浏览器点「唤醒并继续」；但平台侧 `GET /api/ai/projects`（设备 token）不受影响，可读到 `status`/`autosleep_enabled`/`slept_at`/`latest_deployment`，判断「是睡了还是挂了」用它。
+- **数据迁移尚未在生产执行**：生产 dump 已在 `work/migration/pocketbay-prod-dump.json`（2026-09-17T17:12Z，5 用户/4 旅程/112 行程项/0 图片，gitignore 内），云托管侧导入待服务恢复后按 deploy-wxcloudrun.md 迁移节执行；若 PB 侧已回到干净 master（#8931/#8932），`/api/admin/migrate/*` 通道是关的，重开需再打一次一次性导出版部署。
 - **手绘地图精度**：出发模式手绘 SVG 路线的地点定位与站间直线距离依赖高德数据，景区级坐标有误差，属数据源限制。
 - **测试**：目前只有 API 冒烟（`scripts/smoke.sh`，需服务已启动），无前端 E2E；补测试可从冒烟脚本扩断言开始。
 - **`.env` 随包部署**：免配对接口拒绝敏感文件，生产密钥统一走平台控制台（实测记录见 deployment-pocketbay.md）。
