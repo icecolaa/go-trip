@@ -567,7 +567,7 @@ async function migrateMysql(m: any): Promise<void> {
     author_member_id INT NOT NULL,
     content TEXT NOT NULL,
     mood VARCHAR(8) NOT NULL DEFAULT '🙂',
-    images MEDIUMTEXT NOT NULL DEFAULT ('[]'),
+    images MEDIUMTEXT NOT NULL,
     created_at VARCHAR(32) NOT NULL,
     updated_at VARCHAR(32) NOT NULL
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
@@ -629,10 +629,14 @@ async function migrateMysql(m: any): Promise<void> {
     'ALTER TABLE users ADD COLUMN wechat_openid VARCHAR(64) NULL',
     'ALTER TABLE users ADD COLUMN avatar_url MEDIUMTEXT NULL',
     'CREATE UNIQUE INDEX idx_users_openid ON users(wechat_openid)',
-    // 头像 dataURL 允许 200KB、日志图片内联后更大，TEXT(64KB) 不够——升列宽（幂等）；
-    // images 补表达式默认值，修复 MySQL 严格模式下种子插入缺列报 1364
+    // 头像 dataURL 允许 200KB、日志图片内联后更大，TEXT(64KB) 不够——升列宽（幂等）。
+    // ⚠️ 不要给 images 补 DEFAULT ('[]')：表达式默认值是 MySQL 8.0.13+ 语法，云托管内置 MySQL
+    //    在更低版本上整段 CREATE TABLE 直接 1064，启动永远起不来（2026-09-20 gotrip-013 实锤）。
+    //    1364（NOT NULL 无默认值）靠 INSERT 显式列全来防：db.ts 种子与 /journal 两条写入路径
+    //    都已带 images 列，加列时请保持这一点。
     'ALTER TABLE users MODIFY avatar_url MEDIUMTEXT NULL',
-    "ALTER TABLE journal_notes MODIFY images MEDIUMTEXT NOT NULL DEFAULT ('[]')",
+    'UPDATE journal_notes SET images = \'[]\' WHERE images IS NULL OR images = \'\'',
+    'ALTER TABLE journal_notes MODIFY images MEDIUMTEXT NOT NULL',
   ]) {
     try { await m.query(ddl); } catch { /* 已存在 */ }
   }
@@ -649,7 +653,9 @@ function insertUser(d: { prepare: (sql: string) => Stmt }, travelId: number, use
 /** 首次启动写入演示数据，让新部署开箱即有内容可看 */
 async function seedDemo(d: { prepare: (sql: string) => Stmt }): Promise<void> {
   const count = await d.prepare('SELECT COUNT(*) AS c FROM users').get() as any;
-  if (Number(count.c) > 0) return;
+  const existing = Number(count.c ?? 0);
+  // 这行日志是判据：空库=新建/被回收，非空=沿用旧数据（数据迁移与事故复盘都靠它）
+  if (existing > 0) { console.log(`  ➜ 种子数据：跳过（库里已有 ${existing} 个用户）`); return; }
 
   const pass = hashPassword('demo1234');
 
@@ -760,6 +766,7 @@ async function seedDemo(d: { prepare: (sql: string) => Stmt }): Promise<void> {
     const c = cards[i];
     await insGuide.run(tripId, c.category, c.icon, c.title, c.summary, JSON.stringify(c.items), 'builtin', i, nowISO());
   }
+  console.log('  ➜ 种子数据：空库，已写入演示账号与种子旅程');
 }
 
 /* ---------------- 启动就绪状态（HTTP 层据此决定 503，见 index.ts / ws.ts） ----------------
@@ -843,9 +850,15 @@ async function initDbOnce(): Promise<void> {
     await bootstrap.end();
     _mysql = mysql.createPool({ ...base, database: 'gotrip' });
     _driver = 'mysql';
+    // 版本打进日志：方言兼容坑（如表达式默认值要 8.0.13+）全靠这行定位，别再靠猜
+    let mysqlVersion = '未知';
+    try {
+      const [rows] = await _mysql.query('SELECT VERSION() AS v');
+      mysqlVersion = String(rows?.[0]?.v || '未知');
+    } catch { /* 版本查不到不影响启动 */ }
     await migrateMysql(_mysql);
     await seedDemo(db());
-    console.log(`  ➜ 数据库：MySQL（微信云托管内置）`);
+    console.log(`  ➜ 数据库：MySQL（微信云托管内置 · 服务端版本 ${mysqlVersion}）`);
   } else {
     const dbPath = process.env.GOTRIP_DB
       || (process.env.POCKETBAY_DATA_DIR ? path.join(process.env.POCKETBAY_DATA_DIR, 'gotrip.db') : '')
