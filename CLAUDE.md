@@ -33,6 +33,7 @@ node scripts/keepalive.mjs  # PocketBay 保活心跳
 4. **数据库 schema 变更**：双方言同步改（SQLite 段 try/catch 兜底重复执行，PG 段 `IF NOT EXISTS`/独立 try），并在 fresh DB 上冒烟验证。
 5. **提交前**：`npm run check` 通过 + 相关冒烟通过；commit message 用 `feat:/fix:/docs:/style:` 前缀、中文一句话讲清动机。
 6. **提交后**：立即对本次提交的 diff 做一轮 review——明显 Bug、是否破坏已有功能、未使用变量/调试代码、测试缺口；发现问题先列问题清单再改文件，修复重新验证后追加 fix 提交，不留到下次。
+7. **临时后门接口（如令牌守护的 `/api/admin/migrate/*`）「开窗」和「关窗」算同一步**：开之前先把恢复包准备好，导完立刻重部干净构建，**当天收工前必须再探一次端点确认已 404**。教训：2026-09-18 拉完 dump 没关窗，能倒出全库的接口在公网上挂了约 3 天（#8932），09-20 才收口（#9316）。
 
 ## 部署（PocketBay）
 
