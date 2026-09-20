@@ -5,6 +5,9 @@ export default defineAppConfig({
     'pages/trip-create/index',
     'pages/trip/index',
     'pages/activity/index',
+    'pages/transport-stay/index',
+    'pages/places/index',
+    'pages/cash/index',
     'pages/budget/index',
     'pages/packing/index',
     'pages/journal/index',
@@ -17,7 +20,7 @@ export default defineAppConfig({
   ],
   window: {
     backgroundTextStyle: 'light',
-    navigationBarBackgroundColor: '#1e2421',
+    navigationBarBackgroundColor: '#1c2b22',
     navigationBarTitleText: '出发吧 GoTrip',
     navigationBarTextStyle: 'white',
   },

@@ -28,4 +28,4 @@ export const WS_BASE = isDev
   : 'wss://gotrip-1509709-1308923163.ap-shanghai.run.tcloudbase.com'
 
 /** 是否走 callContainer：仅生产且填了环境 ID 时生效，开发始终直连本机 */
-export const USE_CLOUD = !isDev && CLOUD_ENV !== ''
+export const USE_CLOUD = !isDev && CLOUD_ENV.length > 0
