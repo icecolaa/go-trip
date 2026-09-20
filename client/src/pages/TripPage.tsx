@@ -136,7 +136,7 @@ export default function TripPage() {
   const { trip, members } = bundle;
   const onlineCount = bundle.onlineMemberIds.length;
   const canEdit = bundle.myRole === 'owner' || bundle.myRole === 'admin' || bundle.myRole === 'editor';
-  const ctx = { bundle, reload: load, reloadWeather: loadWeather, weather, canEdit };
+  const ctx = { bundle, reload: load, reloadWeather: loadWeather, weather, canEdit, goTab: (t: string) => setSearchParams({ tab: t }) };
 
   // 主要路线与逐日地点（供路线总览图使用）
   const dayPlaces = [...bundle.days].sort((a, b) => a.dayNumber - b.dayNumber).map(d => d.place).filter(Boolean);

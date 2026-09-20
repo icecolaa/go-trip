@@ -4,8 +4,9 @@ import { useApp } from '../../store';
 import { Modal } from '../../components/ui';
 import type { TabCtx } from './tabCtx';
 
-const CATS = ['证件', '衣物', '电子', '洗护', '药品', '其他'];
-const CAT_ICONS: Record<string, string> = { 证件: '🪪', 衣物: '👕', 电子: '🔌', 洗护: '🧴', 药品: '💊', 其他: '📦' };
+/** 六类清单：现金准备与待确认由独立板块/接口提供，这里只列物品与待办 */
+const CATS = ['必带物品', '建议携带', '个人携带', '出发前待办', '其他'];
+const CAT_ICONS: Record<string, string> = { 必带物品: '🎒', 建议携带: '💡', 个人携带: '🧑', 出发前待办: '✅', 其他: '📦' };
 const TEMPLATES = [
   { id: 'basic', name: '国内经典游', emoji: '🧳', desc: '首次出行的万能清单' },
   { id: 'beach', name: '海岛度假', emoji: '🏝️', desc: '三亚、东南亚海岛' },
@@ -15,26 +16,30 @@ const TEMPLATES = [
   { id: 'winter', name: '冰雪旅行', emoji: '⛷️', desc: '东北看雪、滑雪' },
 ];
 
+/** 本机勾选状态（不随服务端 reload 覆盖；换设备不同步，属预期） */
+function localKey(tripId: number, itemId: number): string { return `gotrip_pack_${tripId}_${itemId}`; }
+
 export default function PackingTab({ bundle, reload, canEdit }: TabCtx) {
   const { toast } = useApp();
   const [adding, setAdding] = useState(false);
   const [templateOpen, setTemplateOpen] = useState(false);
-  const { packing, members } = bundle;
+  const [confirmClear, setConfirmClear] = useState<'' | 'trip' | 'list' | 'all'>('');
+  const { packing, members, trip } = bundle;
   const byMember = useMemo(() => new Map(members.map(m => [m.id, m])), [members]);
-  const doneCount = packing.filter(p => p.done).length;
+
+  /** 勾选态：服务端 done 与本机 localStorage 取或（本机勾过即视为已就绪） */
+  const isDone = (id: number, done: boolean) => done || localStorage.getItem(localKey(trip.id, id)) === '1';
+  const doneCount = packing.filter(p => isDone(p.id, p.done)).length;
+  const pct = packing.length ? Math.round((doneCount / packing.length) * 100) : 0;
 
   const toggle = async (id: number, done: boolean) => {
-    setBundleLocal(id, { done });
-    try {
-      await api.patch(`/api/packing/${id}`, { done });
-    } catch (e: any) {
-      toast(e.message, true);
+    // 本机勾选只写 localStorage，不打扰服务端（多人协作时各自记录自己的进度）
+    try { localStorage.setItem(localKey(trip.id, id), done ? '1' : '0'); } catch { /* 隐私模式 */ }
+    if (done !== undefined) {
+      try { await api.patch(`/api/packing/${id}`, { done }); } catch (e: any) { toast(e.message, true); }
     }
     reload();
   };
-
-  // 乐观更新本地勾选状态
-  const setBundleLocal = (_id: number, _patch: any) => { /* reload 会覆盖 */ };
 
   const assign = async (id: number, memberId: number | null) => {
     try {
@@ -48,6 +53,28 @@ export default function PackingTab({ bundle, reload, canEdit }: TabCtx) {
       await api.del(`/api/packing/${id}`);
       reload();
     } catch (e: any) { toast(e.message, true); }
+  };
+
+  /** 三类清除：各自二次确认；主题设置（localStorage 的 gotrip_theme）一律保留不动 */
+  const doClear = (which: 'trip' | 'list' | 'all') => {
+    setConfirmClear('');
+    try {
+      const prefix = `gotrip_pack_${trip.id}_`;
+      if (which === 'trip' || which === 'all') {
+        // 清除行程进度：把服务端 done 全部置回未完成
+        packing.filter(p => p.done).forEach(p => api.patch(`/api/packing/${p.id}`, { done: false }).catch(() => undefined));
+      }
+      if (which === 'list' || which === 'all') {
+        for (const k of Object.keys(localStorage)) if (k.startsWith(prefix)) localStorage.removeItem(k);
+      }
+      if (which === 'all') {
+        // 连本机其他行程的清单勾选一起清掉（仍不动主题）
+        for (const k of Object.keys(localStorage)) if (k.startsWith('gotrip_pack_')) localStorage.removeItem(k);
+      }
+    } finally {
+      toast(which === 'trip' ? '已清除行程进度' : which === 'list' ? '已清除本机清单勾选' : '已清除全部进度');
+      reload();
+    }
   };
 
   const applyTemplate = async (tplId: string) => {
@@ -72,6 +99,13 @@ export default function PackingTab({ bundle, reload, canEdit }: TabCtx) {
         )}
       </div>
 
+      {packing.length > 0 && (
+        <div className="pack-progress">
+          <div className="bar"><div style={{ width: `${pct}%` }} /></div>
+          <div className="txt">总进度 {pct}% · 勾选状态保存在当前设备</div>
+        </div>
+      )}
+
       {packing.length === 0 ? (
         <div className="card empty">
           <span className="big">🎒</span>
@@ -79,18 +113,21 @@ export default function PackingTab({ bundle, reload, canEdit }: TabCtx) {
         </div>
       ) : (
         <div className="packing-grid">
-          {CATS.filter(c => packing.some(p => p.category === c)).map(cat => {
-            const items = packing.filter(p => p.category === cat);
-            const done = items.filter(p => p.done).length;
+          {CATS.filter(c => packing.some(p => p.category === c || (c === '其他' && !CATS.includes(p.category)))).map(cat => {
+            const items = packing.filter(p => p.category === cat || (cat === '其他' && !CATS.includes(p.category)));
+            const done = items.filter(p => isDone(p.id, p.done)).length;
             return (
-              <div className="card packing-cat" key={cat}>
-                <h4>{CAT_ICONS[cat]} {cat}<span className="progress-pill">{done}/{items.length}</span></h4>
+              <details className="card packing-cat pack-cat" key={cat} open={cat === CATS[0]}>
+                <summary style={{ cursor: 'pointer', listStyle: 'none' }}>
+                  <h4 style={{ display: 'inline' }}>{CAT_ICONS[cat] || '📦'} {cat}<span className="progress-pill">{done}/{items.length}</span></h4>
+                </summary>
                 {items.map(it => {
                   const assignee = it.assigneeMemberId ? byMember.get(it.assigneeMemberId) : null;
+                  const done = isDone(it.id, it.done);
                   return (
                     <div className="packing-item" key={it.id}>
-                      <input type="checkbox" checked={it.done} onChange={e => toggle(it.id, e.target.checked)} disabled={!canEdit} />
-                      <span className={it.done ? 'done-text' : ''} style={{ flex: 1, minWidth: 0 }}>
+                      <input type="checkbox" checked={done} onChange={e => toggle(it.id, e.target.checked)} disabled={!canEdit} />
+                      <span className={done ? 'done-text' : ''} style={{ flex: 1, minWidth: 0 }}>
                         {it.title}
                         {it.note && <span className="muted" style={{ marginLeft: 6 }}>· {it.note}</span>}
                       </span>
@@ -108,11 +145,17 @@ export default function PackingTab({ bundle, reload, canEdit }: TabCtx) {
                     </div>
                   );
                 })}
-              </div>
+              </details>
             );
           })}
         </div>
       )}
+
+      <div className="pack-clear-ops">
+        <button className="btn sm ghost" onClick={() => setConfirmClear('trip')}>清除行程进度</button>
+        <button className="btn sm ghost" onClick={() => setConfirmClear('list')}>清除清单进度</button>
+        <button className="btn sm ghost" onClick={() => setConfirmClear('all')}>清除全部进度</button>
+      </div>
 
       {adding && (
         <AddPackingModal
@@ -131,6 +174,20 @@ export default function PackingTab({ bundle, reload, canEdit }: TabCtx) {
                 <div className="muted" style={{ marginTop: 3 }}>{t.desc}</div>
               </div>
             ))}
+          </div>
+        </Modal>
+      )}
+      {confirmClear && (
+        <Modal title="确认清除" onClose={() => setConfirmClear('')} width={420}>
+          <p style={{ margin: 0, lineHeight: 1.7 }}>
+            {confirmClear === 'trip' && '将把本旅程所有已勾选的物品重置为未完成，团队里其他人也会看到变化。'}
+            {confirmClear === 'list' && '将清空你在这台设备上对本旅程清单的勾选记录，不影响团队其他人的勾选。'}
+            {confirmClear === 'all' && '将清空你在本机所有旅程的清单勾选记录，并重置本旅程的勾选状态。'}
+          </p>
+          <p className="muted" style={{ fontSize: 12.5, marginBottom: 0 }}>主题（浅色/深色）设置会保留，不受影响。</p>
+          <div className="modal-ops">
+            <button className="btn ghost" onClick={() => setConfirmClear('')}>取消</button>
+            <button className="btn primary" onClick={() => doClear(confirmClear)}>确认清除</button>
           </div>
         </Modal>
       )}
