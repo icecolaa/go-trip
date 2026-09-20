@@ -145,6 +145,7 @@ callContainer 不支持长连接。小程序 WS 走 `WS_BASE` 直连：
 - **测试期**：把云托管服务的**默认公网域名**（服务设置里可见，形如 `https://gotrip-<环境ID后缀>.ap-shanghai.run.tcloudbase.com`）的 wss 形式填入 `miniprogram/src/config.ts` 的 `WS_BASE`，并在小程序管理后台「开发设置 → 服务器域名 → socket 合法域名」加上该域名。实测：mp 后台保存 `*.tcloudbase.com` 会显示红字「**云托管域名仅用作测试使用，不可用在正式环境下**」——保存能通过，开发版/体验版可用，**正式版运行时会被拦**。
 - **正式期**：绑定已备案自定义域名（服务设置 → 自定义域名，CNAME 接入，HTTPS 证书自动签发），替换 `WS_BASE` 与 socket 合法域名。届时仅「协作在线状态」依赖此步，其余功能走 callContainer 不受影响。
 - 开发者工具 `urlCheck: false` 不校验，可直接连。WS 链路验证：向默认域名发升级请求（不带 token），服务端回 401 即代表域名→容器→`/ws` 鉴权整条链路通。
+- ⚠️ **WS 与「公网访问」绑在一起**：默认域名走的就是服务的公网入口，控制台关掉公网后 `/ws` 会一并 403 `GATEWAY_ROUTE_DISABLED`，小程序协作在线状态随之失效（callContainer 不支持长连接，绕不过去）。所以「关公网」与「WS 可用」只能二选一，直到绑上已备案的自定义域名——2026-09-20 为收口迁移通道关的公网就是按这个代价关的。
 
 ## 已知约束（callContainer 特性决定）
 
@@ -200,6 +201,7 @@ callContainer 不支持长连接。小程序 WS 走 `WS_BASE` 直连：
 
      ⚠️ 三条硬约束：① 窗口只留几分钟，`--run` 一验完立刻重部**不带令牌**的包并把公网访问关回（红线 7：开窗与关窗算同一步，收工前再探一次 `/api/admin/migrate/script` 必须是 404）；② `POST /api/admin/migrate/import` 没有试运行档（引擎自己会先备份云库全表 + 单事务 + 引用校验失败即回滚）；③ 通道判活只能用带正确令牌的 `GET /script`——令牌文件缺失时路由同样回 404，「路由不存在」和「令牌不对」长得一模一样。
      本机验证（2026-09-20，全新 `mysql:5.7` 空库 + 生产 dump）：`--check` 两步通过 → `--run` HTTP 200 / 0.8 秒 / 13 张表最终行数 5 用户·4 旅程·112 行程项·142 动态 → 自检 6/6（demo 用 PB 旧哈希登录、两趟迁移旅程在列、呼伦贝尔 37 项、wechat 探针 400）。
+   📌 **2026-09-20 实绩（走的就是 C 路）**：发布带令牌包 → 临时开公网 → `--check` 两步通过（`/health` 首现 `{"ok":true,"db":"ready","driver":"mysql"}`，1064 从此消失）→ `--run` **HTTP 200 / 4.6 秒**，13 张表最终 users 7·trips 4·activities 112·activity_log 142，引擎写前备份 `/app/server/data/migrate-backup-2026-09-20T02-52-23-918Z.json`；自检 6/6 + `cloud-verify.mjs` 11/11。合并实况：`云侧丢弃=3` 是两侧各自的种子用户（以 PB 为准），`云侧保留=2` 是 09-17 后新注册的 `wx_*`，id 平移不撞号。收口遗留两点见条目 38：关公网后要在**容器内**复验 script 端点 404，且公网一关 WS 即断。
 3. **验证**：`node work/migration/cloud-verify.mjs`（公网探针：demo 登录、迁移旅程行数、bundle 体积、feat 代码在线）。**该脚本走公网默认域名**——若已按安全要求关掉公网访问，改为在 Webshell 里 `curl -s localhost:8787/health` 与容器内跑同一份断言，或临时开公网验完再关。真机小程序：账号密码登录 → 行程列表出现迁移旅程。
 
 历史数据怪癖（引擎已处理）：旧数据用 `0` 表示「未指派」→ 归一为 NULL；成员删除不清理记账/指派引用 → 孤儿保留原值仅告警（与现网行为一致）；`TEXT`(64KB) 装不下 200KB 头像 dataURL → `avatar_url`/`journal_notes.images` 升 `MEDIUMTEXT`；**MySQL 首次种子 journal INSERT 缺 images 列在严格模式必崩 1364**（云库此前种子残缺：有记账打包、无日志/动态/锦囊），已修。
