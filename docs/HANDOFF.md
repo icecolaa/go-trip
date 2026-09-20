@@ -8,7 +8,7 @@
 | 项 | 值 |
 |---|---|
 | 生产 | Web 端 `https://gotrip.pocketbay.app` 部署 **#9316**（干净 master，`/health` 200，迁移通道已关）；小程序端云托管 gotrip 跑 **`ef05c72` 版 + 已导入 PocketBay 全量数据**（`/health` `{"ok":true,"db":"ready","driver":"mysql"}`），公网访问关闭、迁移通道已容器内复验 404；**协作 WS 待备案域名再接**（条目 38） |
-| 最近提交 | `c8494f1` docs（容器内命令改 node fetch）← `e0a410a` docs（迁移结案）← `ef05c72` fix（1064）← `ec9c2a3` fix（冷启动）；feat/miniprogram 全部已推 Gitee，GitHub 镜像因本地代理 15236 未起仍缺 |
+| 最近提交 | `d9f3f49` docs（迁移窗口容器内复验 404 + WS 定为等备案域名）← `c8494f1` docs（容器内命令改 node fetch）← `e0a410a` docs（迁移结案）← `ef05c72` fix（1064）← `ec9c2a3` fix（冷启动）；feat/miniprogram 已同步 **Gitee + GitHub 双端 `d9f3f49`** |
 | 最近提交 | `c10e98f` docs + `ef05c72` fix + `ec9c2a3` fix（feat/miniprogram，均已推 Gitee） |
 | 架构图 | `docs/gotrip-architecture.html`（Archify 生成，源规格 `docs/gotrip-architecture.json`，showcase 9/9 检查通过） |
 | 旅程编辑 | 卡片封面 hover ✏️ 按钮（owner/admin）→ 编辑弹窗（预填/改日期自动对齐天数），提交 #7595 |
