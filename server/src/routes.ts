@@ -10,7 +10,7 @@ import { checkupTrip } from './checkup.ts';
 import { searchPois } from './poi.ts';
 import { getWeather } from './weather.ts';
 import { saveDataUrlImage } from './uploads.ts';
-import type { LinkType, TravelLink } from '../../shared/types.ts';
+import type { LinkType, TravelLink, TripStatus, TripPlaceKind, TripPlace, TripCashItem, CashRefKind } from '../../shared/types.ts';
 import { parseGuide, generatePlan, aiConfigured } from './ai.ts';
 import { buildHandbook, aiHandbook } from './handbook.ts';
 import { answerUsageQuestion, sanitizeHistory } from './assistant.ts';
@@ -58,7 +58,38 @@ function rowToTrip(r: any): Trip {
   return {
     id: r.id, ownerId: r.owner_id, title: r.title, destination: r.destination, description: r.description,
     startDate: r.start_date, endDate: r.end_date, coverEmoji: r.cover_emoji, coverColor: r.cover_color,
-    budget: r.budget, visibility: r.visibility, shareToken: r.share_token, createdAt: r.created_at, updatedAt: r.updated_at,
+    coverImage: r.cover_image || '', budget: r.budget, visibility: r.visibility, shareToken: r.share_token,
+    createdAt: r.created_at, updatedAt: r.updated_at,
+  };
+}
+
+/** 合法状态白名单：前端只允许提交这些值，非法值一律回落「暂定」 */
+const TRIP_STATUSES: TripStatus[] = ['已确认', '已出票', '已预订', '仅限现金', '现场选择', '现场确认', '可选', '未预订', '待确认', '暂定'];
+const PLACE_KINDS: TripPlaceKind[] = ['attraction', 'restaurant', 'hotel', 'transport', 'station', 'airport', 'meeting', 'other'];
+
+function normStatus(v: unknown): TripStatus {
+  const s = String(v ?? '').trim();
+  return (TRIP_STATUSES as string[]).includes(s) ? (s as TripStatus) : '暂定';
+}
+
+function normPlaceKind(v: unknown): TripPlaceKind {
+  const k = String(v ?? '').trim();
+  return (PLACE_KINDS as string[]).includes(k) ? (k as TripPlaceKind) : 'other';
+}
+
+function rowToPlace(r: any): TripPlace {
+  return {
+    id: r.id, tripId: r.trip_id, kind: r.kind, name: r.name, city: r.city || '', address: r.address || '',
+    lat: r.lat, lng: r.lng, note: r.note || '', dishes: r.dishes || '', status: r.status || '暂定',
+    candidate: !!r.candidate, sort: r.sort || 0, createdAt: r.created_at,
+  };
+}
+
+function rowToCash(r: any): TripCashItem {
+  return {
+    id: r.id, tripId: r.trip_id, title: r.title, amount: Number(r.amount) || 0, currency: r.currency || 'CNY',
+    perPerson: !!r.per_person, people: Number(r.people) || 1, total: Number(r.total) || 0,
+    dayId: r.day_id, refKind: r.ref_kind, refId: r.ref_id, createdAt: r.created_at,
   };
 }
 
@@ -115,6 +146,8 @@ async function tripBundle(tripId: number, user: SessionUser | null): Promise<Tri
   const packing = await db().prepare('SELECT * FROM packing_items WHERE trip_id = ? ORDER BY id').all(tripId) as any[];
   const journal = await db().prepare('SELECT * FROM journal_notes WHERE trip_id = ? ORDER BY created_at DESC').all(tripId) as any[];
   const feedRows = await db().prepare('SELECT * FROM activity_log WHERE trip_id = ? ORDER BY id DESC LIMIT 60').all(tripId) as any[];
+  const placeRows = await db().prepare('SELECT * FROM trip_places WHERE trip_id = ? ORDER BY candidate, sort, id').all(tripId) as any[];
+  const cashRows = await db().prepare('SELECT * FROM trip_cash_items WHERE trip_id = ? ORDER BY id').all(tripId) as any[];
   const invites = my && ROLE_RANK[my.role] >= ROLE_RANK.admin
     ? (await db().prepare('SELECT * FROM invites WHERE trip_id = ? AND revoked = 0 ORDER BY id DESC').all(tripId) as any[]).map(rowToInvite)
     : [];
@@ -123,7 +156,7 @@ async function tripBundle(tripId: number, user: SessionUser | null): Promise<Tri
   const actList: Activity[] = activities.map(r => ({
     id: r.id, dayId: r.day_id, tripId: r.trip_id, sort: r.sort, time: r.time, endTime: r.end_time,
     kind: r.kind, title: r.title, place: r.place || '', lat: r.lat, lng: r.lng, cost: r.cost,
-    notes: r.notes || '', assigneeId: r.assignee_id, createdAt: r.created_at,
+    notes: r.notes || '', status: r.status || undefined, assigneeId: r.assignee_id, createdAt: r.created_at,
   }));
   const expList: Expense[] = expenses.map(r => ({
     id: r.id, tripId: r.trip_id, payerMemberId: r.payer_member_id, amount: r.amount, category: r.category,
@@ -154,6 +187,8 @@ async function tripBundle(tripId: number, user: SessionUser | null): Promise<Tri
     }),
     feed: feedRows.map(r => ({ id: r.id, tripId: r.trip_id, memberName: r.member_name, avatarColor: r.avatar_color, action: r.action, detail: r.detail, createdAt: r.created_at })),
     weather: [],
+    places: placeRows.map(rowToPlace),
+    cash: cashRows.map(rowToCash),
     onlineMemberIds: onlineMemberIds(tripId).filter(uid => members.some(m => m.userId === uid)),
   };
 }
@@ -388,10 +423,11 @@ route('POST', '/api/trips', true, async (_req, res, _p, user, body) => {
   const endDate = /^\d{4}-\d{2}-\d{2}$/.test(body.endDate || '') && body.endDate >= startDate ? body.endDate : startDate;
   const coverEmoji = String(body.coverEmoji || '🧭').slice(0, 8);
   const coverColor = String(body.coverColor || '#2f6e4f').slice(0, 16);
+  const coverImage = body.coverImage ? String(body.coverImage).slice(0, 2_000_000) : '';
   const budget = Math.max(0, Number(body.budget) || 0);
   const now = nowISO();
-  const r = await db().prepare('INSERT INTO trips (owner_id, title, destination, description, start_date, end_date, cover_emoji, cover_color, budget, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)')
-    .run(user.id, title, destination, description, startDate, endDate, coverEmoji, coverColor, budget, now, now);
+  const r = await db().prepare('INSERT INTO trips (owner_id, title, destination, description, start_date, end_date, cover_emoji, cover_color, cover_image, budget, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)')
+    .run(user.id, title, destination, description, startDate, endDate, coverEmoji, coverColor, coverImage, budget, now, now);
   const tripId = Number(r.lastInsertRowid);
   await db().prepare('INSERT INTO trip_members (trip_id, user_id, role, display_name, avatar_color, joined_at) VALUES (?,?,?,?,?,?)')
     .run(tripId, user.id, 'owner', user.nickname, user.avatarColor, now);
@@ -416,7 +452,7 @@ route('PATCH', '/api/trips/:id', true, async (_req, res, p, user, body) => {
   const vals: any[] = [];
   const map: Record<string, string> = {
     title: 'title', destination: 'destination', description: 'description', startDate: 'start_date',
-    endDate: 'end_date', coverEmoji: 'cover_emoji', coverColor: 'cover_color', budget: 'budget',
+    endDate: 'end_date', coverEmoji: 'cover_emoji', coverColor: 'cover_color', coverImage: 'cover_image', budget: 'budget',
   };
   for (const [k, col] of Object.entries(map)) {
     if (body[k] != null) {
@@ -424,6 +460,7 @@ route('PATCH', '/api/trips/:id', true, async (_req, res, p, user, body) => {
       if (k === 'budget') v = Math.max(0, Number(v) || 0);
       if (k === 'description') v = String(v).slice(0, 512);
       if (k === 'title') v = String(v).trim().slice(0, 60) || trip.title;
+      if (k === 'coverImage') v = v ? String(v).slice(0, 2_000_000) : '';
       fields.push(`${col} = ?`);
       vals.push(v);
     }
@@ -671,10 +708,11 @@ route('POST', '/api/days/:id/activities', true, async (_req, res, p, user, body)
   const time = /^([01]?\d|2[0-3])[:：][0-5]\d$/.test(String(body.time || '')) ? String(body.time).replace('：', ':') : null;
   const lat = body.lat != null && isFinite(Number(body.lat)) ? Number(body.lat) : null;
   const lng = body.lng != null && isFinite(Number(body.lng)) ? Number(body.lng) : null;
-  const r = await db().prepare('INSERT INTO activities (trip_id, day_id, sort, time, end_time, kind, title, place, lat, lng, cost, notes, assignee_id, created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)')
+  const r = await db().prepare('INSERT INTO activities (trip_id, day_id, sort, time, end_time, kind, title, place, lat, lng, cost, notes, status, assignee_id, created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)')
     .run(day.trip_id, day.id, Number(maxSort.m || 0) + 1, time, null, String(body.kind || 'sight').slice(0, 16), title,
       String(body.place || '').slice(0, 60), lat, lng, Math.max(0, Number(body.cost) || 0),
-      String(body.notes || '').slice(0, 300), body.assigneeId != null ? Number(body.assigneeId) : null, nowISO());
+      String(body.notes || '').slice(0, 300), body.status ? normStatus(body.status) : null,
+      body.assigneeId != null ? Number(body.assigneeId) : null, nowISO());
   await logActivity(Number(day.trip_id), me, '添加了行程', title);
   notify(Number(day.trip_id), 'activity', 'create', me.id);
   json(res, 200, { id: Number(r.lastInsertRowid) });
@@ -695,8 +733,9 @@ route('PATCH', '/api/activities/:id', true, async (_req, res, p, user, body) => 
   const assigneeId = body.assigneeId !== undefined ? (body.assigneeId === null ? null : Number(body.assigneeId)) : act.assignee_id;
   const dayId = body.dayId != null ? Number(body.dayId) : act.day_id;
   const sort = body.sort != null ? Number(body.sort) : act.sort;
-  await db().prepare('UPDATE activities SET time=?, title=?, kind=?, place=?, cost=?, notes=?, lat=?, lng=?, assignee_id=?, day_id=?, sort=? WHERE id = ?')
-    .run(time, title, kind, place, cost, notes, lat, lng, assigneeId, dayId, sort, act.id);
+  const status = body.status !== undefined ? (body.status === null ? null : normStatus(body.status)) : act.status;
+  await db().prepare('UPDATE activities SET time=?, title=?, kind=?, place=?, cost=?, notes=?, status=?, lat=?, lng=?, assignee_id=?, day_id=?, sort=? WHERE id = ?')
+    .run(time, title, kind, place, cost, notes, status, lat, lng, assigneeId, dayId, sort, act.id);
   await logActivity(Number(act.trip_id), me, '更新了行程', title);
   notify(Number(act.trip_id), 'activity', 'update', me.id);
   json(res, 200, { ok: true });
@@ -1128,6 +1167,127 @@ route('DELETE', '/api/links/:id', true, async (_req, res, p, user) => {
   const me = await requireMember(Number(row.trip_id), user, 'editor');
   await db().prepare('DELETE FROM travel_links WHERE id = ?').run(row.id);
   notify(Number(row.trip_id), 'link', 'delete', me.id);
+  json(res, 200, { ok: true });
+});
+
+/* ======== 地点（候选景点/餐厅 + 正式地点） ======== */
+
+route('GET', '/api/trips/:id/places', true, async (_req, res, p, user) => {
+  const tripId = Number(p.id);
+  await requireMember(tripId, user, 'viewer');
+  const rows = await db().prepare('SELECT * FROM trip_places WHERE trip_id = ? ORDER BY candidate, sort, id').all(tripId) as any[];
+  json(res, 200, rows.map(rowToPlace));
+});
+
+route('POST', '/api/trips/:id/places', true, async (_req, res, p, user, body) => {
+  const tripId = Number(p.id);
+  const me = await requireMember(tripId, user, 'editor');
+  const name = String(body.name || '').trim().slice(0, 128);
+  if (!name) throw new ApiError(400, '请填写地点名称');
+  const lat = body.lat != null && isFinite(Number(body.lat)) ? Number(body.lat) : null;
+  const lng = body.lng != null && isFinite(Number(body.lng)) ? Number(body.lng) : null;
+  const maxSort = await db().prepare('SELECT COALESCE(MAX(sort),0) AS m FROM trip_places WHERE trip_id = ?').get(tripId) as any;
+  const r = await db().prepare('INSERT INTO trip_places (trip_id, kind, name, city, address, lat, lng, note, dishes, status, candidate, sort, created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)')
+    .run(tripId, normPlaceKind(body.kind), name, String(body.city || '').slice(0, 64), String(body.address || '').slice(0, 256),
+      lat, lng, String(body.note || '').slice(0, 512), String(body.dishes || '').slice(0, 512),
+      normStatus(body.status), body.candidate ? 1 : 0, Number(maxSort.m || 0) + 1, nowISO());
+  await logActivity(tripId, me, '添加了地点', name);
+  notify(tripId, 'place', 'create', me.id);
+  json(res, 200, { id: Number(r.lastInsertRowid) });
+});
+
+route('PATCH', '/api/places/:id', true, async (_req, res, p, user, body) => {
+  const row = await db().prepare('SELECT * FROM trip_places WHERE id = ?').get(Number(p.id)) as any;
+  if (!row) throw new ApiError(404, '地点不存在');
+  const me = await requireMember(Number(row.trip_id), user, 'editor');
+  const lat = body.lat !== undefined ? (isFinite(Number(body.lat)) && body.lat !== null ? Number(body.lat) : null) : row.lat;
+  const lng = body.lng !== undefined ? (isFinite(Number(body.lng)) && body.lng !== null ? Number(body.lng) : null) : row.lng;
+  const candidate = body.candidate !== undefined ? (body.candidate ? 1 : 0) : row.candidate;
+  await db().prepare('UPDATE trip_places SET kind=?, name=?, city=?, address=?, lat=?, lng=?, note=?, dishes=?, status=?, candidate=?, sort=? WHERE id = ?')
+    .run(
+      body.kind != null ? normPlaceKind(body.kind) : row.kind,
+      body.name != null ? String(body.name).trim().slice(0, 128) || row.name : row.name,
+      body.city != null ? String(body.city).slice(0, 64) : row.city,
+      body.address != null ? String(body.address).slice(0, 256) : row.address,
+      lat, lng,
+      body.note != null ? String(body.note).slice(0, 512) : row.note,
+      body.dishes != null ? String(body.dishes).slice(0, 512) : row.dishes,
+      body.status !== undefined ? (body.status === null ? null : normStatus(body.status)) : row.status,
+      candidate,
+      body.sort != null ? Number(body.sort) : row.sort,
+      row.id,
+    );
+  notify(Number(row.trip_id), 'place', 'update', me.id);
+  json(res, 200, { ok: true });
+});
+
+route('DELETE', '/api/places/:id', true, async (_req, res, p, user) => {
+  const row = await db().prepare('SELECT * FROM trip_places WHERE id = ?').get(Number(p.id)) as any;
+  if (!row) throw new ApiError(404, '地点不存在');
+  const me = await requireMember(Number(row.trip_id), user, 'editor');
+  await db().prepare('DELETE FROM trip_places WHERE id = ?').run(row.id);
+  notify(Number(row.trip_id), 'place', 'delete', me.id);
+  json(res, 200, { ok: true });
+});
+
+/* ======== 现金准备 ======== */
+
+route('GET', '/api/trips/:id/cash', true, async (_req, res, p, user) => {
+  const tripId = Number(p.id);
+  await requireMember(tripId, user, 'viewer');
+  const rows = await db().prepare('SELECT * FROM trip_cash_items WHERE trip_id = ? ORDER BY id').all(tripId) as any[];
+  json(res, 200, rows.map(rowToCash));
+});
+
+route('POST', '/api/trips/:id/cash', true, async (_req, res, p, user, body) => {
+  const tripId = Number(p.id);
+  const me = await requireMember(tripId, user, 'editor');
+  const title = String(body.title || '').trim().slice(0, 128);
+  if (!title) throw new ApiError(400, '请填写现金项目名称');
+  const amount = Math.max(0, Number(body.amount) || 0);
+  const perPerson = !!body.perPerson;
+  const people = Math.max(1, Math.floor(Number(body.people) || 1));
+  // 合计只在后端算一次，前端只读 total，避免多端口径不一导致重复计算
+  const total = Math.round(amount * (perPerson ? people : 1) * 100) / 100;
+  const refKind = ['day', 'transport', 'stay'].includes(String(body.refKind)) ? (String(body.refKind) as CashRefKind) : null;
+  const r = await db().prepare('INSERT INTO trip_cash_items (trip_id, title, amount, currency, per_person, people, total, day_id, ref_kind, ref_id, created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)')
+    .run(tripId, title, amount, String(body.currency || 'CNY').slice(0, 8), perPerson ? 1 : 0, people, total,
+      body.dayId != null ? Number(body.dayId) : null, refKind, body.refId != null ? Number(body.refId) : null, nowISO());
+  await logActivity(tripId, me, '添加了现金项目', title);
+  notify(tripId, 'cash', 'create', me.id);
+  json(res, 200, { id: Number(r.lastInsertRowid), total });
+});
+
+route('PATCH', '/api/cash/:id', true, async (_req, res, p, user, body) => {
+  const row = await db().prepare('SELECT * FROM trip_cash_items WHERE id = ?').get(Number(p.id)) as any;
+  if (!row) throw new ApiError(404, '现金项目不存在');
+  const me = await requireMember(Number(row.trip_id), user, 'editor');
+  const amount = body.amount != null ? Math.max(0, Number(body.amount) || 0) : row.amount;
+  const perPerson = body.perPerson !== undefined ? !!body.perPerson : !!row.per_person;
+  const people = body.people != null ? Math.max(1, Math.floor(Number(body.people) || 1)) : (Number(row.people) || 1);
+  const total = Math.round(amount * (perPerson ? people : 1) * 100) / 100;
+  const refKind = ['day', 'transport', 'stay'].includes(String(body.refKind)) ? (String(body.refKind) as CashRefKind) : (row.ref_kind || null);
+  await db().prepare('UPDATE trip_cash_items SET title=?, amount=?, currency=?, per_person=?, people=?, total=?, day_id=?, ref_kind=?, ref_id=? WHERE id = ?')
+    .run(
+      body.title != null ? String(body.title).trim().slice(0, 128) || row.title : row.title,
+      amount,
+      body.currency != null ? String(body.currency).slice(0, 8) : row.currency,
+      perPerson ? 1 : 0, people, total,
+      body.dayId !== undefined ? (body.dayId === null ? null : Number(body.dayId)) : row.day_id,
+      refKind,
+      body.refId !== undefined ? (body.refId === null ? null : Number(body.refId)) : row.ref_id,
+      row.id,
+    );
+  notify(Number(row.trip_id), 'cash', 'update', me.id);
+  json(res, 200, { ok: true, total });
+});
+
+route('DELETE', '/api/cash/:id', true, async (_req, res, p, user) => {
+  const row = await db().prepare('SELECT * FROM trip_cash_items WHERE id = ?').get(Number(p.id)) as any;
+  if (!row) throw new ApiError(404, '现金项目不存在');
+  const me = await requireMember(Number(row.trip_id), user, 'editor');
+  await db().prepare('DELETE FROM trip_cash_items WHERE id = ?').run(row.id);
+  notify(Number(row.trip_id), 'cash', 'delete', me.id);
   json(res, 200, { ok: true });
 });
 

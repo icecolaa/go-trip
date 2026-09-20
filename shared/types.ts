@@ -27,11 +27,59 @@ export interface Trip {
   endDate: string;
   coverEmoji: string;
   coverColor: string;
+  /** 旅程头图：dataURL 或 /uploads/ 路径；为空时前端按目的地生成兜底图 */
+  coverImage?: string;
   budget: number; // 总预算（元），0 表示未设置
   visibility: 'private' | 'link';
   shareToken: string | null;
   createdAt: string;
   updatedAt: string;
+}
+
+/** 条目确认状态：现场选择/可选等不影响主行程的状态不进入「待确认」 */
+export type TripStatus =
+  | '已确认' | '已出票' | '已预订' | '仅限现金' | '现场选择' | '现场确认'
+  | '可选' | '未预订' | '待确认' | '暂定';
+
+/** 不计入待确认中心的状态（不影响主行程或可现场决定） */
+export const NON_PENDING_STATUSES: TripStatus[] = ['现场选择', '可选', '暂定'];
+
+/** 地点：候选景点/餐厅与正式地点同表，靠 candidate 区分；候选永不写入 days/activities */
+export type TripPlaceKind = 'attraction' | 'restaurant' | 'hotel' | 'transport' | 'station' | 'airport' | 'meeting' | 'other';
+
+export interface TripPlace {
+  id: number;
+  tripId: number;
+  kind: TripPlaceKind;
+  name: string;
+  city: string;
+  address: string;
+  lat: number | null;
+  lng: number | null;
+  note: string;
+  dishes: string; // 餐厅推荐菜，顿号分隔
+  status: TripStatus;
+  candidate: boolean; // true = 候选/可选，不进入正式行程
+  sort: number;
+  createdAt: string;
+}
+
+/** 现金项：金额、币种、每人或总价、人数、合计；可关联到某天/交通/住宿条目 */
+export type CashRefKind = 'day' | 'transport' | 'stay';
+
+export interface TripCashItem {
+  id: number;
+  tripId: number;
+  title: string;
+  amount: number;
+  currency: string; // CNY / USD / JPY …
+  perPerson: boolean; // true = amount 为单人价，total = amount × people
+  people: number;
+  total: number; // 冗余存储，避免前端口径不一导致重复计算
+  dayId: number | null;
+  refKind: CashRefKind | null;
+  refId: number | null;
+  createdAt: string;
 }
 
 export interface TripMember {
@@ -87,6 +135,8 @@ export interface Activity {
   lng: number | null;
   cost: number; // 预估费用
   notes: string;
+  /** 确认状态；为空表示未标注 */
+  status?: TripStatus;
   assigneeId: number | null; // 负责人（成员 id）
   createdAt: string;
 }
@@ -194,6 +244,8 @@ export interface TripBundle {
   journal: JournalNote[];
   feed: ActivityLogEntry[];
   weather: WeatherDay[];
+  places: TripPlace[];
+  cash: TripCashItem[];
   onlineMemberIds: number[];
 }
 

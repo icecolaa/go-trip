@@ -35,17 +35,18 @@ import { fileURLToPath } from 'node:url';
 export const MIGRATE_TABLES = [
   'users', 'trips', 'trip_members', 'invites', 'days', 'activities', 'expenses',
   'packing_items', 'journal_notes', 'activity_log', 'guide_cards', 'travel_links', 'flywhere_watch',
+  'trip_places', 'trip_cash_items',
 ] as const;
 export type MigrateTable = (typeof MIGRATE_TABLES)[number];
 
 /** 插入顺序：父表在前（外键依赖）；删除顺序为其反序 */
 const COLUMNS: Record<MigrateTable, string[]> = {
   users: ['id', 'travel_id', 'username', 'password_hash', 'nickname', 'avatar_color', 'bio', 'wechat_openid', 'avatar_url', 'created_at'],
-  trips: ['id', 'owner_id', 'title', 'destination', 'description', 'start_date', 'end_date', 'cover_emoji', 'cover_color', 'budget', 'visibility', 'share_token', 'created_at', 'updated_at'],
+  trips: ['id', 'owner_id', 'title', 'destination', 'description', 'start_date', 'end_date', 'cover_emoji', 'cover_color', 'cover_image', 'budget', 'visibility', 'share_token', 'created_at', 'updated_at'],
   trip_members: ['id', 'trip_id', 'user_id', 'role', 'display_name', 'avatar_color', 'location', 'location_lat', 'location_lng', 'location_at', 'joined_at'],
   invites: ['id', 'trip_id', 'code', 'created_by', 'max_uses', 'uses', 'expires_at', 'revoked', 'created_at'],
   days: ['id', 'trip_id', 'day_number', 'date', 'title', 'place'],
-  activities: ['id', 'trip_id', 'day_id', 'sort', 'time', 'end_time', 'kind', 'title', 'place', 'lat', 'lng', 'cost', 'notes', 'assignee_id', 'created_at'],
+  activities: ['id', 'trip_id', 'day_id', 'sort', 'time', 'end_time', 'kind', 'title', 'place', 'lat', 'lng', 'cost', 'notes', 'status', 'assignee_id', 'created_at'],
   expenses: ['id', 'trip_id', 'payer_member_id', 'amount', 'category', 'title', 'date', 'split_mode', 'participants', 'created_by', 'created_at'],
   packing_items: ['id', 'trip_id', 'category', 'title', 'done', 'assignee_member_id', 'quantity', 'note', 'created_at'],
   journal_notes: ['id', 'trip_id', 'day_id', 'author_member_id', 'content', 'mood', 'images', 'created_at', 'updated_at'],
@@ -53,6 +54,8 @@ const COLUMNS: Record<MigrateTable, string[]> = {
   guide_cards: ['id', 'trip_id', 'category', 'icon', 'title', 'summary', 'items', 'source', 'sort', 'created_at'],
   travel_links: ['id', 'trip_id', 'type', 'title', 'url', 'note', 'created_by', 'created_at'],
   flywhere_watch: ['id', 'route_key', 'city', 'min_per_person', 'checked_at'],
+  trip_places: ['id', 'trip_id', 'kind', 'name', 'city', 'address', 'lat', 'lng', 'note', 'dishes', 'status', 'candidate', 'sort', 'created_at'],
+  trip_cash_items: ['id', 'trip_id', 'title', 'amount', 'currency', 'per_person', 'people', 'total', 'day_id', 'ref_kind', 'ref_id', 'created_at'],
 };
 
 /** MySQL VARCHAR 列宽（字符数）——导入前按码点截断，MySQL 严格模式拒收超长值 */
@@ -79,10 +82,14 @@ const VARCHAR_LIMITS: Record<string, number> = {
   'travel_links.type': 16, 'travel_links.title': 128, 'travel_links.url': 512, 'travel_links.note': 256,
   'travel_links.created_at': 32,
   'flywhere_watch.route_key': 128, 'flywhere_watch.city': 64, 'flywhere_watch.checked_at': 32,
+  'trip_places.kind': 16, 'trip_places.name': 128, 'trip_places.city': 64, 'trip_places.address': 256,
+  'trip_places.status': 16, 'trip_places.created_at': 32,
+  'trip_cash_items.title': 128, 'trip_cash_items.currency': 8, 'trip_cash_items.ref_kind': 16,
+  'trip_cash_items.created_at': 32,
 };
 
 /** PG 布尔列（true/false）→ MySQL TINYINT */
-const BOOL_COLS = new Set(['invites.revoked', 'packing_items.done']);
+const BOOL_COLS = new Set(['invites.revoked', 'packing_items.done', 'trip_places.candidate', 'trip_cash_items.per_person']);
 
 /** 历史数据用 0 表示「未指派」（且成员删除不清理指派引用）——统一归一为 NULL */
 const NULL_ON_ZERO = new Set(['packing_items.assignee_member_id', 'activities.assignee_id']);

@@ -348,6 +348,35 @@ check "超长昵称截断不500(200)" "$R" '"travelId"'
 R=$(req POST /api/trips "$TA" "{\"title\":\"冒烟截断色值\",\"coverColor\":\"$(printf 'c%.0s' $(seq 1 20))\"}")
 check "超长封面色值截断不500(200)" "$R" '"id"'
 
+echo "== 地点 / 现金 / 状态（旅行手册新板块数据） =="
+R=$(req POST /api/trips "$TA" '{"title":"冒烟手册","destination":"大理","startDate":"2026-11-01","endDate":"2026-11-03"}')
+check "新建手册行程" "$R" '"id"'
+HTRIP=$(jget "$R" "d['id']")
+R=$(req POST "/api/trips/$HTRIP/places" "$TA" '{"kind":"restaurant","name":"冒烟餐厅","city":"大理","address":"人民路 1 号","dishes":"砂锅鱼、乳扇","status":"已预订","candidate":true}')
+check "新增候选地点" "$R" '"id"'
+PLACE_ID=$(jget "$R" "d['id']")
+R=$(req POST "/api/trips/$HTRIP/places" "$TA" '{"kind":"attraction","name":"非法状态地点","candidate":true}')
+check "非法状态地点也建成功" "$R" '"id"'
+BAD_PLACE=$(jget "$R" "d['id']")
+R=$(req POST "/api/trips/$HTRIP/cash" "$TA" '{"title":"冒烟现金","amount":200,"currency":"CNY","perPerson":true,"people":3}')
+check "现金每人价×人数=合计600" "$R" '"total":600'
+CASH_ID=$(jget "$R" "d['id']")
+R=$(req PATCH "/api/cash/$CASH_ID" "$TA" '{"perPerson":false}')
+check "现金改总价后合计200" "$R" '"total":200'
+R=$(req GET "/api/trips/$HTRIP" "$TA")
+check "bundle 含 places" "$R" '冒烟餐厅'
+check "bundle 含 cash" "$R" '冒烟现金'
+R=$(req GET "/api/trips/$HTRIP/places" "$TA")
+check "地点列表返回" "$R" '冒烟餐厅'
+R=$(req DELETE "/api/places/$BAD_PLACE" "$TA")
+check "删除地点" "$R" '"ok":true'
+R=$(req DELETE "/api/places/$PLACE_ID" "$TA")
+check "删除候选地点" "$R" '"ok":true'
+R=$(req DELETE "/api/cash/$CASH_ID" "$TA")
+check "删除现金项" "$R" '"ok":true'
+R=$(req DELETE "/api/trips/$HTRIP" "$TA")
+check "清理手册行程" "$R" '"ok":true'
+
 echo "== 登录限速（同用户名 1 分钟 10 次上限） =="
 RL_USER="rl$SUF"
 RL_LAST=0
