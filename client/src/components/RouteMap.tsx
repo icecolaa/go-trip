@@ -109,13 +109,6 @@ export default function RouteMap({ destination, dayPlaces }: { destination: stri
           </g>
         ))}
       </svg>
-      <figcaption className="rm-caption">
-        {stops.map((s, i) => (
-          <span key={i} className="rm-cap-item">
-            <b>{i + 1}</b> {s.name}{i < stops.length - 1 ? ' →' : ''}
-          </span>
-        ))}
-      </figcaption>
     </figure>
   );
 }

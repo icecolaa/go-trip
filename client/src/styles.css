@@ -101,7 +101,10 @@ html[data-theme="dark"] {
 
 * { box-sizing: border-box; }
 html { scroll-behavior: smooth; }
-html, body, #root { height: 100%; }
+/* #root 必须用 min-height：若写成 height:100%，顶栏的 sticky 包含块只有一屏高，
+   向下滚过一屏后顶栏会跟着内容滑走（吸顶失效）。 */
+html, body { height: 100%; }
+#root { min-height: 100%; }
 
 /* ---------- 统一滚动条样式（Firefox 用 scrollbar-width/color，WebKit 用伪元素） ---------- */
 * { scrollbar-width: thin; scrollbar-color: #858585 transparent; }
@@ -169,16 +172,18 @@ input, textarea, select { font-family: inherit; font-size: 14px; color: var(--in
   transition: background-color .15s ease, border-color .15s ease, color .15s ease, transform .1s ease;
   white-space: nowrap;
 }
-.btn:hover { border-color: var(--ink-faint); color: var(--ink); }
+.btn:hover { border-color: var(--ink-faint); color: var(--ink); background: var(--bg-soft); }
 .btn:active:not(:disabled) { transform: translateY(1px); }
 .btn.primary {
-  background: var(--cta); border-color: var(--cta); color: var(--cta-ink); /* 苹果蓝填充：全站唯一彩色交互 */
+  background: var(--cta); border-color: var(--cta); color: var(--cta-ink); /* 深绿填充：全站唯一彩色交互 */
 }
 .btn.primary:hover { background: var(--cta); border-color: var(--cta); opacity: .9; color: var(--cta-ink); }
-.btn.danger { color: var(--ink); border-color: var(--line); background: var(--card); }
-.btn.danger:hover { background: var(--ink); border-color: var(--ink); color: var(--bg); }
+.btn.danger { color: var(--danger); border-color: var(--line); background: var(--card); }
+.btn.danger:hover { background: var(--danger); border-color: var(--danger); color: var(--card); }
 .btn.ghost { border-color: transparent; background: transparent; color: var(--link); }
-.btn.ghost:hover { background: transparent; text-decoration: underline; color: var(--link); }
+.btn.ghost:hover { background: var(--bg-soft); text-decoration: none; color: var(--link); }
+.btn:disabled:hover { background: var(--card); border-color: var(--line); color: var(--ink-soft); }
+.btn.primary:disabled:hover { background: var(--cta); border-color: var(--cta); }
 .btn.sm { padding: 4px 12px; font-size: 12.5px; }
 .btn.lg { padding: 12px 26px; font-size: 15.5px; }
 .btn:disabled { opacity: .45; cursor: not-allowed; }
@@ -318,9 +323,12 @@ textarea.input { resize: vertical; min-height: 72px; line-height: 1.6; }
   padding: 6px 14px; font-size: 13px; color: var(--ink-soft);
   transition: background-color .15s ease, border-color .15s ease, color .15s ease, transform .1s ease;
 }
-.chip:hover { border-color: var(--ink-soft); color: var(--ink); }
+.chip:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
 .chip:active { transform: translateY(1px); }
-.chip.on { background: var(--cta); border-color: var(--cta); color: #fff; font-weight: 400; }
+.chip.on { background: var(--cta); border-color: var(--cta); color: var(--cta-ink); font-weight: 400; }
+.chip.on:hover { background: var(--cta); border-color: var(--cta); color: var(--cta-ink); opacity: .9; }
+.chip:disabled { opacity: .45; cursor: not-allowed; }
+.chip:disabled:hover { border-color: var(--line); color: var(--ink-soft); background: var(--card); }
 
 /* ---------- 旅程详情 ---------- */
 .trip-hero { padding: 22px 24px; margin-bottom: 16px; position: relative; overflow: hidden; }
@@ -333,6 +341,8 @@ textarea.input { resize: vertical; min-height: 72px; line-height: 1.6; }
 .progress-line > div { height: 100%; background: var(--ink); border-radius: 0; }
 
 .trip-layout { display: grid; grid-template-columns: 190px 1fr; gap: 18px; align-items: start; }
+/* 关键：sticky 的包含块必须是「比导航高」的祖先。桌面两列时网格行被内容撑高，吸顶有效；
+   手机单列时若仍是 grid，导航只占自己那一行，sticky 会失效——必须改为 block 让包含块变成整个 layout。 */
 .trip-nav { position: sticky; top: 76px; display: flex; flex-direction: column; gap: 4px; padding: 10px; }
 .trip-nav a {
   display: flex; align-items: center; gap: 10px;
@@ -340,7 +350,9 @@ textarea.input { resize: vertical; min-height: 72px; line-height: 1.6; }
 }
 .trip-nav a .ico { font-size: 16px; width: 20px; text-align: center; }
 .trip-nav a:hover { background: var(--bg-soft); color: var(--ink); }
-.trip-nav a.on { background: var(--ink); color: var(--bg); font-weight: 500; }
+.trip-nav a.on { background: var(--cta); color: var(--cta-ink); font-weight: 500; }
+.trip-nav a.on:hover { background: var(--cta); color: var(--cta-ink); opacity: .92; }
+.trip-nav a:focus-visible { outline-offset: -2px; }
 .trip-nav .online-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); margin-left: auto; }
 
 .tab-chips { display: none; }
@@ -509,7 +521,7 @@ textarea.input { resize: vertical; min-height: 72px; line-height: 1.6; }
 .toast.err { outline: 2px solid var(--signal); outline-offset: 2px; }
 
 /* ---------- 其他 ---------- */
-.section-title { font-size: 18px; margin: 22px 0 12px; color: var(--green-deep); display: flex; align-items: center; gap: 8px; }
+.section-title { font-size: 19px; margin: 22px 0 12px; color: var(--green-deep); display: flex; align-items: center; gap: 8px; line-height: 1.4; }
 .section-title:first-child { margin-top: 0; }
 .row-ops { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
 .muted { color: var(--ink-faint); font-size: 12.5px; }
@@ -1253,8 +1265,6 @@ img, svg, video, canvas { max-width: 100%; }
 .rm-dot { fill: var(--accent-soft); stroke: var(--accent); stroke-width: 2; }
 .rm-dot-num { fill: var(--accent); font-size: 13px; font-weight: 600; }
 .rm-label { fill: var(--ink); font-size: 12.5px; }
-.rm-caption { display: flex; flex-wrap: wrap; gap: 4px 12px; margin-top: 8px; font-size: 12px; color: var(--ink-soft); }
-.rm-cap-item b { color: var(--accent); font-weight: 600; margin-right: 2px; }
 .route-map-empty { padding: 18px 14px; text-align: center; }
 .rm-hint { font-size: 12.5px; color: var(--ink-faint); line-height: 1.6; }
 
@@ -1343,7 +1353,10 @@ img, svg, video, canvas { max-width: 100%; }
 .day-card:not([open]) > .day-head::after { content: '▸'; }
 .day-card[open] > .day-head { border-bottom: 1px solid var(--line); }
 .day-head-row { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
-.day-time-range { font-size: 12.5px; color: var(--ink-faint); font-variant-numeric: tabular-nums; }
+/* 日卡三行信息统一行距，避免「🕘 时间」像补丁一样贴在下面 */
+.day-head .t { line-height: 1.45; }
+.day-head .p { line-height: 1.5; margin-top: 2px; }
+.day-time-range { font-size: 12.5px; color: var(--ink-faint); font-variant-numeric: tabular-nums; line-height: 1.5; margin-top: 2px; }
 .act-end { font-size: 11.5px; color: var(--ink-faint); }
 .act-title-row2 { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-top: 3px; }
 .cash-inline {
@@ -1379,6 +1392,9 @@ img, svg, video, canvas { max-width: 100%; }
 
 /* ---------- 板块导航：sticky + scroll-spy ---------- */
 .trip-nav { align-self: start; }
+/* 显式留出顶栏(48) + 吸顶导航的高度，保证跳转后板块标题不被遮住 */
+.tab-pane { scroll-margin-top: 108px; }
+@media (max-width: 900px) { .tab-pane { scroll-margin-top: 116px; } }
 .trip-nav .more-wrap { position: relative; margin-top: 8px; }
 .trip-more-menu {
   position: absolute; right: 0; bottom: 100%; min-width: 132px; z-index: 30;
@@ -1394,13 +1410,18 @@ img, svg, video, canvas { max-width: 100%; }
 
 /* 手机端：sticky 横滚导航条 */
 @media (max-width: 900px) {
+  /* 单列必须用 block：grid 单列下 sticky 的包含块只有导航自己那一行，吸顶会失效 */
+  .trip-layout { display: block; }
   .trip-nav {
     position: sticky; top: 48px; z-index: 40;
     display: flex; gap: 6px; overflow-x: auto; -webkit-overflow-scrolling: touch;
-    padding: 8px; margin-bottom: 12px; scrollbar-width: none;
+    padding: 8px; margin: 0 0 14px; scrollbar-width: none;
+    background: var(--bg); border-bottom: 1px solid var(--line);
   }
   .trip-nav::-webkit-scrollbar { display: none; }
   .trip-nav .nav-link { flex: 0 0 auto; white-space: nowrap; }
+  /* 手机端只留主要 6 项，其余收进右上角「⋯」，避免横滚过长 */
+  .trip-nav .nav-link.opt { display: none; }
   .trip-nav .more-wrap { margin-top: 0; flex: 0 0 auto; }
   .trip-more-menu { bottom: auto; top: 100%; right: 0; }
   .countdown { flex-wrap: wrap; }
@@ -1427,12 +1448,19 @@ img, svg, video, canvas { max-width: 100%; }
 .cover-hero .btn.sm:hover { background: rgba(255,255,255,.26); }
 
 /* ---------- 路线总览 + 下一段交通 + 进度 ---------- */
-.trip-overview { margin-bottom: 16px; }
-.overview-foot { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 12px; margin-top: 12px; }
-.ov-block { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
-.ov-k { font-size: 11.5px; color: var(--ink-faint); letter-spacing: .04em; }
-.ov-v { font-size: 13.5px; color: var(--ink); line-height: 1.5; }
+.trip-overview { margin-bottom: 18px; }
+.overview-foot {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 18px; margin-top: 16px; align-items: start;
+}
+.ov-block { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.ov-k { font-size: 12px; color: var(--ink-faint); letter-spacing: .04em; line-height: 1.4; }
+.ov-v { font-size: 14px; color: var(--ink); line-height: 1.55; }
 .ov-v.muted { color: var(--ink-faint); }
+/* 旅程进度：标签与另两栏基线对齐，条与说明不再悬空 */
+.ov-progress .progress-line { margin-top: 2px; }
+.ov-progress .ov-v { font-size: 12.5px; color: var(--ink-soft); }
+.ov-desc { color: var(--ink-faint); }
 
 /* ---------- 票卡补充 ---------- */
 .ticket-code { font-family: var(--mono); font-size: 12px; color: var(--accent); background: var(--accent-soft); border-radius: var(--radius-ctl); padding: 2px 9px; }

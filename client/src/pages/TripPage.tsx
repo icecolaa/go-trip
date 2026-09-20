@@ -27,12 +27,15 @@ const TABS = [
   { key: 'map', label: '地图', ico: '🗺️' },
   { key: 'budget', label: '预算', ico: '💰' },
   { key: 'packing', label: '清单', ico: '🎒' },
-  { key: 'handbook', label: '锦囊', ico: '📖' },
-  { key: 'links', label: '攻略', ico: '🔗' },
-  { key: 'journal', label: '日志', ico: '✍️' },
-  { key: 'members', label: '成员', ico: '👥' },
-  { key: 'activity', label: '动态', ico: '📣' },
+  { key: 'handbook', label: '锦囊', ico: '📖', opt: true },
+  { key: 'links', label: '攻略', ico: '🔗', opt: true },
+  { key: 'journal', label: '日志', ico: '✍️', opt: true },
+  { key: 'members', label: '成员', ico: '👥', opt: true },
+  { key: 'activity', label: '动态', ico: '📣', opt: true },
 ] as const;
+
+/** 手机端横滚放不下的板块（opt: true）改从右上角「⋯」进入 */
+const OVERFLOW_TABS = TABS.filter(t => 'opt' in t && t.opt);
 
 /** 手机端导航放不下的项，收进右上角「⋯」菜单 */
 function todayStr(): string {
@@ -209,7 +212,10 @@ export default function TripPage() {
           <div className="ov-block ov-progress">
             <span className="ov-k">旅程进度</span>
             <div className="progress-line"><div style={{ width: `${tripProgress(trip)}%` }} /></div>
-            <span className="ov-v">{tripProgress(trip)}%{trip.description ? ` · ${trip.description}` : ''}</span>
+            <span className="ov-v">
+              {tripProgress(trip)}%
+              {trip.description && <span className="ov-desc"> · {trip.description}</span>}
+            </span>
           </div>
         </div>
       </div>
@@ -221,7 +227,7 @@ export default function TripPage() {
             <Link
               key={t.key}
               to={`?tab=${t.key}`}
-              className={`nav-link ${tab === t.key ? 'on' : ''}`}
+              className={`nav-link ${'opt' in t && t.opt ? 'opt' : ''} ${tab === t.key ? 'on' : ''}`}
               aria-current={tab === t.key ? 'page' : undefined}
             >
               <span className="ico">{t.ico}</span>{t.label}
@@ -239,14 +245,20 @@ export default function TripPage() {
             </button>
             {moreOpen && (
               <div className="trip-more-menu" role="menu">
-                <button type="button" role="menuitem" onClick={() => { setMoreOpen(false); setGuideOpen(true); }}>使用说明</button>
+                {OVERFLOW_TABS.map(t => (
+                  <button key={t.key} type="button" role="menuitem" className={tab === t.key ? 'on' : ''}
+                    onClick={() => { setMoreOpen(false); setSearchParams({ tab: t.key }); }}>
+                    <span className="ico">{t.ico}</span> {t.label}
+                  </button>
+                ))}
+                <button type="button" role="menuitem" onClick={() => { setMoreOpen(false); setGuideOpen(true); }}>📖 使用说明</button>
                 <button type="button" role="menuitem" onClick={() => { setMoreOpen(false); location.hash = '#/'; }}>← 返回全部旅程</button>
               </div>
             )}
           </div>
         </nav>
 
-        {/* 内容区 */}
+        {/* 内容区：scroll-margin-top 显式留出顶栏+吸顶导航的高度，跳转不会遮住板块标题 */}
         <div className="tab-pane" key={tab} ref={paneTop}>
           {tab === 'itinerary' && <ItineraryTab {...ctx} />}
           {tab === 'transport' && <TransportStayTab {...ctx} />}
