@@ -6,6 +6,7 @@ import StatusPicker, { StatusBadge } from '../../components/StatusPicker';
 import SensitiveText from '../../components/SensitiveText';
 import { amapPlaceUrl } from '../../components/TripMode';
 import { api } from '../../api';
+import { cashMoney } from './CashTab';
 
 /**
  * 交通住宿：只重组现有行程条目（kind=transport / kind=hotel）的呈现，
@@ -106,7 +107,7 @@ export default function TransportStayTab({ bundle, canEdit, reload }: TabCtx) {
                   <div className="ticket-meta">
                     {cash.map(c => (
                       <span key={c.id} className="cash-inline">
-                        💴 {c.title}：{c.currency === 'CNY' ? '¥' : c.currency + ' '}{c.total}
+                        💴 {c.title}：{cashMoney(c)}
                         {c.perPerson ? `（${c.currency === 'CNY' ? '¥' : ''}${c.amount}×${c.people}人）` : ''}
                       </span>
                     ))}
@@ -149,7 +150,7 @@ export default function TransportStayTab({ bundle, canEdit, reload }: TabCtx) {
                   <div className="ticket-meta">
                     {cash.map(c => (
                       <span key={c.id} className="cash-inline">
-                        💴 {c.title}：{c.currency === 'CNY' ? '¥' : c.currency + ' '}{c.total}
+                        💴 {c.title}：{cashMoney(c)}
                       </span>
                     ))}
                   </div>

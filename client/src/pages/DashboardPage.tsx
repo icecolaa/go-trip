@@ -98,11 +98,14 @@ export default function DashboardPage() {
 function TripCard({ t, onClick, onEdit }: { t: TripCardInfo; onClick: () => void; onEdit: () => void }) {
   const cd = countdownText(t);
   const canEdit = t.myRole === 'owner' || t.myRole === 'admin';
+  const [imgFailed, setImgFailed] = useState(false);
+  const showImg = !!t.coverImage && !imgFailed;
   return (
     <div className="card trip-card" onClick={onClick}>
-      {/* DESIGN.md：禁止彩色整块底，用户封面色降为左侧竖条 */}
+      {/* 有封面图时用图片底，否则退回封面色+图标（DESIGN.md：不做彩色整块底） */}
       <div className="trip-cover" style={{ ['--cover-accent' as string]: t.coverColor }}>
-        <span className="emoji">{t.coverEmoji}</span>
+        {showImg && <img className="trip-cover-img" src={t.coverImage} alt="" onError={() => setImgFailed(true)} loading="lazy" />}
+        {!showImg && <span className="emoji">{t.coverEmoji}</span>}
         {canEdit && (
           <button
             className="trip-edit-btn"

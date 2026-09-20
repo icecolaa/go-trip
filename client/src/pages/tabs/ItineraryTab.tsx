@@ -3,6 +3,7 @@ import { api } from '../../api';
 import { useApp } from '../../store';
 import { Modal, KIND_META, fmtDate, weekOf, yuan } from '../../components/ui';
 import { StatusBadge, default as StatusPicker } from '../../components/StatusPicker';
+import { cashMoney } from './CashTab';
 import SensitiveText from '../../components/SensitiveText';
 import TripMode from '../../components/TripMode';
 import type { TabCtx } from './tabCtx';
@@ -255,9 +256,9 @@ export default function ItineraryTab({ bundle, reload, weather, canEdit, goTab }
                     <div className="act-title-row2">
                       <StatusBadge status={a.status} />
                       {cashByRef.get(`transport:${a.id}`)?.concat(cashByRef.get(`stay:${a.id}`) || []).map(c => (
-                        <span key={c.id} className="cash-inline">
-                          💴 {c.title}：{c.currency === 'CNY' ? '¥' : c.currency + ' '}{c.total}
-                          {c.perPerson ? `（¥${c.amount}×${c.people}人）` : ''}
+                        <span key={c.id} className="cash-inline" title={c.perPerson ? `每人 ${c.amount} × ${c.people} 人` : '总价'}>
+                          💴 {c.title}：{cashMoney(c)}
+                          {c.perPerson ? `（${c.amount}×${c.people}人）` : ''}
                         </span>
                       ))}
                     </div>

@@ -6,11 +6,50 @@ import { Modal } from './ui';
 const EMOJIS = ['🧭', '⛰️', '🏝️', '🏖️', '🏮', '🏯', '🎡', '🚄', '✈️', '🚗', '⛺', '🏂', '🍜', '🥾'];
 const COLORS = ['#2f6e4f', '#b5543b', '#3b6ea5', '#c9a04e', '#7d5ba6', '#a0433b'];
 
+/** 按目的地生成一张兜底封面（dataURL，不发请求、不依赖外部图库） */
+function generatedCover(destination: string): string {
+  const seed = [...(destination || 'trip')].reduce((a, c) => a + c.charCodeAt(0), 0);
+  const hue = seed % 360;
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="600" viewBox="0 0 1200 600">
+<defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+<stop offset="0" stop-color="hsl(${hue},34%,28%)"/><stop offset=".6" stop-color="hsl(${(hue + 40) % 360},30%,19%)"/><stop offset="1" stop-color="hsl(${(hue + 70) % 360},26%,14%)"/>
+</linearGradient></defs>
+<rect width="1200" height="600" fill="url(#g)"/>
+<circle cx="${180 + (seed % 700)}" cy="${120 + (seed % 120)}" r="70" fill="rgba(255,255,255,.14)"/>
+<path d="M0,430 L160,300 L280,380 L420,250 L560,370 L700,240 L840,350 L980,270 L1120,360 L1200,320 L1200,600 L0,600 Z" fill="rgba(0,0,0,.22)"/>
+<path d="M0,500 L200,430 L380,490 L560,420 L760,480 L960,430 L1200,470 L1200,600 L0,600 Z" fill="rgba(0,0,0,.16)"/>
+</svg>`;
+  return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
+}
+
 function plusDays(n: number): string {
   const d = new Date();
   d.setDate(d.getDate() + n);
   const p = (x: number) => String(x).padStart(2, '0');
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+}
+
+/** 压缩上传的封面图到 1600px 宽以内的 JPEG dataURL */
+async function fileToCoverDataUrl(file: File): Promise<string> {
+  const dataUrl = await new Promise<string>((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(String(r.result));
+    r.onerror = () => reject(new Error('读取图片失败'));
+    r.readAsDataURL(file);
+  });
+  const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+    const im = new Image();
+    im.onload = () => resolve(im);
+    im.onerror = () => reject(new Error('图片解析失败'));
+    im.src = dataUrl;
+  });
+  const maxW = 1600;
+  const scale = Math.min(1, maxW / img.width);
+  const w = Math.round(img.width * scale), h = Math.round(img.height * scale);
+  const cv = document.createElement('canvas');
+  cv.width = w; cv.height = h;
+  cv.getContext('2d')!.drawImage(img, 0, 0, w, h);
+  return cv.toDataURL('image/jpeg', 0.82);
 }
 
 /** 创建旅程；传入 trip 时进入编辑模式（预填并调用 PATCH，无粘贴攻略区） */
@@ -30,7 +69,25 @@ export default function CreateTripModal({ trip, onClose, onCreated, onSaved }: {
   const [emoji, setEmoji] = useState(trip?.coverEmoji || '🧭');
   const [color, setColor] = useState(trip?.coverColor || COLORS[0]);
   const [guideText, setGuideText] = useState('');
+  const [coverImage, setCoverImage] = useState<string>(trip?.coverImage || '');
+  const [coverBusy, setCoverBusy] = useState(false);
   const [busy, setBusy] = useState<'' | 'creating' | 'parsing' | 'saving'>('');
+
+  const onPickCover = async (file: File | undefined) => {
+    if (!file) return;
+    if (!file.type.startsWith('image/')) { toast('请选择图片文件', true); return; }
+    setCoverBusy(true);
+    try {
+      const dataUrl = await fileToCoverDataUrl(file);
+      if (dataUrl.length > 2_000_000) { toast('图片太大，请换一张小一些的', true); return; }
+      setCoverImage(dataUrl);
+      toast('封面已就绪');
+    } catch (e: any) {
+      toast(e.message || '图片处理失败', true);
+    } finally {
+      setCoverBusy(false);
+    }
+  };
 
   const create = async () => {
     if (busy) return;
@@ -46,6 +103,7 @@ export default function CreateTripModal({ trip, onClose, onCreated, onSaved }: {
         budget: Number(budget) || 0,
         coverEmoji: emoji,
         coverColor: color,
+        coverImage,
       });
       if (guideText.trim()) {
         setBusy('parsing');
@@ -80,6 +138,7 @@ export default function CreateTripModal({ trip, onClose, onCreated, onSaved }: {
         budget: Number(budget) || 0,
         coverEmoji: emoji,
         coverColor: color,
+        coverImage,
       });
       toast('旅程已更新');
       onSaved?.();
@@ -115,7 +174,28 @@ export default function CreateTripModal({ trip, onClose, onCreated, onSaved }: {
         </div>
       </div>
       <div className="field">
-        <label>封面</label>
+        <label>封面图</label>
+        <div className="cover-pick">
+          <div className="cover-preview" style={{ background: color }}>
+            {coverImage
+              ? <img src={coverImage} alt="封面预览" />
+              : <span className="cover-preview-emoji">{emoji}</span>}
+          </div>
+          <div className="cover-pick-ops">
+            <label className="btn sm ghost" style={{ cursor: 'pointer' }}>
+              {coverBusy ? '处理中…' : '上传图片'}
+              <input type="file" accept="image/*" hidden onChange={e => onPickCover(e.target.files?.[0])} />
+            </label>
+            <button type="button" className="btn sm ghost" onClick={() => setCoverImage(generatedCover(destination || title))}>
+              按目的地生成
+            </button>
+            {coverImage && <button type="button" className="btn sm ghost" onClick={() => setCoverImage('')}>移除</button>}
+            <span className="muted" style={{ fontSize: 11.5 }}>不上传则头图用按目的地生成的兜底图</span>
+          </div>
+        </div>
+      </div>
+      <div className="field">
+        <label>封面图标与配色</label>
         <div className="row-ops">
           {EMOJIS.map(e => (
             <button key={e} type="button" className={`btn sm ${emoji === e ? 'primary' : 'ghost'}`} style={{ fontSize: 17 }} onClick={() => setEmoji(e)}>{e}</button>

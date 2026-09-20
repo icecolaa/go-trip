@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { api } from '../../api';
 import { useApp } from '../../store';
 import { Modal } from '../../components/ui';
+import { CashSection } from './CashTab';
 import type { TabCtx } from './tabCtx';
 
 /** 六类清单：现金准备与待确认由独立板块/接口提供，这里只列物品与待办 */
@@ -19,7 +20,7 @@ const TEMPLATES = [
 /** 本机勾选状态（不随服务端 reload 覆盖；换设备不同步，属预期） */
 function localKey(tripId: number, itemId: number): string { return `gotrip_pack_${tripId}_${itemId}`; }
 
-export default function PackingTab({ bundle, reload, canEdit }: TabCtx) {
+export default function PackingTab({ bundle, reload, reloadWeather, weather, canEdit, goTab }: TabCtx) {
   const { toast } = useApp();
   const [adding, setAdding] = useState(false);
   const [templateOpen, setTemplateOpen] = useState(false);
@@ -156,6 +157,14 @@ export default function PackingTab({ bundle, reload, canEdit }: TabCtx) {
         <button className="btn sm ghost" onClick={() => setConfirmClear('list')}>清除清单进度</button>
         <button className="btn sm ghost" onClick={() => setConfirmClear('all')}>清除全部进度</button>
       </div>
+
+      {/* 现金准备：清单的其中一类，与上面的物品类并列 */}
+      <details className="card pack-cat" open={false} style={{ marginTop: 12 }}>
+        <summary style={{ cursor: 'pointer', listStyle: 'none' }}>
+          <h4 style={{ display: 'inline' }}>💴 现金准备<span className="progress-pill">{bundle.cash?.length || 0} 项</span></h4>
+        </summary>
+        <CashSection bundle={bundle} reload={reload} reloadWeather={reloadWeather} weather={weather} canEdit={canEdit} goTab={goTab} />
+      </details>
 
       {adding && (
         <AddPackingModal

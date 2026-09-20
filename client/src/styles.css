@@ -286,7 +286,12 @@ textarea.input { resize: vertical; min-height: 72px; line-height: 1.6; }
   border-left: 3px solid var(--cover-accent, var(--ink-faint)); /* 用户选择的封面颜色降为左侧彩色竖条 */
 }
 .trip-cover .emoji { font-size: 44px; filter: none; }
-.trip-cover .cover-date { color: var(--ink-faint); font-size: 12px; text-align: right; line-height: 1.5; font-family: var(--mono); }
+.trip-cover-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.trip-cover:has(.trip-cover-img) { border-left-color: transparent; }
+.trip-cover:has(.trip-cover-img) .cover-date {
+  color: #fffefa; background: rgba(0,0,0,.42); padding: 3px 8px; border-radius: var(--radius-ctl);
+}
+.trip-cover .cover-date { color: var(--ink-faint); font-size: 12px; text-align: right; line-height: 1.5; font-family: var(--mono); position: relative; z-index: 1; }
 /* 卡片编辑入口：桌面 hover 显示，触屏常显 */
 .trip-edit-btn {
   position: absolute; left: 12px; bottom: 10px; z-index: 2;
@@ -1361,6 +1366,16 @@ img, svg, video, canvas { max-width: 100%; }
 .pack-progress .txt { font-size: 12.5px; color: var(--ink-soft); margin-top: 5px; }
 .pack-cat > summary .cnt { color: var(--ink-faint); font-size: 12px; font-weight: 400; }
 .pack-clear-ops { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line); }
+
+/* ---------- 封面图选择（创建/编辑旅程） ---------- */
+.cover-pick { display: flex; gap: 12px; align-items: flex-start; flex-wrap: wrap; }
+.cover-preview {
+  width: 148px; height: 84px; border-radius: var(--radius); overflow: hidden; flex-shrink: 0;
+  border: 1px solid var(--line); display: flex; align-items: center; justify-content: center;
+}
+.cover-preview img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.cover-preview-emoji { font-size: 34px; }
+.cover-pick-ops { display: flex; flex-direction: column; gap: 6px; align-items: flex-start; }
 
 /* ---------- 板块导航：sticky + scroll-spy ---------- */
 .trip-nav { align-self: start; }
