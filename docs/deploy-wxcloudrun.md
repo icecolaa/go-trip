@@ -190,7 +190,16 @@ callContainer 不支持长连接。小程序 WS 走 `WS_BASE` 直连：
    ✅ 2026-09-20 现状（按此执行，别再照上面的在线拉取跑）：PocketBay 侧通道**已关闭**（#9316 干净 master，带正确令牌也 404，不要再为导入重开），源数据已在本地 `work/migration/pocketbay-prod-dump-0920.json`（与 09-17 存档逐表一致，0 图片 → 不需要 `--pb-origin` 内联）。**所以默认走 B**：容器里 `ls -l /app/server/src/migrate.ts` 确认后，按 `work/migration/webshell-command.txt` 的清单离线粘 4 片 base64 → `--dry-run` → 真导入 → `curl -s localhost:8787/api/auth/login` 验。只有当你确认「09-20 之后 Web 端又写了数据、必须重拉」时，才走 A（唤醒 PB → `node scripts/pocketbay-deploy.mjs work/migration/gotrip-oneoff-v2.tar.gz` 重开窗口 → 导完立刻 `node scripts/pocketbay-deploy.mjs work/migration/gotrip-master-restore.tar.gz` 关窗，并收工前复验 script 端点 404）。C 路（上传带令牌的云托管版本后本地直接 `POST /api/admin/migrate/import`）适合公网还开着、又不想进 Webshell 时用，同样要分钟级收口。
    - **A（推荐，与手册原设计一致）**：唤醒 PB → 若 `/script` 探针回 404，用现成的一次性包重开窗口：`node scripts/pocketbay-deploy.mjs work/migration/gotrip-oneoff-v2.tar.gz`（包已打好：master + 补丁路由 + 令牌文件，105 个文件，与 `webshell-command.txt` 里的令牌同一个）→ 云 Webshell 粘贴上面那条命令 → 导完立刻重部干净 master 关窗（窗口控制在 90 秒内）。
    - **B（不依赖 PocketBay 活着）**：用已存档的 `work/migration/pocketbay-prod-dump.json`（2026-09-17T17:12Z：5 用户/4 旅程/112 行程项/0 图片）。粘贴物料已备好——照 `work/migration/offline/README.txt` 的顺序贴 `00-header → p1…p4 → 99-run`（先 `--dry-run`，去掉尾标即真导入），4 片重组与原 dump 已 `cmp` 校验字节一致。**前提**：容器里存在 `/app/server/src/migrate.ts`（feat 构建 4388b78 起自带，引擎只依赖 node 内置 + 镜像里的 mysql2）；没有就说明云上还是旧版本，回 A 路。**代价**：拿不到 09-17 之后新产生的数据，导入前先确认这段窗口 Web 端没写入。
-   - **C（不进 Webshell，走 HTTP）**：`/api/admin/migrate/{dump,script,import}` 三个路由**本来就在 `feat/miniprogram` 构建里**，开关只是那个 gitignore 的令牌文件——临时打一个**故意带上** `server/src/admin-migrate-token.txt` 的包上传云托管，发布后本地直接 `POST /api/admin/migrate/import`（body 就是已存档 dump）。⚠️ 该版本的公网域名上会挂着「凭令牌即可读走全库」的接口，只允许几分钟窗口：导入 + 验证一次做完，立刻重部**不带令牌**的包关掉（打包排除清单默认会排除它，见上节）。公网访问若已关，这条要用云内地址或临时开公网。
+   - **C（不进 Webshell，走 HTTP；物料与脚本已本机全量验证）**：上传 `work/migration/gotrip-cloudrun-token.zip`（= 干净构建 + 故意带上 `server/src/admin-migrate-token.txt`，182 条目、无 `.env`/密钥），发布后**临时开公网访问**，本地一条链跑完：
+
+     ```bash
+     node work/migration/post-import.mjs --base https://<云托管默认域名> --check   # 健康 + 通道
+     node work/migration/post-import.mjs --base https://<云托管默认域名> --run     # 导入 + 自检
+     node scripts/pocketbay-deploy.mjs work/migration/gotrip-cloudrun.zip          # ← 关通道用的不含令牌
+     ```
+
+     ⚠️ 三条硬约束：① 窗口只留几分钟，`--run` 一验完立刻重部**不带令牌**的包并把公网访问关回（红线 7：开窗与关窗算同一步，收工前再探一次 `/api/admin/migrate/script` 必须是 404）；② `POST /api/admin/migrate/import` 没有试运行档（引擎自己会先备份云库全表 + 单事务 + 引用校验失败即回滚）；③ 通道判活只能用带正确令牌的 `GET /script`——令牌文件缺失时路由同样回 404，「路由不存在」和「令牌不对」长得一模一样。
+     本机验证（2026-09-20，全新 `mysql:5.7` 空库 + 生产 dump）：`--check` 两步通过 → `--run` HTTP 200 / 0.8 秒 / 13 张表最终行数 5 用户·4 旅程·112 行程项·142 动态 → 自检 6/6（demo 用 PB 旧哈希登录、两趟迁移旅程在列、呼伦贝尔 37 项、wechat 探针 400）。
 3. **验证**：`node work/migration/cloud-verify.mjs`（公网探针：demo 登录、迁移旅程行数、bundle 体积、feat 代码在线）。**该脚本走公网默认域名**——若已按安全要求关掉公网访问，改为在 Webshell 里 `curl -s localhost:8787/health` 与容器内跑同一份断言，或临时开公网验完再关。真机小程序：账号密码登录 → 行程列表出现迁移旅程。
 
 历史数据怪癖（引擎已处理）：旧数据用 `0` 表示「未指派」→ 归一为 NULL；成员删除不清理记账/指派引用 → 孤儿保留原值仅告警（与现网行为一致）；`TEXT`(64KB) 装不下 200KB 头像 dataURL → `avatar_url`/`journal_notes.images` 升 `MEDIUMTEXT`；**MySQL 首次种子 journal INSERT 缺 images 列在严格模式必崩 1364**（云库此前种子残缺：有记账打包、无日志/动态/锦囊），已修。
