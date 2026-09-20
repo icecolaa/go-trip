@@ -26,7 +26,13 @@
 | `DATABASE_URL` | PostgreSQL | PocketBay 部署 |
 | `MYSQL_ADDRESS` | **MySQL（mysql2 连接池）** | **云托管** |
 
-云托管控制台开通内置 MySQL 后，平台自动向同环境服务注入 `MYSQL_ADDRESS`（host:port）、`MYSQL_USERNAME`、`MYSQL_PASSWORD`，服务启动时自动**建库（gotrip）建表种子数据**，零手工操作。⚠️ MySQL 路径已过代码审查与类型检查，但尚未对真实 MySQL 跑过集成测试——首次云上部署时看启动日志「数据库：MySQL（微信云托管内置）」+ 冒烟验证。
+云托管控制台开通内置 MySQL 后，平台自动向同环境服务注入 `MYSQL_ADDRESS`（host:port）、`MYSQL_USERNAME`、`MYSQL_PASSWORD`，服务启动时自动**建库（gotrip）建表种子数据**，零手工操作。
+
+### 内置 MySQL 的版本约束（踩过的坑，写代码前先对一遍）
+
+- **实测低于 8.0.13**：`gotrip-013` 的启动日志实锤——`images MEDIUMTEXT NOT NULL DEFAULT ('[]')` 报 1064（表达式默认值 8.0.13 才有），建表停在那里，容器永远起不来。本机 `mysql:5.7.44` 复现出逐字相同的报错、`mysql:8.4.11` 则合法（2026-09-20）。
+- 所以 MySQL 方言里**不要写**：表达式默认值 `DEFAULT (…)`、`CHECK` 约束、窗口函数/CTE、`JSON` 列类型、`utf8mb4_0900_*` 排序规则。JSON 一律存 TEXT 字符串，NOT NULL 列靠「INSERT 显式列全」保证（历史事故：种子漏 `images` 列 → 严格模式 1364 → 种子残缺）。
+- 启动日志会打印 `服务端版本 x.y.z` 与 `种子数据：空库…/跳过（已有 N 个用户）`，这两行是判读云库状态的第一手依据；本机复现方式见 HANDOFF 条目 36（`docker run -p 3391:3306 -e MYSQL_ROOT_PASSWORD=… mysql:5.7` + `MYSQL_ADDRESS=127.0.0.1:3391` 起服务，`bash scripts/smoke.sh` 99/0、`work/migration/e2e-*.mjs` 36/0）。
 
 ## 部署步骤
 
@@ -181,9 +187,10 @@ callContainer 不支持长连接。小程序 WS 走 `WS_BASE` 直连：
 
    加 `--dry-run` 先试运行不写库；URL 源会自动作为图片拉取源。若云上部署了含此代码的版本（令牌文件在包内），也可直接 `POST /api/admin/migrate/import`（body 为 dump JSON）。
 
-   ⚠️ 2026-09-19 现状：PocketBay 应用处于 `sleeping`（204 壳，需浏览器点「唤醒并继续」），且线上部署已到 **#8932**——比记录里「#8931 已恢复干净 master」又多一次部署，**导出通道是否还开着未知**（关窗与开窗都回 404，只能拿正确令牌探：`curl -s -o /dev/null -w "%{http_code} %{content_type}\n" "https://gotrip.pocketbay.app/api/admin/migrate/script?token=$(sed -n 's/.*script?token=\([0-9a-f]*\).*/\1/p' work/migration/webshell-command.txt)"` → 404＝已关，200＋`text/plain`＝令牌有效、通道开着，导入完必须重部干净 master 关掉）。两条路二选一：
+   ⚠️ 2026-09-19 现状：PocketBay 应用处于 `sleeping`（204 壳，需浏览器点「唤醒并继续」），且线上部署已到 **#8932**——比记录里「#8931 已恢复干净 master」又多一次部署，**导出通道是否还开着未知**（关窗与开窗都回 404，只能拿正确令牌探：`curl -s -o /dev/null -w "%{http_code} %{content_type}\n" "https://gotrip.pocketbay.app/api/admin/migrate/script?token=$(sed -n 's/.*script?token=\([0-9a-f]*\).*/\1/p' work/migration/webshell-command.txt)"` → 404＝已关，200＋`text/plain`＝令牌有效、通道开着，导入完必须重部干净 master 关掉）。三条路任选：
    - **A（推荐，与手册原设计一致）**：唤醒 PB → 若 `/script` 探针回 404，用现成的一次性包重开窗口：`node scripts/pocketbay-deploy.mjs work/migration/gotrip-oneoff-v2.tar.gz`（包已打好：master + 补丁路由 + 令牌文件，105 个文件，与 `webshell-command.txt` 里的令牌同一个）→ 云 Webshell 粘贴上面那条命令 → 导完立刻重部干净 master 关窗（窗口控制在 90 秒内）。
    - **B（不依赖 PocketBay 活着）**：用已存档的 `work/migration/pocketbay-prod-dump.json`（2026-09-17T17:12Z：5 用户/4 旅程/112 行程项/0 图片）。粘贴物料已备好——照 `work/migration/offline/README.txt` 的顺序贴 `00-header → p1…p4 → 99-run`（先 `--dry-run`，去掉尾标即真导入），4 片重组与原 dump 已 `cmp` 校验字节一致。**前提**：容器里存在 `/app/server/src/migrate.ts`（feat 构建 4388b78 起自带，引擎只依赖 node 内置 + 镜像里的 mysql2）；没有就说明云上还是旧版本，回 A 路。**代价**：拿不到 09-17 之后新产生的数据，导入前先确认这段窗口 Web 端没写入。
+   - **C（不进 Webshell，走 HTTP）**：`/api/admin/migrate/{dump,script,import}` 三个路由**本来就在 `feat/miniprogram` 构建里**，开关只是那个 gitignore 的令牌文件——临时打一个**故意带上** `server/src/admin-migrate-token.txt` 的包上传云托管，发布后本地直接 `POST /api/admin/migrate/import`（body 就是已存档 dump）。⚠️ 该版本的公网域名上会挂着「凭令牌即可读走全库」的接口，只允许几分钟窗口：导入 + 验证一次做完，立刻重部**不带令牌**的包关掉（打包排除清单默认会排除它，见上节）。公网访问若已关，这条要用云内地址或临时开公网。
 3. **验证**：`node work/migration/cloud-verify.mjs`（公网探针：demo 登录、迁移旅程行数、bundle 体积、feat 代码在线）。**该脚本走公网默认域名**——若已按安全要求关掉公网访问，改为在 Webshell 里 `curl -s localhost:8787/health` 与容器内跑同一份断言，或临时开公网验完再关。真机小程序：账号密码登录 → 行程列表出现迁移旅程。
 
 历史数据怪癖（引擎已处理）：旧数据用 `0` 表示「未指派」→ 归一为 NULL；成员删除不清理记账/指派引用 → 孤儿保留原值仅告警（与现网行为一致）；`TEXT`(64KB) 装不下 200KB 头像 dataURL → `avatar_url`/`journal_notes.images` 升 `MEDIUMTEXT`；**MySQL 首次种子 journal INSERT 缺 images 列在严格模式必崩 1364**（云库此前种子残缺：有记账打包、无日志/动态/锦囊），已修。
@@ -208,6 +215,8 @@ curl -s -D - -o /dev/null --max-time 45 https://<默认域名>/health | grep -iE
 2. **最小实例数临时设 1**：`0` 时冷启动要靠请求触发，一旦启动就慢/失败会陷入「请求→超时→再没起来」的死循环，调成 1 让它常驻便于看日志。
 3. **运行日志**：本仓库代码 2026-09-19 起是「先监听端口、数据库后台重试」，所以容器能起来；日志里找 `[db] 初始化失败（第 N 次）…`，第 3 次会直接提示核对 `MYSQL_ADDRESS/MYSQL_USERNAME/MYSQL_PASSWORD`。若反复 ECONNREFUSED/TIMEOUT，问题在数据库侧。
 4. **数据库管理 → MySQL**：看内置实例是否被暂停/回收/欠费（Serverless 闲置会暂停，首次连接要等它恢复，通常 1~2 分钟）。
+
+> 2026-09-20 实战结论：gotrip 这次的 504 就是第 3 步抓到的——运行日志里 `[db] 初始化失败（第 65 次）` 指向建表 1064（表达式默认值要 MySQL 8.0.13+，内置版本更低），**不是**数据库连不上也不是版本没发布。没有条目 35 那套「先监听 + 后台重试 + 把错误打进日志」的改动，这种故障在云托管上根本看不见错在哪。
 
 恢复判据：`/health` 返回 `{"ok":true,"db":"ready","driver":"mysql"}`；`/api/auth/wechat`（无头）返回 400 说明 feat 代码在线。**Webshell 也要求有运行中的实例**，504 期间进不去，所以迁移导入必须等服务先起来。
 
