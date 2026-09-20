@@ -4,6 +4,7 @@ import { useApp } from '../../store';
 import { Modal } from '../../components/ui';
 import { CashSection } from './CashTab';
 import type { TabCtx } from './tabCtx';
+import SensitiveText from '../../components/SensitiveText';
 
 /** 六类清单：现金准备与待确认由独立板块/接口提供，这里只列物品与待办 */
 const CATS = ['必带物品', '建议携带', '个人携带', '出发前待办', '其他'];
@@ -130,7 +131,7 @@ export default function PackingTab({ bundle, reload, reloadWeather, weather, can
                       <input type="checkbox" checked={done} onChange={e => toggle(it.id, e.target.checked)} disabled={!canEdit} />
                       <span className={done ? 'done-text' : ''} style={{ flex: 1, minWidth: 0 }}>
                         {it.title}
-                        {it.note && <span className="muted" style={{ marginLeft: 6 }}>· {it.note}</span>}
+                        {it.note && <span className="muted" style={{ marginLeft: 6 }}>· <SensitiveText text={it.note} /></span>}
                       </span>
                       {canEdit ? (
                         <select className="role-select assignee" value={it.assigneeMemberId || ''} onChange={e => assign(it.id, e.target.value ? Number(e.target.value) : null)}>

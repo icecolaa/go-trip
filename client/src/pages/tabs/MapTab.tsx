@@ -3,6 +3,7 @@ import { api, type Poi } from '../../api';
 import { useApp } from '../../store';
 import MapView, { type MapPoint, dayColor } from '../../components/MapView';
 import { KIND_META, yuan } from '../../components/ui';
+import { maskSensitive } from '../../components/SensitiveText';
 import { amapPlaceUrl } from '../../components/TripMode';
 import type { TabCtx } from './tabCtx';
 
@@ -125,7 +126,7 @@ export default function MapTab({ bundle, reload, canEdit }: TabCtx) {
         parts.push(a.title);
         if (a.place) parts.push(`（${a.place}）`);
         if (a.cost) parts.push(`¥${a.cost}`);
-        if (a.notes) parts.push(`— ${a.notes}`);
+        if (a.notes) parts.push(`— ${maskSensitive(a.notes)}`);
         lines.push(parts.join(' '));
       });
       lines.push('');

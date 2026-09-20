@@ -3,6 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import { api } from '../api';
 import { Avatar, KIND_META, fmtDate, weekOf, yuan } from '../components/ui';
 import type { Trip, TripDay, Activity } from '@shared/types';
+import SensitiveText from '../components/SensitiveText';
 
 interface ShareBundle {
   trip: Trip;
@@ -89,7 +90,7 @@ export default function SharePage() {
                   <div className="act-main">
                     <div className="act-title">{a.title}</div>
                     {a.place && <div className="act-place">📍 {a.place}</div>}
-                    {a.notes && <div className="act-notes">{a.notes}</div>}
+                    {a.notes && <div className="act-notes"><SensitiveText text={a.notes} /></div>}
                   </div>
                   {a.cost > 0 && <span className="act-cost">{yuan(a.cost)}</span>}
                 </div>
