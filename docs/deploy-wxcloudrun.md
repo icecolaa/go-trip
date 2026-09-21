@@ -9,10 +9,12 @@
 > - 微信云托管：<https://cloud.weixin.qq.com/cloudrun>（小程序视角）
 > - 腾讯云 CloudBase：<https://console.cloud.tencent.com/tcb>（腾讯云视角，环境 ID、服务、MySQL 完全一致）
 >
-> 本项目已切到 **腾讯云 CloudBase 控制台**管理，服务名仍为 `gotrip`，环境 ID 仍为 `prod-9g9b12cyd5f63833`，
-> 小程序端 `CLOUD_ENV` / `WX_SERVICE` **无需任何改动**（callContainer + `X-WX-SERVICE` 的调用方式不变）。
->
-> ⚠️ **换控制台真正要改的是部署通道**，并且必须避开下面这个踩过的坑。
+> 本项目已切到 **腾讯云 CloudBase 控制台**管理，服务名仍为 `gotrip`。
+> **2026-09-21 二次切换**：环境从微信云托管的 `prod-9g9b12cyd5f63833` 迁到 CloudBase 新环境
+> **`gotrip-d7gh3d65l8b6d048e`**（数据库用「云开发自带实例」的 SQL 型数据库）。
+> 小程序端 `CLOUD_ENV` 已同步改为新环境 ID；`WX_SERVICE` 仍为 `gotrip`。
+> ⚠️ **新库是空的**——旧库里那份从 PocketBay 迁移来的生产数据（7 用户 / 4 旅程 / 112 行程项）
+> 没有跟着过来，首次启动只会写入演示种子数据。要搬旧数据见下文「数据迁移」节。
 
 ## ⚠️ 部署通道的头号坑：流水线分支必须是 feat/miniprogram
 
@@ -190,7 +192,8 @@ CLI 本体安装：`npm install -g @wxcloud/cli`，登录用 `wxcloud login --ap
 | 用旧库的探针账号登录 | 401 | 返回 200 说明还在读旧库，没切过来 |
 
 ```bash
-BASE=https://gotrip-1509709-1308923163.ap-shanghai.run.tcloudbase.com
+# 默认域名随环境而变，以控制台「服务详情 → 公网访问地址」为准
+BASE=https://<新环境 gotrip 的默认域名>
 # 1) MySQL 严格模式探针（应 500）
 curl -s -o /dev/null -w "%{http_code}\n" -X POST $BASE/api/auth/register \
   -H 'Content-Type: application/json' \

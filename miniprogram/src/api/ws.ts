@@ -18,6 +18,8 @@ export async function connectWS(tripId: number, onChange?: (msg: any) => void): 
   currentTripId = tripId
   const token = getToken()
   if (!token) return
+  // 未配置 WS 域名（等备案自定义域名）时直接不连，避免每次都发起一个坏连接刷报错
+  if (!WS_BASE) return
 
   try {
     task = await Taro.connectSocket({

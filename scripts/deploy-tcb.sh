@@ -12,7 +12,7 @@
 # 依赖（密钥一律从环境变量读，绝不写进本文件、绝不提交）：
 #   WXCLI_APPID    小程序 appId（wxcloud login 用）——必填
 #   WXCLI_KEY      小程序上传密钥文件路径（wxcloud login 用，private.*.key）——必填
-#   TCB_ENV_ID     云托管环境 ID，默认 prod-9g9b12cyd5f63833
+#   TCB_ENV_ID     云托管环境 ID，默认 gotrip-d7gh3d65l8b6d048e（CloudBase gotrip 环境）
 #   TCB_SERVICE    服务名，默认 gotrip
 #   TCB_PORT       容器监听端口，默认 8787
 #   TCB_ENV_PARAMS 版本环境变量，格式 xx=a&yy=b；缺省用内置的 TZ + 业务 6 项
@@ -38,7 +38,7 @@ while [ $# -gt 0 ]; do
   esac
 done
 
-ENV_ID="${TCB_ENV_ID:-prod-9g9b12cyd5f63833}"
+ENV_ID="${TCB_ENV_ID:-gotrip-d7gh3d65l8b6d048e}"
 SERVICE="${TCB_SERVICE:-gotrip}"
 PORT="${TCB_PORT:-8787}"
 IMAGE="${CCR_IMAGE:-}"
