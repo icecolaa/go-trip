@@ -1,8 +1,30 @@
-# 微信云托管部署指南
+# 云托管部署指南（微信云托管 / 腾讯云 CloudBase 控制台）
 
-把 GoTrip 服务端部署到[微信云托管](https://developers.weixin.qq.com/miniprogram/dev/wxcloudservice/wxcloudrun/src/basic/intro.html)，让小程序通过 `wx.cloud.callContainer` 调用——**免备案、免配置服务器域名白名单**，走微信专线上报，天然携带用户 openid。
+把 GoTrip 服务端部署到[云托管](https://developers.weixin.qq.com/miniprogram/dev/wxcloudservice/wxcloudrun/src/basic/intro.html)，让小程序通过 `wx.cloud.callContainer` 调用——**免备案、免配置服务器域名白名单**，走微信专线上报，天然携带用户 openid。
 
 本文写于 2026-09-17，对应小程序分支 `feat/miniprogram`。
+
+> **2026-09-21 更新：控制台入口与部署通道调整。**
+> 「微信云托管」与「腾讯云托管（CloudBase 云托管）」是**同一个产品、同一套环境**，只是两个控制台入口：
+> - 微信云托管：<https://cloud.weixin.qq.com/cloudrun>（小程序视角）
+> - 腾讯云 CloudBase：<https://console.cloud.tencent.com/tcb>（腾讯云视角，环境 ID、服务、MySQL 完全一致）
+>
+> 本项目已切到 **腾讯云 CloudBase 控制台**管理，服务名仍为 `gotrip`，环境 ID 仍为 `prod-9g9b12cyd5f63833`，
+> 小程序端 `CLOUD_ENV` / `WX_SERVICE` **无需任何改动**（callContainer + `X-WX-SERVICE` 的调用方式不变）。
+>
+> ⚠️ **换控制台真正要改的是部署通道**，并且必须避开下面这个踩过的坑。
+
+## ⚠️ 部署通道的头号坑：流水线分支必须是 feat/miniprogram
+
+2026-09-17~20 多次出现「代码仓库部署显示已完成，但公网域名上跑的仍是旧版」。根因：
+
+- `origin/master` **没有 MySQL 方言代码**（`server/package.json` 无 `mysql2` 依赖、`db.ts` 无 `migrateMysql`），
+  流水线若构建 master，产出的版本根本不读 `MYSQL_*` 环境变量，容器起来就是 SQLite，看起来"正常"但连不上内置 MySQL。
+- 构建成功 ≠ 发布成功：版本要手动点「发布」才会成为线上版本。
+
+**因此：代码仓库部署的分支只能选 `feat/miniprogram`**（或先把 feat 合进 master 再选 master）。
+
+不依赖控制台流水线、可在本地或 CI 一把梭的方案见下文「方式 B：CLI 部署」。
 
 ## 为什么选云托管 / 架构分工
 
@@ -60,7 +82,51 @@
 
 ### 4. 上传代码并部署（版本配置）
 
-「服务列表 → gotrip → 版本配置 → 新建版本」，部署方式选「本地上传代码包」，代码构建方式选「**使用 Dockerfile 构建**」：
+两种方式，任选其一。**方式 A 省事但踩过坑，方式 B 可控、可复现、推荐进 CI。**
+
+#### 方式 A：控制台代码仓库部署（分支只能选 feat/miniprogram）
+
+「服务列表 → gotrip → 版本配置 → 新建版本」→ 部署方式选「**代码仓库部署**」：
+
+- 代码仓库：绑定的 Gitee/GitHub 仓库（`ice-colaa/go-trip`）
+- **分支：`feat/miniprogram`**（⚠️ 别选 master，见上文头号坑）
+- 代码构建方式：「使用 Dockerfile 构建」（Dockerfile 在仓库根，会自动识别）
+- 监听端口：`8787`（Dockerfile 里 `GOTRIP_PORT=8787`，平台不注入 `PORT`，填错会 readiness 失败）
+- 环境变量：`TZ=Asia/Shanghai` + 业务 6 项 + `MYSQL_ADDRESS` / `MYSQL_USERNAME` / `MYSQL_PASSWORD`
+- Dockerfile 路径：`/Dockerfile`
+
+构建完成后**必须再点一次「发布」**，否则线上版本不会切换。
+
+#### 方式 B：CLI 部署（推荐，绕开流水线不确定性）
+
+仓库内置 `scripts/deploy-tcb.sh`，本地或 CI 一把梭：构建镜像 → 推 CCR → `wxcloud run:deploy` 发布。它会先跑 `tsc` 和冒烟，**任一项不过就终止部署**。
+
+```bash
+# 干跑：只打印将执行的命令，不碰任何远端（无需密钥）
+bash scripts/deploy-tcb.sh --dry-run
+
+# 真部署：密钥全部从环境变量读，绝不写进脚本或提交
+export WXCLI_APPID="wx................"          # 小程序 appId
+export WXCLI_KEY="$HOME/private.wxea1150ef589e225f.key"  # 上传密钥路径
+export CCR_IMAGE="ccr.ccs.tencentyun.com/<ns>/gotrip"
+export CCR_NAMESPACE="<ns>"
+export DOCKER_USER="<腾讯云账号 ID>"
+export DOCKER_PASSWORD="<镜像仓库密码>"
+bash scripts/deploy-tcb.sh --remark "修复 MySQL 迁移幂等"
+```
+
+脚本内置的护栏：
+
+- **分支校验**：不在 `feat/miniprogram` 直接退出（master 构建出的是 SQLite 版）
+- **必须在仓库根目录执行**（历史事故 #7587：子目录打包导致线上缺 `server/`）
+- **tsc + 冒烟门禁**：`smoke.sh` 不过就终止（且不会因管道退出码被吞）
+- 密钥缺失自动降级 dry-run，不会半途失败
+
+CLI 本体安装：`npm install -g @wxcloud/cli`，登录用 `wxcloud login --appId $WXCLI_APPID --privateKey $WXCLI_KEY`。
+
+#### 方式 A 的本地上传代码包（备选）
+
+若仓库绑定或流水线异常，退回手动打包：「服务列表 → gotrip → 版本配置 → 新建版本」→ 部署方式选「本地上传代码包」，代码构建方式选「**使用 Dockerfile 构建**」：
 
 1. 在**仓库根目录**打部署包（Windows Git Bash）。⚠️ 必须 zip 且用 **bsdtar** 打（PowerShell Compress-Archive 会产生反斜杠路径的 zip，云上解压构建直接失败；`.tar.gz` 平台不收）：
 
@@ -106,6 +172,39 @@
   curl -s -X POST https://<默认域名>/api/auth/login \
     -H 'Content-Type: application/json' -d '{"username":"demo","password":"demo1234"}'
   ```
+
+#### 版本状态探针（判断线上到底跑没跑上新代码）
+
+控制台的「构建完成」**不等于**线上已切换。用这三个探针从外部实证，比看控制台可靠。
+
+> ⚠️ **前提：公网访问是开着的。** 生产环境按 6.5 节的安全要求**已关闭公网访问**，
+> 此时默认域名会返回 `GATEWAY_ROUTE_DISABLED`（这是正常且正确的）。
+> 关着的时候要验证版本，二选一：
+> - 临时开公网 → 跑完下面三个探针 → 再关（验证期做法）
+> - 直接用真机/开发者工具跑小程序，看接口是否正常（生产态做法）
+
+| 探针 | 期望值 | 说明 |
+|---|---|---|
+| 注册一个 **140 字符昵称**的账号 | **HTTP 500** | MySQL `VARCHAR(64)` 严格模式拒收超长值；返回 200 说明还是 SQLite |
+| `POST /api/auth/wechat` 空 body | 400「缺少微信身份」 | 这条路由只在 `feat/miniprogram` 有；返回 404 说明构建的是 master |
+| 用旧库的探针账号登录 | 401 | 返回 200 说明还在读旧库，没切过来 |
+
+```bash
+BASE=https://gotrip-1509709-1308923163.ap-shanghai.run.tcloudbase.com
+# 1) MySQL 严格模式探针（应 500）
+curl -s -o /dev/null -w "%{http_code}\n" -X POST $BASE/api/auth/register \
+  -H 'Content-Type: application/json' \
+  -d '{"username":"probe2026","password":"probe-2026-pass","nickname":"'"$(printf '测%.0s' $(seq 1 70))"'"}'
+# 2) 代码版本探针（应 400 且文案为「缺少微信身份」）
+curl -s -X POST $BASE/api/auth/wechat -H 'Content-Type: application/json' -d '{}'
+# 若返回 GATEWAY_ROUTE_DISABLED：说明公网访问已关闭，属于预期的生产态，改用真机验证
+```
+
+三个探针全过 → 线上确实跑上了 feat 分支的 MySQL 版；任一不过 → 回控制台核对分支与「发布」状态。
+
+**另两个「线上版本」的间接证据**（公网关着也能看）：
+- 控制台「运行日志」出现 `➜ 数据库：MySQL（微信云托管内置）`（不是 `SQLite（...）`）
+- 「服务日志」里能看到 `/api/auth/wechat` 的 400 记录，而不是 404
 
 ### 6. 小程序端接入 callContainer
 
