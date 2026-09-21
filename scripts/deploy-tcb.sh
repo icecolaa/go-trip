@@ -10,16 +10,20 @@
 #   bash scripts/deploy-tcb.sh [--dry-run] [--remark "本次说明"]
 #
 # 依赖（密钥一律从环境变量读，绝不写进本文件、绝不提交）：
-#   WXCLI_APPID    小程序 appId（wxcloud login 用）
-#   WXCLI_KEY      小程序上传密钥文件路径（wxcloud login 用，private.*.key）
+#   WXCLI_APPID    小程序 appId（wxcloud login 用）——必填
+#   WXCLI_KEY      小程序上传密钥文件路径（wxcloud login 用，private.*.key）——必填
 #   TCB_ENV_ID     云托管环境 ID，默认 prod-9g9b12cyd5f63833
 #   TCB_SERVICE    服务名，默认 gotrip
 #   TCB_PORT       容器监听端口，默认 8787
-#   CCR_NAMESPACE 腾讯云容器镜像仓库命名空间（docker push 用）
-#   CCR_IMAGE     镜像地址（不含 tag），如 ccr.ccs.tencentyun.com/xxx/gotrip
+#   TCB_ENV_PARAMS 版本环境变量，格式 xx=a&yy=b；缺省用内置的 TZ + 业务 6 项
+#                  （MYSQL_* 不设默认值，需你确认后自行追加，避免把库密码带进命令历史）
+#
+# 可选：预先构建好镜像再发布（CI 场景）。设置了下面三个变量才走镜像模式，
+#       否则走 CLI 原生源码构建（更简单，只需上面两个密钥）：
+#   CCR_IMAGE      镜像地址（不含 tag），如 ccr.ccs.tencentyun.com/<ns>/gotrip
 #   DOCKER_USER / DOCKER_PASSWORD   镜像仓库账号
 #
-# 未设置 CCR_* 时退化为 --dry-run，只打印将执行的命令。
+# 未设置 WXCLI_APPID / WXCLI_KEY 时退化为 --dry-run，只打印将执行的命令。
 # ============================================================
 set -euo pipefail
 
@@ -63,10 +67,13 @@ echo "  提交：$(git rev-parse --short HEAD) ✓"
 MISSING=()
 [ -n "${WXCLI_APPID:-}" ] || MISSING+=("WXCLI_APPID")
 [ -n "${WXCLI_KEY:-}" ] || MISSING+=("WXCLI_KEY")
-if [ ${#MISSING[@]} -gt 0 ] || [ -z "$IMAGE" ] || [ -z "$NS" ]; then
+if [ ${#MISSING[@]} -gt 0 ]; then
   echo ""
-  echo "  ⚠️  未配置完整部署密钥（${MISSING[*]:-} / CCR_IMAGE / CCR_NAMESPACE）"
+  echo "  ⚠️  未配置部署密钥（${MISSING[*]}）"
   echo "     进入 dry-run：只打印将执行的命令，不真正部署。"
+  echo "     源码部署只需要这两个："
+  echo "       export WXCLI_APPID=\"wx................\""
+  echo "       export WXCLI_KEY=\"\$HOME/private.wxea1150ef589e225f.key\""
   DRY_RUN=1
 fi
 
@@ -86,50 +93,83 @@ else
   echo "  本地服务未运行，跳过冒烟（部署前建议先 npm run dev 跑一遍）"
 fi
 
-# ---------- 构建并推送镜像 ----------
-FULL_IMAGE="${IMAGE}:${VERSION}"
-if [ -z "$IMAGE" ]; then
-  log "构建镜像（未配 CCR_IMAGE，仅本地构建不推送）"
-  RUN_BUILD=(docker build -t "gotrip:${VERSION}" .)
-  FULL_IMAGE="gotrip:${VERSION}"
-else
-  log "构建并推送镜像到腾讯云 CCR"
+# ---------- 组装部署命令 ----------
+# ⚠️ 环境变量处理：默认【不传】--envParams，让新版本继承服务设置里已有的配置
+# （MYSQL_ADDRESS / MYSQL_USERNAME / MYSQL_PASSWORD 和业务 6 项都在那里）。
+# 因为 --envParams 是「同步到服务设置」——只传一部分会把没传的那些覆盖掉，
+# 丢了 MYSQL_* 容器就回退 SQLite（数据不持久），这是本项目反复栽过的坑。
+# 仅在「服务设置里确实缺变量」时，才用 TCB_ENV_PARAMS 传全量。
+ENV_PARAMS="${TCB_ENV_PARAMS:-}"
+
+if [ -n "$IMAGE" ]; then
+  # 镜像模式：CI 里先 build+push，再按 tag 发布
+  FULL_IMAGE="${IMAGE}:${VERSION}"
   RUN_BUILD=(docker build -t "$FULL_IMAGE" .)
+  DEPLOY_CMD=(wxcloud run:deploy .
+    --envId="$ENV_ID"
+    --serviceName="$SERVICE"
+    --containerPort="$PORT"
+    --libraryImage="$FULL_IMAGE"
+    --dockerfile=Dockerfile
+    --remark "$REMARK"
+    --releaseType FULL
+    --detach
+    --noConfirm)
+else
+  # 源码模式（默认）：CLI 自己按 Dockerfile 构建并发布，只需 appId + 私钥两个密钥
+  FULL_IMAGE="（由 CLI 按 Dockerfile 构建）"
+  RUN_BUILD=()
+  DEPLOY_CMD=(wxcloud run:deploy .
+    --envId="$ENV_ID"
+    --serviceName="$SERVICE"
+    --containerPort="$PORT"
+    --dockerfile=Dockerfile
+    --remark "$REMARK"
+    --releaseType FULL
+    --detach
+    --noConfirm)
 fi
 
-# ---------- 部署命令 ----------
-DEPLOY_CMD=(wxcloud run:deploy
-  --envId="$ENV_ID"
-  --serviceName="$SERVICE"
-  --containerPort="$PORT"
-  --libraryImage="$FULL_IMAGE"
-  --remark "$REMARK"
-  --releaseType FULL
-  --detach
-  --noConfirm)
+if [ -n "$ENV_PARAMS" ]; then
+  DEPLOY_CMD+=(--envParams="$ENV_PARAMS")
+fi
 
 echo ""
 echo "  将执行："
-echo "    ${RUN_BUILD[*]}"
-if [ -n "$IMAGE" ] && [ -n "${DOCKER_USER:-}" ]; then
-  echo "    docker login ccr.ccs.tencentyun.com -u \$DOCKER_USER"
-  echo "    docker push $FULL_IMAGE"
+if [ ${#RUN_BUILD[@]} -gt 0 ]; then
+  echo "    ${RUN_BUILD[*]}"
+  if [ -n "${DOCKER_USER:-}" ]; then
+    echo "    docker login ccr.ccs.tencentyun.com -u \$DOCKER_USER"
+    echo "    docker push $FULL_IMAGE"
+  fi
 fi
+echo "    wxcloud login --appId \$WXCLI_APPID --privateKey \$WXCLI_KEY"
 echo "    ${DEPLOY_CMD[*]}"
 echo ""
+if [ -n "$ENV_PARAMS" ]; then
+  echo "  环境变量（--envParams，会同步到服务设置）：$ENV_PARAMS"
+else
+  echo "  环境变量：不传 --envParams，新版本继承服务设置里已有的配置"
+  echo "            （MYSQL_ADDRESS / MYSQL_USERNAME / MYSQL_PASSWORD 与业务 6 项）"
+  echo "  ⚠️  若服务设置里缺 MYSQL_*，容器会回退 SQLite（数据不持久）。"
+  echo "     确认缺的话，用 TCB_ENV_PARAMS 传【全量】再部署，例如："
+  echo "       TCB_ENV_PARAMS='TZ=Asia/Shanghai&MYSQL_ADDRESS=...&MYSQL_USERNAME=...&MYSQL_PASSWORD=...' bash scripts/deploy-tcb.sh"
+fi
 
 if [ "$DRY_RUN" = "1" ]; then
   log "dry-run 结束，未做任何变更"
   exit 0
 fi
 
-log "构建镜像"
-"${RUN_BUILD[@]}"
+if [ ${#RUN_BUILD[@]} -gt 0 ]; then
+  log "构建镜像"
+  "${RUN_BUILD[@]}"
 
-if [ -n "$IMAGE" ] && [ -n "${DOCKER_USER:-}" ]; then
-  log "推送镜像"
-  echo "$DOCKER_PASSWORD" | docker login ccr.ccs.tencentyun.com -u "$DOCKER_USER" --password-stdin
-  docker push "$FULL_IMAGE"
+  if [ -n "$IMAGE" ] && [ -n "${DOCKER_USER:-}" ]; then
+    log "推送镜像"
+    echo "$DOCKER_PASSWORD" | docker login ccr.ccs.tencentyun.com -u "$DOCKER_USER" --password-stdin
+    docker push "$FULL_IMAGE"
+  fi
 fi
 
 log "登录云托管 CLI"

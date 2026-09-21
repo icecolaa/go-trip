@@ -393,3 +393,6 @@ echo "      ($WS_OUT)"
 
 echo ""
 echo "结果: PASS=$PASS FAIL=$FAIL"
+# 有失败就必须非零退出：否则 CI / 部署门禁会把失败当成通过
+[ "$FAIL" -eq 0 ] || exit 1
+exit 0
