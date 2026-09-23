@@ -2,6 +2,8 @@ import { useState } from 'react'
 import { View, Input, Button, Text } from '@tarojs/components'
 import Taro from '@tarojs/taro'
 import { api, setToken, ApiFail } from '../../api/request'
+import { wechatLogin } from '../../api/auth'
+import { USE_CLOUD } from '../../config'
 import type { Me } from '../../types'
 
 export default function Login() {
@@ -10,6 +12,19 @@ export default function Login() {
   const [password, setPassword] = useState('')
   const [nickname, setNickname] = useState('')
   const [busy, setBusy] = useState(false)
+
+  const wxLogin = async () => {
+    if (busy) return
+    setBusy(true)
+    try {
+      await wechatLogin()
+      Taro.redirectTo({ url: '/pages/trips/index' })
+    } catch (e) {
+      const msg = e instanceof ApiFail ? e.message : '微信登录失败，请稍后再试'
+      Taro.showToast({ title: msg, icon: 'none' })
+      setBusy(false)
+    }
+  }
 
   const submit = async () => {
     if (busy) return
@@ -37,6 +52,13 @@ export default function Login() {
     <View className="page">
       <View className="logo">🧭 出发吧 GoTrip</View>
       <View className="sub">和朋友一起，规划每一次出发</View>
+
+      {USE_CLOUD && (
+        <View>
+          <Button className="wx-btn" loading={busy} onClick={wxLogin}>微信一键登录</Button>
+          <View className="or"><Text>或使用账号密码</Text></View>
+        </View>
+      )}
 
       <View className="tabs">
         <View className={`tab ${mode === 'login' ? 'on' : ''}`} onClick={() => setMode('login')}>

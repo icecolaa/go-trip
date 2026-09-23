@@ -1,6 +1,6 @@
-import type { PublicUser, MemberRole, TripDay, Activity, Expense, PackingItem, TripMember, GuideCard, Invite, TripPlace, TripPlaceKind, TripCashItem, CashRefKind, TripStatus } from '@shared/types'
+import type { PublicUser, MemberRole, TripDay, Activity, Expense, PackingItem, TripMember, GuideCard, Invite } from '@shared/types'
 
-export type { TripBundle, PublicUser, Poi, ParsedGuide, WeatherDay, MemberRole, TripDay, Activity, Expense, PackingItem, TripMember, GuideCard, Invite, TripPlace, TripPlaceKind, TripCashItem, CashRefKind, TripStatus } from '@shared/types'
+export type { TripBundle, PublicUser, Poi, ParsedGuide, WeatherDay, MemberRole, TripDay, Activity, Expense, PackingItem, TripMember, GuideCard, Invite } from '@shared/types'
 
 /** 与 client/src/api.ts 的 TripCardInfo 保持一致 */
 export interface TripCardInfo {
@@ -12,7 +12,6 @@ export interface TripCardInfo {
   endDate: string
   coverEmoji: string
   coverColor: string
-  coverImage?: string
   budget: number
   myRole: MemberRole
   memberPreview: { displayName: string; avatarColor: string; userId: number | null }[]

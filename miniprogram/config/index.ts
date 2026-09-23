@@ -27,7 +27,7 @@ export default defineConfig(async (merge) => {
       prebundle: { enable: false },
     },
     cache: {
-      enable: false,
+      enable: true,
     },
     mini: {
       postcss: {

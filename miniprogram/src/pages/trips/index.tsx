@@ -3,6 +3,7 @@ import { View, Text, Button } from '@tarojs/components'
 import Taro, { useDidShow, usePullDownRefresh } from '@tarojs/taro'
 import { api, getToken, setToken, ApiFail } from '../../api/request'
 import { wechatLogin } from '../../api/auth'
+import { USE_CLOUD } from '../../config'
 import type { TripCardInfo } from '../../types'
 
 /** 旅程列表：验证「域名 / 证书 / Bearer 会话 / shared 类型」全链路的脚手架页面 */
@@ -11,14 +12,13 @@ export default function Trips() {
   const [error, setError] = useState('')
 
   const load = async () => {
+    if (!getToken() && USE_CLOUD) {
+      // 生产 callContainer 通道：微信网关注入 openid，无 token 先试静默登录/注册
+      try { await wechatLogin() } catch { /* 失败落到下方登录页兜底 */ }
+    }
     if (!getToken()) {
-      // 云托管通道下静默登录（callContainer 自带 openid）；失败兜底账号密码登录页
-      try {
-        await wechatLogin()
-      } catch {
-        Taro.redirectTo({ url: '/pages/login/index' })
-        return
-      }
+      Taro.redirectTo({ url: '/pages/login/index' })
+      return
     }
     try {
       setError('')
@@ -55,10 +55,6 @@ export default function Trips() {
     Taro.navigateTo({ url: '/pages/trip-create/index' })
   }
 
-  const goProfile = () => {
-    Taro.navigateTo({ url: '/pages/profile/index' })
-  }
-
   return (
     <View className="page">
       <View className="fw-entry" onClick={() => Taro.navigateTo({ url: '/pages/flywhere/index' })}>
@@ -68,7 +64,6 @@ export default function Trips() {
       <View className="head">
         <Text className="title">我的旅程</Text>
         <View style={{ display: 'flex', gap: '12rpx' }}>
-          <Button className="ghost" size="mini" onClick={goProfile}>我的</Button>
           <Button className="submit-inline" size="mini" onClick={goCreate}>＋ 新建</Button>
           <Button className="ghost" size="mini" onClick={logout}>退出</Button>
         </View>
