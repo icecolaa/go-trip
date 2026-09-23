@@ -22,12 +22,11 @@ export const WX_SERVICE = 'gotrip'
 /** 直连地址（开发本机 / 或未接云托管时的生产域名） */
 export const API_BASE = isDev ? 'http://localhost:8787' : 'https://gotrip.pocketbay.app'
 
-/** WebSocket（协作在线状态）：callContainer 不支持长连接，只能直连。
+/** WebSocket（协作在线状态）。
  *
- *  ⚠️ 生产态当前【不可用】：切到 CloudBase 新环境后旧默认域名已失效，而新环境的默认域名
- *  需要等控制台分配；且按既定决策，云托管公网访问保持关闭（WS 必须走公网域名），
- *  所以正式版的协作在线状态仍不可用——等绑定已备案自定义域名后再填这里。
- *  留空时 WS 客户端直接不发起连接（见 api/ws.ts），不会报错刷屏。 */
+ *  生产态走 `wx.cloud.connectContainer` 专线（见 api/ws.ts）——不需要自定义域名、
+ *  也不需要开公网访问，所以这里只服务本地开发/直连模式。
+ *  要求基础库 ≥ 2.21.1。本地开发填 ws://localhost:8787，直连模式未配置时留空即可（不会发起连接）。 */
 export const WS_BASE = isDev
   ? 'ws://localhost:8787'
   : ''
