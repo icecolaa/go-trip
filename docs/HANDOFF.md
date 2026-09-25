@@ -1,20 +1,22 @@
 # 交接文档（HANDOFF）
 
 > 面向下一个接手的开发者或 AI 会话。先读根目录 `CLAUDE.md`（规则手册），再读本文（现状、过程与经验）。
-> 更新：2026-09-19。
+> 更新：2026-09-23（条目 41：CloudBase 新环境 + SQL 型数据库接通进行中）。
 
-## 当前状态一览
+## 当前状态一览（2026-09-23）
 
 | 项 | 值 |
 |---|---|
-| 生产 | Web 端 `https://gotrip.pocketbay.app` 部署 **#9316**（干净 master，`/health` 200，迁移通道已关）；小程序端云托管 gotrip 跑 **`ef05c72` 版 + 已导入 PocketBay 全量数据**（`/health` `{"ok":true,"db":"ready","driver":"mysql"}`），公网访问关闭、迁移通道已容器内复验 404；**协作 WS 待备案域名再接**（条目 38） |
-| 最近提交 | `d9f3f49` docs（迁移窗口容器内复验 404 + WS 定为等备案域名）← `c8494f1` docs（容器内命令改 node fetch）← `e0a410a` docs（迁移结案）← `ef05c72` fix（1064）← `ec9c2a3` fix（冷启动）；feat/miniprogram 已同步 **Gitee + GitHub 双端 `d9f3f49`** |
-| 最近提交 | `c10e98f` docs + `ef05c72` fix + `ec9c2a3` fix（feat/miniprogram，均已推 Gitee） |
-| 架构图 | `docs/gotrip-architecture.html`（Archify 生成，源规格 `docs/gotrip-architecture.json`，showcase 9/9 检查通过） |
-| 旅程编辑 | 卡片封面 hover ✏️ 按钮（owner/admin）→ 编辑弹窗（预填/改日期自动对齐天数），提交 #7595 |
-| 仓库 | Gitee `ice-colaa/go-trip` + GitHub `icecolaa/go-trip`（私有镜像），分支 `master`；origin 配了双 push URL，`git push origin master` 一条命令两边同步 |
-| 数据库 | PocketBay 托管 PostgreSQL（生产）／SQLite（本地回退）／MySQL（微信云托管，`MYSQL_ADDRESS` 注入自动建库） |
-| 验收 | `acceptance/REPORT.md` + `acceptance/screenshots/`；冒烟 `scripts/smoke.sh` **99 项全过**（2026-09-19 本地 SQLite 全新库） |
+| **生产环境（⚠️ 已整体迁移）** | 腾讯云 CloudBase 新环境 **`gotrip-d7gh3d65l8b6d048e`**（体验版），服务 `gotrip`，当前版本 **gotrip-014 状态正常**。旧环境 `prod-9g9b12cyd5f63833` 已弃用（里面那份 PocketBay 迁移数据 7用户/4旅程/112行程项 **未迁**，用户决定用新库重建；旧库还在，要数据可回旧环境导） |
+| **数据库（进行中⚠️）** | 目标：CloudBase「SQL 型数据库」云开发自带实例。**当前卡点：连接管理页「连接配置信息」为空（暂无数据）——没建连接配置就没有网络端点，这是此前 `connect ETIMEDOUT` 68 次的根因**。用户已删掉手填的 `MYSQL_*`，服务现回退 **SQLite**（能跑，gotrip-014，但容器文件系统临时，**缩容/重新发布即丢数据，不能当生产**）。**下一步见条目 41 的四步** |
+| 小程序 | `CLOUD_ENV='gotrip-d7gh3d65l8b6d048e'`、`WX_SERVICE='gotrip'`（`miniprogram/src/config.ts`）；WS 已改走 `wx.cloud.connectContainer` 专线（条目 39），**不需要域名/公网**；新版待上传（`npm run upload -- 1.0.1`，需 IP 白名单） |
+| 默认域名 | 新格式 `https://gotrip-31719112-1308923163.sn.run.tcloudbase.com`（注意 `.sn.`），**公网访问当前开着**——⚠️ 数据库通了之后建议关闭（`/api/auth/wechat` 可被伪造 `x-wx-openid`；关掉不影响 callContainer 与 connectContainer WS） |
+| 备案 | 小程序已过 ICP：**京ICP备2026064373号-1X**（2026-09-21）。自定义域名可绑但**按需**（仅 Web 端/外部入口用；WS 已不需要域名）；证书需自行上传（非自动签发） |
+| 仓库 | Gitee `ice-colaa/go-trip` + GitHub `icecolaa/go-trip` 双端同步，分支 `feat/miniprogram`，HEAD **`aeb6c7e`**（041 手册化 + CloudBase 迁移 + connectContainer WS 全部在此） |
+| 部署 | 首选 `scripts/deploy-tcb.sh`（CLI 源码构建，只需 `WXCLI_APPID`+`WXCLI_KEY` 两个密钥；**登录曾失败 → 上传密钥 IP 白名单**，当时出口 IP `223.160.128.120`/IPv6 `240a:4280:...`）；用户实际走控制台「本地上传」部署（gotrip-014）。**构建成功 ≠ 已发布**，版本状态探针见 deploy-wxcloudrun.md |
+| 冒烟 | `scripts/smoke.sh` **111/0**（含 places/cash/status 12 条新断言；**现已会 exit 1**，可当 CI 门禁）；本地 Docker MySQL 5.7.44 全链路验证过（建表+种子+幂等重跑+111/0） |
+| 旅行手册化 | 已完成并推送（条目 40）：后端 2 新表+status+cover_image、网页版浅/深双主题+11 板块、小程序去重+token+3 新页。**已在线上跑（gotrip-014）** |
+| 待办 Top3 | ① 建连接配置接通 SQL 库（条目 41）→ ② 关公网 → ③ 上传小程序新版 + 真机验证 connectContainer WS |
 
 ## 2026-08~09 主要交付（按主题）
 
@@ -40,6 +42,10 @@
 
 39. **云托管部署通道切到腾讯云 CloudBase 控制台 + CLI 部署（2026-09-21，提交 d3f9a01）**：用户要求「不再使用微信云托管，接入腾讯云托管」。**先厘清概念**：微信云托管与腾讯云托管（CloudBase 云托管）是**同一个产品、同一套环境**，只是两个控制台入口（cloud.weixin.qq.com/cloudrun vs console.cloud.tencent.com/tcb），环境 ID、服务、MySQL 完全一致，`callContainer` + `X-WX-SERVICE` 调用方式不变——所以小程序端 `CLOUD_ENV`/`WX_SERVICE` **一行都不用改**，真正要换的只有部署通道。**根治「仓库部署显示完成但线上没切换」**：新增 `scripts/deploy-tcb.sh`（`@wxcloud/cli` 的 `wxcloud run:deploy`），本地/CI 一把梭构建镜像→推 CCR→发布，绕开控制台流水线的不确定性；内置护栏：分支不在 `feat/miniprogram` 直接退出（master 无 MySQL 方言，构建出来是 SQLite 版，这是此前多次「部署无效」的根因）、必须在仓库根目录执行、**tsc + 冒烟门禁**（冒烟不过即终止；注意不能写成 `smoke.sh | tail`——管道退出码取自 tail 会把失败吞掉）、密钥缺失自动降级 dry-run。部署文档重写为「控制台 / CLI / 本地上传包」三方式，并把「版本状态探针」写进文档（140 字符昵称注册应 500 = MySQL 严格模式、`/api/auth/wechat` 应 400 文案 = feat 代码在线、旧库账号应 401 = 已切库）。**本轮实测发现两项用户侧已完成的收敛**：gotrip 公网访问已关闭（默认域名返回 `GATEWAY_ROUTE_DISABLED`，即 6.5 节要求的生产态），express-yo4c 已删除（404）——所以公网探针在关着公网时用不了，文档已补「临时开公网验证」与「真机/callContainer 验证」两条替代路径。**待用户**：在腾讯云 CloudBase 控制台配好代码仓库部署分支（或配好 CLI 密钥走脚本）、正式版前备案域名、重置 AppSecret/上传密钥。
 40. **旅行手册化改造（2026-09-21，提交 5fe43b1→d3f9a01，网页版+小程序）**：后端补数据模型（`trip_places` 候选/正式地点、`trip_cash_items` 现金项——合计只在后端算一次防重复计算、`activities.status` 十种确认状态白名单、`trips.cover_image` 头图，三方言 DDL 同步+幂等 ALTER，冒烟 111/0）；网页版米白/深绿/少量橙双层 token + 深色模式（`#root` 改 `min-height` 修顶栏吸顶失效、手机端 `.trip-layout` 改 `block` 修导航吸顶失效）+ 11 板块导航（手机端 6 主项+⋔更多）+ 头图 + 倒计时四联卡（三态无负数）+ 横竖版 SVG 路线图 + 交通住宿票卡 + 候选景点餐厅（绝不写入正式行程）+ 清单六类与三清除 + 现金内联 + 待确认中心（全部解决后自动消失）+ 隐私脱敏；小程序 `app.css` 8 处逐字重复去重（879→445 行）并 token 化 + `page[data-theme=dark]` 深色 + trip 页重排 + 三个新页面。
+41. **CloudBase 新环境迁移 + SQL 型数据库接通【进行中】+ WS 改 connectContainer（2026-09-21→23，提交 5a221cc/b0bd52c/aeb6c7e）**：用户要求弃微信云托管控制台、切腾讯云 CloudBase。**关键认知**：微信云托管与 CloudBase 托管是同一产品两个控制台入口（调用方式 `callContainer`+`X-WX-SERVICE` 不变，小程序只改 `CLOUD_ENV`）；但**换环境 = 数据不跟走 + 默认域名换格式**（旧 `.ap-shanghai.run.` → 新 `.sn.run.`，旧环境 `prod-9g9b12cyd5f63833` 的 7用户/4旅程/112行程项未迁，用户决定新库重建）。
+    **过程**：① `scripts/deploy-tcb.sh` CLI 部署脚本（源码构建为主路径，只需 appId+私钥；**默认不传 `--envParams`——该参数会同步覆盖服务设置，只传部分会冲掉 `MYSQL_*` 致回退 SQLite**；分支锁 `feat/miniprogram`）；本地 Docker 预检全过（镜像构建、MySQL 5.7.44 建表+种子+幂等重跑无 ER_DUP_KEYNAME、冒烟 111/0）。② `wxcloud login` 失败 → **上传密钥有 IP 白名单**（出口 IP `223.160.128.120` / IPv6），用户未配，改走控制台本地上传。③ 用户部署 gotrip-012/013 后 `[db] 初始化失败 connect ETIMEDOUT` 68 次——**webshell 里 `net.connect(3306,'10.0.224.3')` 超时，判定网络层不通**；对照官方「资源互联自查指南」后定位真根因：**「SQL 型数据库 → 连接管理 → 连接配置信息」是空的（暂无数据）——没建连接配置就没有网络端点**，用户填的 `10.0.224.3:3306` 不是真实端点。④ 用户删掉 `MYSQL_*` → 回退 SQLite → gotrip-014 状态正常、新域名可访问（**公网开着**，数据库通了之后要关，防 wechat 路由伪造 `x-wx-openid`；关掉不影响 callContainer/connectContainer）。
+    **▶ 下一步（给新窗口的操作单，卡点就是第 1 步）**：① CloudBase 控制台 → SQL 型数据库 → **连接管理 → 「连接数据库」** 建一条连接配置（MySQL，设密码）→ 得到 `admin@10.x.x.x:3306/gotrip` 样式的连接串 → 拆成 `MYSQL_ADDRESS=ip:port`（`@` 后 `/` 前）、`MYSQL_USERNAME=@` 前部分、`MYSQL_PASSWORD`，加到**服务设置 → 环境变量**（别用部署脚本的 `TCB_ENV_PARAMS`，避免覆盖）→ 重新发布 → 运行日志必须出现 `➜ 数据库：MySQL（…服务端版本 x.x.x）` + `种子数据：空库，已写入…`（出现 SQLite 即变量没读到）。② 日志通了之后**关闭公网访问**。③ `cd miniprogram && npm run upload -- 1.0.1 "迁 CloudBase"`（同样需 IP 白名单）→ 设体验版。④ **真机验证 connectContainer WS**（`wx.cloud.connectContainer` 基础库 ≥2.21.1，返回 socketTask——**此能力推翻了此前「callContainer 不支持长连接」的旧判断**：WS 不再需要域名/公网，`x-wx-openid` 边界保留；我们鉴权走 `?token=` 不依赖 openid，iOS 高性能+ 不带 openid 也不影响；但升级请求经 callContainer 的转发行为与 15s 超时对长连接的影响**文档未写、未实测**，是唯一悬而未决的一环，连不上会静默失败不白屏）。⑤ 可选：绑已备案自定义域名（证书**自行上传**非自动签发；CNAME 按控制台返回值配）。
+    **本阶段踩坑沉淀**：① CloudBase「SQL 型数据库（云开发自带实例）」**不是**云托管内置 MySQL——后者平台自动注入 `MYSQL_*` 且同 VPC 零配置，前者必须手动建连接配置才有端点，且可能涉及其它 VPC（资源互联/对等连接/安全组，官方自查指南 `scene/noun/vpc.html`）；② Serverless MySQL 闲置暂停 → 首连要激活（等 1-2 分钟），但**激活救不了「没有连接配置端点」**；③ `ETIMEDOUT`（而非 `Access denied`）= 网络层不通，与账号密码无关——webshell 里 `net.connect` 八秒探针一锤定音；④ `smoke.sh` 此前从不 `exit 1`（FAIL>0 也返回 0），任何 CI 门禁都会假通过——已修 `[ "$FAIL" -eq 0 ] || exit 1` 并模拟失败验证；⑤ 顶栏/导航 sticky 失效两连：`#root` 不能 `height:100%`（包含块只有一屏）、单列 grid 下子项 sticky 包含块只有自身一行（要 `block`）；⑥ `wx.cloud.connectContainer` 是 WS 正解，别再走「等备案域名」弯路；⑦ 部署脚本 `--remark` 参数解析不能用 for+shift 组合（会吞参），用 while+case。
 6. **内容收藏**：旅行日志支持多图上传（前端 canvas 压缩 1600/400 双尺寸，JPEG 0.85）+ 缩略图；新增「攻略」Tab 收藏小红书/公众号链接。
 7. **质量**：多轮代码 review 修复；`scripts/smoke.sh` 冒烟 91 项；验收报告归档。
 
