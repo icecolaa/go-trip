@@ -956,7 +956,7 @@ async function initDbOnce(): Promise<void> {
       password: process.env.MYSQL_PASSWORD || '',
       charset: 'utf8mb4',
       connectionLimit: 5,
-      connectTimeout: 15_000, // 内置 MySQL 暂停时 TCP 可能连得上但不回包，不能无限等
+      connectTimeout: 60_000, // serverless MySQL 冷启动唤醒可能较慢，给足时间；仍会失败重试
     };
     // 先用独立连接建库（内置 MySQL 初始只有系统库），再用连接池挂到 gotrip 库
     const bootstrap = await mysql.createConnection(base);
