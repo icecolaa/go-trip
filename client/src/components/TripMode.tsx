@@ -3,6 +3,7 @@ import { api } from '../api';
 import { useApp } from '../store';
 import type { Activity, TripBundle, TripDay, WeatherDay } from '@shared/types';
 import { KIND_META, weekOf, fmtDate, yuan } from './ui';
+import SensitiveText from '../components/SensitiveText';
 
 /* ============ 出发模式：当天行程全屏视图（参考旅行手册 Trip Mode） ============ */
 
@@ -331,7 +332,7 @@ export default function TripMode({ bundle, weather, onClose }: Props) {
                             <div className="tm-stop-copy">
                               <time>{a.time || '时间待定'}{a.place ? ` · ${a.place}` : ''}</time>
                               <strong>{a.title}{isNext && <em className="tm-next-tag">下一站</em>}</strong>
-                              {a.notes && <p>{a.notes}</p>}
+                              {a.notes && <p><SensitiveText text={a.notes} /></p>}
                               <div className="tm-stop-meta">
                                 <span className={'act-icon kind-' + a.kind} title={KIND_META[a.kind]?.label || a.kind}>{KIND_META[a.kind]?.icon || '📌'}</span>
                                 {a.cost > 0 && <span className="tm-cost">{yuan(a.cost)}</span>}

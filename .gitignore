@@ -11,3 +11,7 @@ data/
 Thumbs.db
 *.log
 .vite/
+
+# 一次性数据迁移令牌（server/src/admin-migrate-token.txt，绝不提交）
+server/src/admin-migrate-token.txt
+work/migration/

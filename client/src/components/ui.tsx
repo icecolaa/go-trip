@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useApp } from '../store';
+import { useTheme } from '../theme';
 
 /* ---------- 头像 ---------- */
 export function Avatar({ name, color, size }: { name: string; color: string; size?: 'sm' | 'lg' }) {
@@ -41,6 +42,21 @@ export function Toasts() {
   );
 }
 
+/* ---------- 主题切换 ---------- */
+export function ThemeToggle() {
+  const { resolved, toggle } = useTheme();
+  return (
+    <button
+      className="btn sm ghost"
+      onClick={toggle}
+      title={resolved === 'dark' ? '切换到浅色' : '切换到深色'}
+      aria-label={resolved === 'dark' ? '切换到浅色模式' : '切换到深色模式'}
+    >
+      {resolved === 'dark' ? '☀️' : '🌙'}
+    </button>
+  );
+}
+
 /* ---------- 顶栏 ---------- */
 export function TopBar({ me }: { me: { nickname: string; avatarColor: string; travelId: number } | null }) {
   const { logout } = useApp();
@@ -51,6 +67,7 @@ export function TopBar({ me }: { me: { nickname: string; avatarColor: string; tr
           <span className="mark">🧭</span>出发吧<small>GOTRIP</small>
         </Link>
         <div style={{ flex: 1 }} />
+        <ThemeToggle />
         <Link to="/flywhere" className="btn sm ghost" title="按票价探索目的地">飞哪儿</Link>
         {me && (
           <>

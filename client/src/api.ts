@@ -46,6 +46,7 @@ export interface Me extends PublicUser { }
 export interface TripCardInfo {
   id: number; title: string; destination: string; description: string;
   startDate: string; endDate: string; coverEmoji: string; coverColor: string;
+  coverImage?: string;
   budget: number; myRole: MemberRole;
   memberPreview: { displayName: string; avatarColor: string; userId: number | null }[];
   totalSpent: number; activityCount: number;

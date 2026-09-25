@@ -1,0 +1,41 @@
+{
+  "compileType": "miniprogram",
+  "miniprogramRoot": "dist/",
+  "projectname": "gotrip-miniprogram",
+  "description": "出发吧 GoTrip 微信小程序",
+  "appid": "wxea1150ef589e225f",
+  "setting": {
+    "urlCheck": false,
+    "es6": false,
+    "enhance": true,
+    "compileHotReLoad": false,
+    "postcss": true,
+    "minified": true,
+    "babelSetting": {
+      "ignorePlugins": [],
+      "ignoreFiles": [],
+      "ignore": [],
+      "disablePlugins": [],
+      "outputPath": ""
+    },
+    "compileWorklet": false,
+    "uglifyFileName": false,
+    "uploadWithSourceMap": true,
+    "packNpmManually": false,
+    "packNpmRelationList": [],
+    "minifyWXSS": true,
+    "minifyWXML": true,
+    "localPlugins": false,
+    "disableUseStrict": false,
+    "useCompilerPlugins": false,
+    "condition": false
+  },
+  "libVersion": "3.4.3",
+  "condition": {},
+  "simulatorPluginLibVersion": {},
+  "packOptions": {
+    "ignore": [],
+    "include": []
+  },
+  "editorSetting": {}
+}

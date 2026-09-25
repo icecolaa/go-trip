@@ -3,16 +3,40 @@ import { api, type Poi } from '../../api';
 import { useApp } from '../../store';
 import MapView, { type MapPoint, dayColor } from '../../components/MapView';
 import { KIND_META, yuan } from '../../components/ui';
+import { maskSensitive } from '../../components/SensitiveText';
+import { amapPlaceUrl } from '../../components/TripMode';
 import type { TabCtx } from './tabCtx';
+
+/** 地点分类（地图收录口径）：酒店/机场/车站/景点/餐厅/活动地点/集合点 */
+const PLACE_GROUPS = [
+  { key: 'hotel', label: '酒店', icon: '🏨' },
+  { key: 'airport', label: '机场', icon: '✈️' },
+  { key: 'station', label: '车站', icon: '🚉' },
+  { key: 'attraction', label: '景点', icon: '🏞️' },
+  { key: 'restaurant', label: '餐厅', icon: '🍜' },
+  { key: 'activity', label: '活动地点', icon: '🎭' },
+  { key: 'meeting', label: '集合点', icon: '📍' },
+] as const;
+
+function groupOfActivity(kind: string): string {
+  if (kind === 'hotel') return 'hotel';
+  if (kind === 'food') return 'restaurant';
+  if (kind === 'sight') return 'attraction';
+  return 'activity';
+}
 
 export default function MapTab({ bundle, reload, canEdit }: TabCtx) {
   const { toast } = useApp();
   const [panelOpen, setPanelOpen] = useState(true);
   const [q, setQ] = useState('');
   const [results, setResults] = useState<Poi[]>([]);
+  const [queriedAt, setQueriedAt] = useState<string>('');
   const [busy, setBusy] = useState(false);
   const [attachAct, setAttachAct] = useState<Poi | null>(null);
   const [dayFilter, setDayFilter] = useState<number | null>(null);
+  const [copyState, setCopyState] = useState<'idle' | 'ok' | 'fallback'>('idle');
+  const [copyText, setCopyText] = useState('');
+  const [openGroups, setOpenGroups] = useState<string[]>(['attraction']);
 
   const points = useMemo<MapPoint[]>(() => {
     const list = bundle.activities
@@ -33,6 +57,31 @@ export default function MapTab({ bundle, reload, canEdit }: TabCtx) {
       .map(a => ({ id: a.id, lat: a.lat!, lng: a.lng!, title: a.place || a.title, subtitle: '', dayNumber: bundle.days.find(d => d.id === a.dayId)?.dayNumber })),
     [bundle.activities, bundle.days],
   );
+
+  /** 收录地点按分类折叠：行程条目 + 候选/正式地点合并视图 */
+  const grouped = useMemo(() => {
+    const m = new Map<string, { name: string; sub: string; lat: number | null; lng: number | null; href?: string }[]>();
+    for (const g of PLACE_GROUPS) m.set(g.key, []);
+    for (const a of bundle.activities) {
+      const g = groupOfActivity(a.kind);
+      m.get(g)?.push({
+        name: a.title,
+        sub: [bundle.days.find(d => d.id === a.dayId) ? `D${bundle.days.find(d => d.id === a.dayId)!.dayNumber}` : '', a.time, a.place].filter(Boolean).join(' · '),
+        lat: a.lat, lng: a.lng,
+        href: (a.lat != null && a.lng != null) ? amapPlaceUrl(a.title, a.place, a.lat, a.lng, bundle.days.find(d => d.id === a.dayId)?.place || bundle.trip.destination || '') : undefined,
+      });
+    }
+    for (const p of bundle.places || []) {
+      if (!m.has(p.kind)) continue;
+      m.get(p.kind)!.push({
+        name: p.name,
+        sub: [p.city, p.address].filter(Boolean).join(' · '),
+        lat: p.lat, lng: p.lng,
+        href: (p.lat != null && p.lng != null) ? amapPlaceUrl(p.name, p.address, p.lat, p.lng, p.city) : undefined,
+      });
+    }
+    return m;
+  }, [bundle.activities, bundle.days, bundle.places, bundle.trip.destination]);
 
   /** 打开高德：全部目的地按行程顺序串联（起点→途经→终点） */
   const searchAllDestinations = () => {
@@ -77,22 +126,29 @@ export default function MapTab({ bundle, reload, canEdit }: TabCtx) {
         parts.push(a.title);
         if (a.place) parts.push(`（${a.place}）`);
         if (a.cost) parts.push(`¥${a.cost}`);
-        if (a.notes) parts.push(`— ${a.notes}`);
+        if (a.notes) parts.push(`— ${maskSensitive(a.notes)}`);
         lines.push(parts.join(' '));
       });
       lines.push('');
     }
     lines.push(`💰 预算 ${bundle.trip.budget || 0} 元 · 已花 ${bundle.budget.total} 元`);
     const text = lines.join(String.fromCharCode(10));
+    setCopyText(text);
+    // 只有确认复制成功才提示「已复制」；浏览器不允许时展开文字让用户长按手动复制
     try {
       await navigator.clipboard.writeText(text);
-      toast('已复制全部行程');
+      setCopyState('ok');
+      window.setTimeout(() => setCopyState(s => (s === 'ok' ? 'idle' : s)), 2600);
     } catch {
-      const ta = document.createElement('textarea');
-      ta.value = text;
-      document.body.appendChild(ta); ta.select();
-      document.execCommand('copy'); ta.remove();
-      toast('已复制全部行程');
+      try {
+        const ta = document.createElement('textarea');
+        ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+        document.body.appendChild(ta); ta.select();
+        const ok = document.execCommand('copy');
+        ta.remove();
+        if (ok) { setCopyState('ok'); window.setTimeout(() => setCopyState(s => (s === 'ok' ? 'idle' : s)), 2600); return; }
+      } catch { /* 继续走降级 */ }
+      setCopyState('fallback');
     }
   };
 
@@ -102,6 +158,7 @@ export default function MapTab({ bundle, reload, canEdit }: TabCtx) {
     try {
       const r = await api.get<Poi[]>(`/api/poi/search?q=${encodeURIComponent(q)}&city=${encodeURIComponent(bundle.trip.destination)}`);
       setResults(r);
+      setQueriedAt(new Date().toISOString().slice(0, 10));
     } finally {
       setBusy(false);
     }
@@ -137,9 +194,22 @@ export default function MapTab({ bundle, reload, canEdit }: TabCtx) {
         </div>
         <button className="btn sm" onClick={searchAllDestinations} title="在高德地图中查看全部目的地路线">🗺️ 高德搜索全部目的地</button>
         <button className="btn sm" onClick={copyAllItinerary} title="复制完整行程文本">📋 复制全部行程</button>
+        {copyState === 'ok' && <span className="tag" style={{ color: 'var(--accent)' }}>已复制</span>}
       </div>
+
+      {/* 复制降级：浏览器不允许复制时展开文字，供长按手动复制 */}
+      {copyState === 'fallback' && (
+        <div className="card" style={{ padding: 12, marginBottom: 12 }}>
+          <div className="row-ops" style={{ marginBottom: 6 }}>
+            <b style={{ fontSize: 13, flex: 1 }}>当前浏览器不允许自动复制，请长按下面文字手动复制</b>
+            <button className="btn sm ghost" onClick={() => setCopyState('idle')}>收起</button>
+          </div>
+          <textarea className="input" readOnly rows={8} value={copyText} style={{ width: '100%', fontSize: 12, userSelect: 'text' }} />
+        </div>
+      )}
       <div className="muted" style={{ marginBottom: 10, marginTop: -4 }}>
         {points.length} 个已定位地点{hasNoGeo ? '（部分行程未定位，编辑行程时搜索地点即可定位）' : ''}
+        {bundle.weather?.length ? ` · 天气来源 open-meteo，查询于 ${new Date().toISOString().slice(0, 10)}` : ''}
       </div>
 
       <div className="map-wrap">
@@ -162,7 +232,13 @@ export default function MapTab({ bundle, reload, canEdit }: TabCtx) {
                   </span>
                 </div>
               ))}
-              {results.length > 0 && <div className="muted" style={{ padding: '6px 8px' }}>点击结果添加到第一天行程</div>}
+              {results.length > 0 && (
+                <div className="muted" style={{ padding: '6px 8px', fontSize: 11.5 }}>
+                  来源：{results[0]?.source === 'amap' ? '高德地图' : '内置城市库'}
+                  {queriedAt ? ` · 查询于 ${queriedAt}` : ''}
+                  <br />点击结果添加到第一天行程
+                </div>
+              )}
             </div>
             {results.length === 0 && (
               <div className="muted" style={{ fontSize: 12, lineHeight: 1.7 }}>
@@ -185,9 +261,34 @@ export default function MapTab({ bundle, reload, canEdit }: TabCtx) {
         </div>
       </div>
 
+      {/* 收录地点：按分类折叠，无坐标的条目不落图但仍列出 */}
+      <div style={{ marginTop: 14 }}>
+        <h3 className="section-title" style={{ fontSize: 15 }}>收录地点</h3>
+        {PLACE_GROUPS.map(g => {
+          const list = grouped.get(g.key) || [];
+          if (!list.length) return null;
+          const open = openGroups.includes(g.key);
+          return (
+            <details className="place-group" key={g.key} open={open}
+              onToggle={e => setOpenGroups(prev => (e.currentTarget as HTMLDetailsElement).open ? [...new Set([...prev, g.key])] : prev.filter(k => k !== g.key))}>
+              <summary>{g.icon} {g.label} <span className="cnt">{list.length}</span></summary>
+              <div className="place-list">
+                {list.map((p, i) => (
+                  <div className="place-item map-place-card" key={`${p.name}-${i}`} data-place-name={p.name}>
+                    <div className="nm">{p.name}</div>
+                    {p.sub && <div className="sub">{p.sub}</div>}
+                    {p.lat == null && <div className="sub">坐标待确认，暂不在地图上标点</div>}
+                    {p.href && <div className="ops"><a className="btn sm ghost" href={p.href} target="_blank" rel="noreferrer">导航</a></div>}
+                  </div>
+                ))}
+              </div>
+            </details>
+          );
+        })}
+      </div>
+
       {attachAct && (
-        <div className="modal-mask" onClick={e => { if (e.target === e.currentTarget) setAttachAct(null); }}>
-          <div className="modal" style={{ maxWidth: 380 }}>
+        <div className="modal-mask" onClick={e => { if (e.target === e.currentTarget) setAttachAct(null); }}>          <div className="modal" style={{ maxWidth: 380 }}>
             <h3>添加「{attachAct.name}」</h3>
             <p className="muted" style={{ marginTop: -8 }}>{attachAct.kind} · {attachAct.city}{attachAct.desc ? ` · ${attachAct.desc}` : ''}</p>
             <div className="field">

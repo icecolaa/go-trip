@@ -7,21 +7,23 @@ import { hashPassword } from './auth.ts';
 import { buildHandbook } from './handbook.ts';
 
 /* ============================================================
- * 数据访问层：双驱动
+ * 数据访问层：三驱动
  *  - 设置 DATABASE_URL 时使用 PocketBay 托管 PostgreSQL（pg Pool，max 5，强制 TLS）
+ *  - 设置 MYSQL_ADDRESS 时使用微信云托管内置 MySQL（mysql2 连接池，自动建库建表）
  *  - 未设置时回退本地 SQLite（node:sqlite），本地开发零配置
  * 统一异步 API：db().prepare(sql) → { get, all, run }（均为 Promise），
- * run() 返回 { lastInsertRowid }（PG 通过 INSERT ... RETURNING id 模拟）
+ * run() 返回 { lastInsertRowid }（PG 通过 INSERT ... RETURNING id 模拟，MySQL 用 insertId）
  * ============================================================ */
 
-export type DbDriver = 'sqlite' | 'postgres';
+export type DbDriver = 'sqlite' | 'postgres' | 'mysql';
 let _driver: DbDriver = 'sqlite';
 let _sqlite: DatabaseSync | null = null;
 let _pg: any = null;
+let _mysql: any = null;
 
 export function dbDriver(): DbDriver { return _driver; }
 
-/** SQLite 占位符 ? → PostgreSQL $1..$n */
+/** SQLite 占位符 ? → PostgreSQL $1..$n（MySQL 原生就是 ?，无需转换） */
 function toPgSql(sql: string): string {
   let i = 0;
   return sql.replace(/\?/g, () => `$${++i}`);
@@ -59,6 +61,26 @@ export function db(): { prepare: (sql: string) => Stmt } {
       },
     };
   }
+  if (_driver === 'mysql') {
+    return {
+      prepare(sql: string): Stmt {
+        return {
+          async get(...params: any[]) {
+            const [rows] = await _mysql.query(sql, params.map((p: any) => p === undefined ? null : p));
+            return (rows as any[])[0];
+          },
+          async all(...params: any[]) {
+            const [rows] = await _mysql.query(sql, params.map((p: any) => p === undefined ? null : p));
+            return rows as any[];
+          },
+          async run(...params: any[]) {
+            const [r] = await _mysql.query(sql, params.map((p: any) => p === undefined ? null : p));
+            return { lastInsertRowid: Number((r as any).insertId) || 0, changes: (r as any).affectedRows ?? 0 };
+          },
+        };
+      },
+    };
+  }
   // SQLite：保持既有语义，套一层 Promise 使调用方写法一致
   const s = _sqlite!;
   return {
@@ -87,6 +109,8 @@ function migrateSqlite(d: DatabaseSync): void {
     nickname TEXT NOT NULL,
     avatar_color TEXT NOT NULL DEFAULT '#2f6e4f',
     bio TEXT NOT NULL DEFAULT '',
+    wechat_openid TEXT,
+    avatar_url TEXT,
     created_at TEXT NOT NULL
   );
   CREATE TABLE IF NOT EXISTS sessions (
@@ -104,6 +128,7 @@ function migrateSqlite(d: DatabaseSync): void {
     end_date TEXT NOT NULL,
     cover_emoji TEXT NOT NULL DEFAULT '🧭',
     cover_color TEXT NOT NULL DEFAULT '#2f6e4f',
+    cover_image TEXT,
     budget REAL NOT NULL DEFAULT 0,
     visibility TEXT NOT NULL DEFAULT 'private',
     share_token TEXT,
@@ -158,6 +183,7 @@ function migrateSqlite(d: DatabaseSync): void {
     lng REAL,
     cost REAL NOT NULL DEFAULT 0,
     notes TEXT NOT NULL DEFAULT '',
+    status TEXT,
     assignee_id INTEGER,
     created_at TEXT NOT NULL
   );
@@ -220,10 +246,47 @@ function migrateSqlite(d: DatabaseSync): void {
   CREATE INDEX IF NOT EXISTS idx_activities_day ON activities(day_id);
   CREATE INDEX IF NOT EXISTS idx_members_trip ON trip_members(trip_id);
   CREATE INDEX IF NOT EXISTS idx_guide_trip ON guide_cards(trip_id);
+  CREATE TABLE IF NOT EXISTS trip_places (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    trip_id INTEGER NOT NULL REFERENCES trips(id) ON DELETE CASCADE,
+    kind TEXT NOT NULL DEFAULT 'attraction',
+    name TEXT NOT NULL,
+    city TEXT NOT NULL DEFAULT '',
+    address TEXT NOT NULL DEFAULT '',
+    lat REAL,
+    lng REAL,
+    note TEXT NOT NULL DEFAULT '',
+    dishes TEXT NOT NULL DEFAULT '',
+    status TEXT NOT NULL DEFAULT '待确认',
+    candidate INTEGER NOT NULL DEFAULT 0,
+    sort INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS idx_places_trip ON trip_places(trip_id);
+  CREATE TABLE IF NOT EXISTS trip_cash_items (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    trip_id INTEGER NOT NULL REFERENCES trips(id) ON DELETE CASCADE,
+    title TEXT NOT NULL,
+    amount REAL NOT NULL DEFAULT 0,
+    currency TEXT NOT NULL DEFAULT 'CNY',
+    per_person INTEGER NOT NULL DEFAULT 0,
+    people INTEGER NOT NULL DEFAULT 1,
+    total REAL NOT NULL DEFAULT 0,
+    day_id INTEGER,
+    ref_kind TEXT,
+    ref_id INTEGER,
+    created_at TEXT NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS idx_cash_trip ON trip_cash_items(trip_id);
   `);
 
-  // 旧库平滑升级：缺列补列 + 攻略链接表 + 飞哪儿价格记忆（幂等，可重复执行）
+  // 旧库平滑升级：缺列补列 + 攻略链接表 + 飞哪儿价格记忆 + 微信静默登录列（幂等，可重复执行）
   try { d.exec("ALTER TABLE journal_notes ADD COLUMN images TEXT NOT NULL DEFAULT '[]'"); } catch { /* 已存在 */ }
+  try { d.exec('ALTER TABLE users ADD COLUMN wechat_openid TEXT'); } catch { /* 已存在 */ }
+  try { d.exec('ALTER TABLE users ADD COLUMN avatar_url TEXT'); } catch { /* 已存在 */ }
+  try { d.exec('ALTER TABLE trips ADD COLUMN cover_image TEXT'); } catch { /* 已存在 */ }
+  try { d.exec('ALTER TABLE activities ADD COLUMN status TEXT'); } catch { /* 已存在 */ }
+  d.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_users_openid ON users(wechat_openid)');
   d.exec(`
   CREATE TABLE IF NOT EXISTS travel_links (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -257,6 +320,8 @@ async function migratePg(pg: any): Promise<void> {
     nickname TEXT NOT NULL,
     avatar_color TEXT NOT NULL DEFAULT '#2f6e4f',
     bio TEXT NOT NULL DEFAULT '',
+    wechat_openid TEXT,
+    avatar_url TEXT,
     created_at TEXT NOT NULL
   );
   CREATE TABLE IF NOT EXISTS sessions (
@@ -274,6 +339,7 @@ async function migratePg(pg: any): Promise<void> {
     end_date TEXT NOT NULL,
     cover_emoji TEXT NOT NULL DEFAULT '🧭',
     cover_color TEXT NOT NULL DEFAULT '#2f6e4f',
+    cover_image TEXT,
     budget REAL NOT NULL DEFAULT 0,
     visibility TEXT NOT NULL DEFAULT 'private',
     share_token TEXT,
@@ -328,6 +394,7 @@ async function migratePg(pg: any): Promise<void> {
     lng REAL,
     cost REAL NOT NULL DEFAULT 0,
     notes TEXT NOT NULL DEFAULT '',
+    status TEXT,
     assignee_id INTEGER,
     created_at TEXT NOT NULL
   );
@@ -392,8 +459,11 @@ async function migratePg(pg: any): Promise<void> {
   CREATE INDEX IF NOT EXISTS idx_guide_trip ON guide_cards(trip_id);
   `);
 
-  // 旧库平滑升级：缺列补列 + 攻略链接表 + 飞哪儿价格记忆（幂等，可重复执行）
+  // 旧库平滑升级：缺列补列 + 攻略链接表 + 飞哪儿价格记忆 + 微信静默登录列（幂等，可重复执行）
   await pg.query("ALTER TABLE journal_notes ADD COLUMN IF NOT EXISTS images TEXT NOT NULL DEFAULT '[]'").catch(() => undefined);
+  await pg.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS wechat_openid TEXT').catch(() => undefined);
+  await pg.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_url TEXT').catch(() => undefined);
+  await pg.query('CREATE UNIQUE INDEX IF NOT EXISTS idx_users_openid ON users(wechat_openid)').catch(() => undefined);
   await pg.query(`
   CREATE TABLE IF NOT EXISTS travel_links (
     id INTEGER GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
@@ -413,7 +483,277 @@ async function migratePg(pg: any): Promise<void> {
     min_per_person REAL NOT NULL,
     checked_at TEXT NOT NULL
   );
+  CREATE TABLE IF NOT EXISTS trip_places (
+    id INTEGER GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+    trip_id INTEGER NOT NULL REFERENCES trips(id) ON DELETE CASCADE,
+    kind TEXT NOT NULL DEFAULT 'attraction',
+    name TEXT NOT NULL,
+    city TEXT NOT NULL DEFAULT '',
+    address TEXT NOT NULL DEFAULT '',
+    lat DOUBLE PRECISION,
+    lng DOUBLE PRECISION,
+    note TEXT NOT NULL DEFAULT '',
+    dishes TEXT NOT NULL DEFAULT '',
+    status TEXT NOT NULL DEFAULT '待确认',
+    candidate BOOLEAN NOT NULL DEFAULT false,
+    sort INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS idx_places_trip ON trip_places(trip_id);
+  CREATE TABLE IF NOT EXISTS trip_cash_items (
+    id INTEGER GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+    trip_id INTEGER NOT NULL REFERENCES trips(id) ON DELETE CASCADE,
+    title TEXT NOT NULL,
+    amount DOUBLE PRECISION NOT NULL DEFAULT 0,
+    currency TEXT NOT NULL DEFAULT 'CNY',
+    per_person BOOLEAN NOT NULL DEFAULT false,
+    people INTEGER NOT NULL DEFAULT 1,
+    total DOUBLE PRECISION NOT NULL DEFAULT 0,
+    day_id INTEGER,
+    ref_kind TEXT,
+    ref_id INTEGER,
+    created_at TEXT NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS idx_cash_trip ON trip_cash_items(trip_id);
   `);
+
+  // 旧库平滑升级：缺列补列 + 攻略链接表 + 飞哪儿价格记忆 + 微信静默登录列（幂等，可重复执行）
+  await pg.query("ALTER TABLE journal_notes ADD COLUMN IF NOT EXISTS images TEXT NOT NULL DEFAULT '[]'").catch(() => undefined);
+  await pg.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS wechat_openid TEXT').catch(() => undefined);
+  await pg.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_url TEXT').catch(() => undefined);
+  await pg.query('ALTER TABLE trips ADD COLUMN IF NOT EXISTS cover_image TEXT').catch(() => undefined);
+  await pg.query('ALTER TABLE activities ADD COLUMN IF NOT EXISTS status TEXT').catch(() => undefined);
+  await pg.query('CREATE UNIQUE INDEX IF NOT EXISTS idx_users_openid ON users(wechat_openid)').catch(() => undefined);
+}
+
+/** MySQL 建表（微信云托管内置 MySQL，语义与 SQLite/PG 版一致；首次部署即最新结构，无需补列 ALTER）。
+ *  ⚠️ mysql2 默认单次只执行一条语句（multipleStatements 关闭），必须逐条拆分执行。 */
+async function migrateMysql(m: any): Promise<void> {
+  const ddl = `
+  CREATE TABLE IF NOT EXISTS users (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    travel_id INT UNIQUE NOT NULL,
+    username VARCHAR(64) UNIQUE NOT NULL,
+    password_hash VARCHAR(128) NOT NULL,
+    nickname VARCHAR(64) NOT NULL,
+    avatar_color VARCHAR(16) NOT NULL DEFAULT '#2f6e4f',
+    bio VARCHAR(512) NOT NULL DEFAULT '',
+    wechat_openid VARCHAR(64) NULL,
+    avatar_url MEDIUMTEXT NULL,
+    created_at VARCHAR(32) NOT NULL
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+  CREATE TABLE IF NOT EXISTS sessions (
+    token VARCHAR(64) PRIMARY KEY,
+    user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    created_at VARCHAR(32) NOT NULL
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+  CREATE TABLE IF NOT EXISTS trips (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    owner_id INT NOT NULL REFERENCES users(id),
+    title VARCHAR(128) NOT NULL,
+    destination VARCHAR(128) NOT NULL DEFAULT '',
+    description VARCHAR(512) NOT NULL DEFAULT '',
+    start_date VARCHAR(16) NOT NULL,
+    end_date VARCHAR(16) NOT NULL,
+    cover_emoji VARCHAR(8) NOT NULL DEFAULT '🧭',
+    cover_color VARCHAR(16) NOT NULL DEFAULT '#2f6e4f',
+    cover_image MEDIUMTEXT NULL,
+    budget DOUBLE NOT NULL DEFAULT 0,
+    visibility VARCHAR(16) NOT NULL DEFAULT 'private',
+    share_token VARCHAR(64) NULL,
+    created_at VARCHAR(32) NOT NULL,
+    updated_at VARCHAR(32) NOT NULL
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+  CREATE TABLE IF NOT EXISTS trip_members (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    trip_id INT NOT NULL REFERENCES trips(id) ON DELETE CASCADE,
+    user_id INT NULL REFERENCES users(id) ON DELETE SET NULL,
+    role VARCHAR(16) NOT NULL DEFAULT 'editor',
+    display_name VARCHAR(64) NOT NULL,
+    avatar_color VARCHAR(16) NOT NULL DEFAULT '#8a6d3b',
+    location VARCHAR(128) NULL,
+    location_lat DOUBLE NULL,
+    location_lng DOUBLE NULL,
+    location_at VARCHAR(32) NULL,
+    joined_at VARCHAR(32) NOT NULL,
+    UNIQUE(trip_id, user_id)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+  CREATE TABLE IF NOT EXISTS invites (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    trip_id INT NOT NULL REFERENCES trips(id) ON DELETE CASCADE,
+    code VARCHAR(32) UNIQUE NOT NULL,
+    created_by INT NOT NULL,
+    max_uses INT NOT NULL DEFAULT 0,
+    uses INT NOT NULL DEFAULT 0,
+    expires_at VARCHAR(32) NULL,
+    revoked TINYINT NOT NULL DEFAULT 0,
+    created_at VARCHAR(32) NOT NULL
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+  CREATE TABLE IF NOT EXISTS days (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    trip_id INT NOT NULL REFERENCES trips(id) ON DELETE CASCADE,
+    day_number INT NOT NULL,
+    date VARCHAR(16) NOT NULL,
+    title VARCHAR(128) NOT NULL DEFAULT '',
+    place VARCHAR(128) NOT NULL DEFAULT '',
+    UNIQUE(trip_id, day_number)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+  CREATE TABLE IF NOT EXISTS activities (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    trip_id INT NOT NULL REFERENCES trips(id) ON DELETE CASCADE,
+    day_id INT NOT NULL REFERENCES days(id) ON DELETE CASCADE,
+    sort INT NOT NULL DEFAULT 0,
+    time VARCHAR(8) NULL,
+    end_time VARCHAR(8) NULL,
+    kind VARCHAR(16) NOT NULL DEFAULT 'sight',
+    title VARCHAR(128) NOT NULL,
+    place VARCHAR(128) NOT NULL DEFAULT '',
+    lat DOUBLE NULL,
+    lng DOUBLE NULL,
+    cost DOUBLE NOT NULL DEFAULT 0,
+    notes TEXT NOT NULL,
+    status VARCHAR(16) NULL,
+    assignee_id INT NULL,
+    created_at VARCHAR(32) NOT NULL
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+  CREATE TABLE IF NOT EXISTS expenses (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    trip_id INT NOT NULL REFERENCES trips(id) ON DELETE CASCADE,
+    payer_member_id INT NOT NULL,
+    amount DOUBLE NOT NULL,
+    category VARCHAR(16) NOT NULL DEFAULT '其他',
+    title VARCHAR(128) NOT NULL,
+    date VARCHAR(16) NOT NULL,
+    split_mode VARCHAR(16) NOT NULL DEFAULT 'equal',
+    participants TEXT NOT NULL,
+    created_by INT NULL,
+    created_at VARCHAR(32) NOT NULL
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+  CREATE TABLE IF NOT EXISTS packing_items (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    trip_id INT NOT NULL REFERENCES trips(id) ON DELETE CASCADE,
+    category VARCHAR(16) NOT NULL DEFAULT '其他',
+    title VARCHAR(128) NOT NULL,
+    done TINYINT NOT NULL DEFAULT 0,
+    assignee_member_id INT NULL,
+    quantity INT NOT NULL DEFAULT 1,
+    note VARCHAR(256) NOT NULL DEFAULT '',
+    created_at VARCHAR(32) NOT NULL
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+  CREATE TABLE IF NOT EXISTS journal_notes (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    trip_id INT NOT NULL REFERENCES trips(id) ON DELETE CASCADE,
+    day_id INT NULL,
+    author_member_id INT NOT NULL,
+    content TEXT NOT NULL,
+    mood VARCHAR(8) NOT NULL DEFAULT '🙂',
+    images MEDIUMTEXT NOT NULL,
+    created_at VARCHAR(32) NOT NULL,
+    updated_at VARCHAR(32) NOT NULL
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+  CREATE TABLE IF NOT EXISTS activity_log (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    trip_id INT NOT NULL REFERENCES trips(id) ON DELETE CASCADE,
+    user_id INT NULL,
+    member_name VARCHAR(64) NOT NULL,
+    avatar_color VARCHAR(16) NOT NULL DEFAULT '#2f6e4f',
+    action VARCHAR(64) NOT NULL,
+    detail VARCHAR(256) NOT NULL DEFAULT '',
+    created_at VARCHAR(32) NOT NULL
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+  CREATE TABLE IF NOT EXISTS guide_cards (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    trip_id INT NOT NULL REFERENCES trips(id) ON DELETE CASCADE,
+    category VARCHAR(16) NOT NULL DEFAULT 'tip',
+    icon VARCHAR(8) NOT NULL DEFAULT '📌',
+    title VARCHAR(128) NOT NULL,
+    summary VARCHAR(512) NOT NULL DEFAULT '',
+    items TEXT NOT NULL,
+    source VARCHAR(16) NOT NULL DEFAULT 'builtin',
+    sort INT NOT NULL DEFAULT 0,
+    created_at VARCHAR(32) NOT NULL
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+  CREATE INDEX idx_activities_day ON activities(day_id);
+  CREATE INDEX idx_members_trip ON trip_members(trip_id);
+  CREATE INDEX idx_guide_trip ON guide_cards(trip_id);
+  CREATE TABLE IF NOT EXISTS travel_links (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    trip_id INT NOT NULL REFERENCES trips(id) ON DELETE CASCADE,
+    type VARCHAR(16) NOT NULL DEFAULT 'web',
+    title VARCHAR(128) NOT NULL,
+    url VARCHAR(512) NOT NULL,
+    note VARCHAR(256) NOT NULL DEFAULT '',
+    created_by INT NULL,
+    created_at VARCHAR(32) NOT NULL
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+  CREATE INDEX idx_links_trip ON travel_links(trip_id);
+  CREATE TABLE IF NOT EXISTS flywhere_watch (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    route_key VARCHAR(128) UNIQUE NOT NULL,
+    city VARCHAR(64) NOT NULL DEFAULT '',
+    min_per_person DOUBLE NOT NULL,
+    checked_at VARCHAR(32) NOT NULL
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+  CREATE TABLE IF NOT EXISTS trip_places (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    trip_id INT NOT NULL REFERENCES trips(id) ON DELETE CASCADE,
+    kind VARCHAR(16) NOT NULL DEFAULT 'attraction',
+    name VARCHAR(128) NOT NULL,
+    city VARCHAR(64) NOT NULL DEFAULT '',
+    address VARCHAR(256) NOT NULL DEFAULT '',
+    lat DOUBLE NULL,
+    lng DOUBLE NULL,
+    note VARCHAR(512) NOT NULL DEFAULT '',
+    dishes VARCHAR(512) NOT NULL DEFAULT '',
+    status VARCHAR(16) NOT NULL DEFAULT '待确认',
+    candidate TINYINT NOT NULL DEFAULT 0,
+    sort INT NOT NULL DEFAULT 0,
+    created_at VARCHAR(32) NOT NULL
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+  CREATE INDEX idx_places_trip ON trip_places(trip_id);
+  CREATE TABLE IF NOT EXISTS trip_cash_items (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    trip_id INT NOT NULL REFERENCES trips(id) ON DELETE CASCADE,
+    title VARCHAR(128) NOT NULL,
+    amount DOUBLE NOT NULL DEFAULT 0,
+    currency VARCHAR(8) NOT NULL DEFAULT 'CNY',
+    per_person TINYINT NOT NULL DEFAULT 0,
+    people INT NOT NULL DEFAULT 1,
+    total DOUBLE NOT NULL DEFAULT 0,
+    day_id INT NULL,
+    ref_kind VARCHAR(16) NULL,
+    ref_id INT NULL,
+    created_at VARCHAR(32) NOT NULL
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+  CREATE INDEX idx_cash_trip ON trip_cash_items(trip_id);
+  `;
+  for (const stmt of ddl.split(';').map(s => s.trim()).filter(Boolean)) {
+    try {
+      await m.query(stmt);
+    } catch (e: any) {
+      // MySQL 无 CREATE INDEX IF NOT EXISTS：重跑迁移时索引已存在属正常，其余错误照抛
+      if (e && e.code === 'ER_DUP_KEYNAME') continue;
+      throw e;
+    }
+  }
+  // 旧库平滑升级（MySQL 无 ADD COLUMN / CREATE INDEX IF NOT EXISTS，逐条 try/catch，可重复执行）
+  for (const ddl of [
+    'ALTER TABLE users ADD COLUMN wechat_openid VARCHAR(64) NULL',
+    'ALTER TABLE users ADD COLUMN avatar_url MEDIUMTEXT NULL',
+    'CREATE UNIQUE INDEX idx_users_openid ON users(wechat_openid)',
+    'ALTER TABLE trips ADD COLUMN cover_image MEDIUMTEXT NULL',
+    'ALTER TABLE activities ADD COLUMN status VARCHAR(16) NULL',
+    // 头像 dataURL 允许 200KB、日志图片内联后更大，TEXT(64KB) 不够——升列宽（幂等）。
+    // ⚠️ 不要给 images 补 DEFAULT ('[]')：表达式默认值是 MySQL 8.0.13+ 语法，云托管内置 MySQL
+    //    在更低版本上整段 CREATE TABLE 直接 1064，启动永远起不来（2026-09-20 gotrip-013 实锤）。
+    //    1364（NOT NULL 无默认值）靠 INSERT 显式列全来防：db.ts 种子与 /journal 两条写入路径
+    //    都已带 images 列，加列时请保持这一点。
+    'ALTER TABLE users MODIFY avatar_url MEDIUMTEXT NULL',
+    'UPDATE journal_notes SET images = \'[]\' WHERE images IS NULL OR images = \'\'',
+    'ALTER TABLE journal_notes MODIFY images MEDIUMTEXT NOT NULL',
+  ]) {
+    try { await m.query(ddl); } catch { /* 已存在 */ }
+  }
 }
 
 function insertUser(d: { prepare: (sql: string) => Stmt }, travelId: number, username: string, hash: string, nickname: string, color: string, bio: string): Promise<number> {
@@ -427,7 +767,9 @@ function insertUser(d: { prepare: (sql: string) => Stmt }, travelId: number, use
 /** 首次启动写入演示数据，让新部署开箱即有内容可看 */
 async function seedDemo(d: { prepare: (sql: string) => Stmt }): Promise<void> {
   const count = await d.prepare('SELECT COUNT(*) AS c FROM users').get() as any;
-  if (Number(count.c) > 0) return;
+  const existing = Number(count.c ?? 0);
+  // 这行日志是判据：空库=新建/被回收，非空=沿用旧数据（数据迁移与事故复盘都靠它）
+  if (existing > 0) { console.log(`  ➜ 种子数据：跳过（库里已有 ${existing} 个用户）`); return; }
 
   const pass = hashPassword('demo1234');
 
@@ -521,15 +863,15 @@ async function seedDemo(d: { prepare: (sql: string) => Stmt }): Promise<void> {
   ];
   for (const p of packing) await insPack.run(tripId, p[0], p[1], p[2], p[3], 1, p[4], nowISO());
 
-  const insNote = d.prepare('INSERT INTO journal_notes (trip_id, day_id, author_member_id, content, mood, created_at, updated_at) VALUES (?,?,?,?,?,?,?)');
-  await insNote.run(tripId, null, mDemo, '行程基本敲定！机票已出，民宿订单发群里了。大家记得带防晒，雪山那天的氧气瓶我来统一买。', '🎉', nowISO(), nowISO());
-  await insNote.run(tripId, null, mShu, '补了一份大理到丽江的动车时刻表，放在行程备注里了， 10 点那班时间最合适。', '📝', nowISO(), nowISO());
+  const insNote = d.prepare('INSERT INTO journal_notes (trip_id, day_id, author_member_id, content, mood, images, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?)');
+  await insNote.run(tripId, null, mDemo, '行程基本敲定！机票已出，民宿订单发群里了。大家记得带防晒，雪山那天的氧气瓶我来统一买。', '🎉', '[]', nowISO(), nowISO());
+  await insNote.run(tripId, null, mShu, '补了一份大理到丽江的动车时刻表，放在行程备注里了， 10 点那班时间最合适。', '📝', '[]', nowISO(), nowISO());
 
   const insLog = d.prepare('INSERT INTO activity_log (trip_id, user_id, member_name, avatar_color, action, detail, created_at) VALUES (?,?,?,?,?,?,?)');
   await insLog.run(tripId, demoId, '演示用户', '#2f6e4f', '创建了旅程', '云南大理丽江 · 6日慢游', nowISO());
   await insLog.run(tripId, linId, '小方', '#b5543b', '加入了旅程', '受邀成为成员', nowISO());
   await insLog.run(tripId, shuId, '阿树', '#3b6ea5', '加入了旅程', '受邀成为成员', nowISO());
-  await insLog.run(tripId, mShu, '阿树', '#3b6ea5', '添加了 5 笔记账', '门票与住宿', nowISO());
+  await insLog.run(tripId, shuId, '阿树', '#3b6ea5', '添加了 5 笔记账', '门票与住宿', nowISO());
 
   // 演示旅程内置锦囊（大理 + 丽江两站内容）
   const insGuide = d.prepare('INSERT INTO guide_cards (trip_id, category, icon, title, summary, items, source, sort, created_at) VALUES (?,?,?,?,?,?,?,?,?)');
@@ -538,23 +880,99 @@ async function seedDemo(d: { prepare: (sql: string) => Stmt }): Promise<void> {
     const c = cards[i];
     await insGuide.run(tripId, c.category, c.icon, c.title, c.summary, JSON.stringify(c.items), 'builtin', i, nowISO());
   }
+  console.log('  ➜ 种子数据：空库，已写入演示账号与种子旅程');
 }
 
-/** 初始化数据库：按 DATABASE_URL 选择驱动，建表并按需种子 */
+/* ---------------- 启动就绪状态（HTTP 层据此决定 503，见 index.ts / ws.ts） ----------------
+ * 云托管内置 MySQL 是 Serverless：实例闲置后会暂停，首次连接要等它恢复（可达几十秒），
+ * 连接失败在这个平台上是常态而非致命错误。历史事故：initDb 抛错让进程退出 → 端口从未
+ * 监听 → 平台认为实例不可用 → 容器反复重启，公网域名一直 504、Webshell 也进不去。
+ * 所以 initDb 改成「无限退避重试 + 就绪标记」，由调用方先 listen 再后台补齐。 */
+let _ready = false;
+const _boot = { attempts: 0, lastError: '' };
+
+/** 数据库是否已建表就绪；未就绪时 db() 句柄不可用，上层必须先拦一道 */
+export function dbReady(): boolean { return _ready; }
+
+/** 未就绪期间的启动进度（重试次数、最后一次错误），供 /health 汇报 */
+export function dbBootStatus(): { attempts: number; lastError: string } { return { ..._boot }; }
+
 export async function initDb(): Promise<void> {
+  for (let attempt = 1; ; attempt++) {
+    _boot.attempts = attempt;
+    try {
+      await initDbOnce();
+      _ready = true;
+      _boot.lastError = '';
+      return;
+    } catch (e: any) {
+      _boot.lastError = String(e?.message || e);
+      // 半截连接池留着会越试越多，失败即关掉重来
+      await closePools();
+      const waitSec = Math.min(5 * attempt, 30);
+      console.error(`[db] 初始化失败（第 ${attempt} 次）：${_boot.lastError}`);
+      if (attempt === 3) {
+        console.error('     连续失败 3 次：请核对平台注入的数据库配置（云托管 MYSQL_ADDRESS/MYSQL_USERNAME/MYSQL_PASSWORD，'
+          + '或 DATABASE_URL）。若是内置 MySQL 冷启动暂停，通常再等 1~2 分钟会自动就绪。');
+      }
+      console.error(`     ${waitSec} 秒后重试（数据库未就绪期间接口返回 503）…`);
+      await new Promise((r) => setTimeout(r, waitSec * 1000));
+    }
+  }
+}
+
+async function closePools(): Promise<void> {
+  try { await _pg?.end(); } catch { /* 已断开 */ }
+  try { await _mysql?.end(); } catch { /* 已断开 */ }
+  _pg = null;
+  _mysql = null;
+}
+
+/** 单次初始化：按环境变量选择驱动（DATABASE_URL=PG / MYSQL_ADDRESS=微信云托管内置 MySQL），建表并按需种子 */
+async function initDbOnce(): Promise<void> {
   const url = process.env.DATABASE_URL;
+  const mysqlAddr = process.env.MYSQL_ADDRESS; // 云托管注入 host:port
   if (url) {
     const { Pool } = await import('pg');
     // PocketBay 要求 TLS；连接串自带 sslmode 时交给驱动解析，否则默认安全 TLS
     _pg = new Pool({
       connectionString: url,
       max: 5,
+      // 默认 0 = 连不上就一直挂着，会让启动卡死；给足冷启动时间又要能失败重试
+      connectionTimeoutMillis: 15_000,
       ssl: url.includes('sslmode=') ? undefined : { rejectUnauthorized: true },
     });
     _driver = 'postgres';
     await migratePg(_pg);
     await seedDemo(db());
     console.log(`  ➜ 数据库：PostgreSQL（托管）`);
+  } else if (mysqlAddr) {
+    const mysql = await import('mysql2/promise');
+    const [host, portStr] = mysqlAddr.split(':');
+    const base = {
+      host,
+      port: Number(portStr) || 3306,
+      user: process.env.MYSQL_USERNAME || '',
+      password: process.env.MYSQL_PASSWORD || '',
+      charset: 'utf8mb4',
+      connectionLimit: 5,
+      connectTimeout: 15_000, // 内置 MySQL 暂停时 TCP 可能连得上但不回包，不能无限等
+    };
+    // 先用独立连接建库（内置 MySQL 初始只有系统库），再用连接池挂到 gotrip 库
+    const bootstrap = await mysql.createConnection(base);
+    await bootstrap.query('CREATE DATABASE IF NOT EXISTS gotrip CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci');
+    await bootstrap.end();
+    _mysql = mysql.createPool({ ...base, database: 'gotrip' });
+    _driver = 'mysql';
+    // 版本打进日志：方言兼容坑（如表达式默认值要 8.0.13+）全靠这行定位，别再靠猜
+    let mysqlVersion = '未知';
+    try {
+      const [rows] = await _mysql.query('SELECT VERSION() AS v');
+      mysqlVersion = String(rows?.[0]?.v || '未知');
+    } catch { /* 版本查不到不影响启动 */ }
+    await migrateMysql(_mysql);
+    await seedDemo(db());
+    console.log(`  ➜ 数据库：MySQL（微信云托管内置 · 服务端版本 ${mysqlVersion}）`);
   } else {
     const dbPath = process.env.GOTRIP_DB
       || (process.env.POCKETBAY_DATA_DIR ? path.join(process.env.POCKETBAY_DATA_DIR, 'gotrip.db') : '')

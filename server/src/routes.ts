@@ -1,5 +1,8 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
-import { db } from './db.ts';
+import crypto from 'node:crypto';
+import { readFileSync } from 'node:fs';
+import { db, dbDriver } from './db.ts';
+import { MIGRATE_TABLES, runImport, type DbAdapter, type DumpData } from './migrate.ts';
 import { ApiError, json, readBody, nowISO, todayStr, addDays, daysBetween, randomCode } from './util.ts';
 import { requireAuth, getUserByToken, tokenFromRequest, hashPassword, verifyPassword, createSession, destroySession, setAuthCookie, clearAuthCookie, allocateTravelId, type SessionUser } from './auth.ts';
 import { calcBudget } from './budget.ts';
@@ -7,7 +10,7 @@ import { checkupTrip } from './checkup.ts';
 import { searchPois } from './poi.ts';
 import { getWeather } from './weather.ts';
 import { saveDataUrlImage } from './uploads.ts';
-import type { LinkType, TravelLink } from '../../shared/types.ts';
+import type { LinkType, TravelLink, TripStatus, TripPlaceKind, TripPlace, TripCashItem, CashRefKind } from '../../shared/types.ts';
 import { parseGuide, generatePlan, aiConfigured } from './ai.ts';
 import { buildHandbook, aiHandbook } from './handbook.ts';
 import { answerUsageQuestion, sanitizeHistory } from './assistant.ts';
@@ -55,7 +58,38 @@ function rowToTrip(r: any): Trip {
   return {
     id: r.id, ownerId: r.owner_id, title: r.title, destination: r.destination, description: r.description,
     startDate: r.start_date, endDate: r.end_date, coverEmoji: r.cover_emoji, coverColor: r.cover_color,
-    budget: r.budget, visibility: r.visibility, shareToken: r.share_token, createdAt: r.created_at, updatedAt: r.updated_at,
+    coverImage: r.cover_image || '', budget: r.budget, visibility: r.visibility, shareToken: r.share_token,
+    createdAt: r.created_at, updatedAt: r.updated_at,
+  };
+}
+
+/** 合法状态白名单：前端只允许提交这些值，非法值一律回落「暂定」 */
+const TRIP_STATUSES: TripStatus[] = ['已确认', '已出票', '已预订', '仅限现金', '现场选择', '现场确认', '可选', '未预订', '待确认', '暂定'];
+const PLACE_KINDS: TripPlaceKind[] = ['attraction', 'restaurant', 'hotel', 'transport', 'station', 'airport', 'meeting', 'other'];
+
+function normStatus(v: unknown): TripStatus {
+  const s = String(v ?? '').trim();
+  return (TRIP_STATUSES as string[]).includes(s) ? (s as TripStatus) : '暂定';
+}
+
+function normPlaceKind(v: unknown): TripPlaceKind {
+  const k = String(v ?? '').trim();
+  return (PLACE_KINDS as string[]).includes(k) ? (k as TripPlaceKind) : 'other';
+}
+
+function rowToPlace(r: any): TripPlace {
+  return {
+    id: r.id, tripId: r.trip_id, kind: r.kind, name: r.name, city: r.city || '', address: r.address || '',
+    lat: r.lat, lng: r.lng, note: r.note || '', dishes: r.dishes || '', status: r.status || '暂定',
+    candidate: !!r.candidate, sort: r.sort || 0, createdAt: r.created_at,
+  };
+}
+
+function rowToCash(r: any): TripCashItem {
+  return {
+    id: r.id, tripId: r.trip_id, title: r.title, amount: Number(r.amount) || 0, currency: r.currency || 'CNY',
+    perPerson: !!r.per_person, people: Number(r.people) || 1, total: Number(r.total) || 0,
+    dayId: r.day_id, refKind: r.ref_kind, refId: r.ref_id, createdAt: r.created_at,
   };
 }
 
@@ -112,6 +146,8 @@ async function tripBundle(tripId: number, user: SessionUser | null): Promise<Tri
   const packing = await db().prepare('SELECT * FROM packing_items WHERE trip_id = ? ORDER BY id').all(tripId) as any[];
   const journal = await db().prepare('SELECT * FROM journal_notes WHERE trip_id = ? ORDER BY created_at DESC').all(tripId) as any[];
   const feedRows = await db().prepare('SELECT * FROM activity_log WHERE trip_id = ? ORDER BY id DESC LIMIT 60').all(tripId) as any[];
+  const placeRows = await db().prepare('SELECT * FROM trip_places WHERE trip_id = ? ORDER BY candidate, sort, id').all(tripId) as any[];
+  const cashRows = await db().prepare('SELECT * FROM trip_cash_items WHERE trip_id = ? ORDER BY id').all(tripId) as any[];
   const invites = my && ROLE_RANK[my.role] >= ROLE_RANK.admin
     ? (await db().prepare('SELECT * FROM invites WHERE trip_id = ? AND revoked = 0 ORDER BY id DESC').all(tripId) as any[]).map(rowToInvite)
     : [];
@@ -120,7 +156,7 @@ async function tripBundle(tripId: number, user: SessionUser | null): Promise<Tri
   const actList: Activity[] = activities.map(r => ({
     id: r.id, dayId: r.day_id, tripId: r.trip_id, sort: r.sort, time: r.time, endTime: r.end_time,
     kind: r.kind, title: r.title, place: r.place || '', lat: r.lat, lng: r.lng, cost: r.cost,
-    notes: r.notes || '', assigneeId: r.assignee_id, createdAt: r.created_at,
+    notes: r.notes || '', status: r.status || undefined, assigneeId: r.assignee_id, createdAt: r.created_at,
   }));
   const expList: Expense[] = expenses.map(r => ({
     id: r.id, tripId: r.trip_id, payerMemberId: r.payer_member_id, amount: r.amount, category: r.category,
@@ -151,6 +187,8 @@ async function tripBundle(tripId: number, user: SessionUser | null): Promise<Tri
     }),
     feed: feedRows.map(r => ({ id: r.id, tripId: r.trip_id, memberName: r.member_name, avatarColor: r.avatar_color, action: r.action, detail: r.detail, createdAt: r.created_at })),
     weather: [],
+    places: placeRows.map(rowToPlace),
+    cash: cashRows.map(rowToCash),
     onlineMemberIds: onlineMemberIds(tripId).filter(uid => members.some(m => m.userId === uid)),
   };
 }
@@ -243,12 +281,29 @@ function route(method: string, pattern: string, auth: boolean, handler: Handler)
   routes.push({ method, re, auth, handler });
 }
 
+/* ======== 限速（内存计数，单实例足够，重启即清零） ========
+ * 只用于密码登录/注册：mini program 生产流量经 callContainer 出口 NAT 共享少数源 IP，
+ * 按 IP 限速会误伤全体小程序用户，故微信静默登录路由不限。 */
+
+const rateBuckets = new Map<string, { n: number; reset: number }>();
+
+function rateLimit(req: IncomingMessage, scope: string, max: number, windowMs = 60_000): void {
+  const ip = req.socket.remoteAddress || 'unknown';
+  const now = Date.now();
+  if (rateBuckets.size > 5000) for (const [k, b] of rateBuckets) if (b.reset < now) rateBuckets.delete(k);
+  const key = `${ip}:${scope}`;
+  const b = rateBuckets.get(key);
+  if (!b || b.reset < now) { rateBuckets.set(key, { n: 1, reset: now + windowMs }); return; }
+  if (++b.n > max) throw new ApiError(429, '尝试太频繁，请一分钟后再试');
+}
+
 /* ======== 认证 ======== */
 
-route('POST', '/api/auth/register', false, async (_req, res, _p, _u, body) => {
+route('POST', '/api/auth/register', false, async (req, res, _p, _u, body) => {
+  rateLimit(req, 'register', 10);
   const username = String(body.username || '').trim().toLowerCase();
   const password = String(body.password || '');
-  const nickname = String(body.nickname || '').trim() || username;
+  const nickname = String(body.nickname || '').trim().slice(0, 64) || username;
   if (!/^[a-zA-Z0-9_]{3,24}$/.test(username)) throw new ApiError(400, '用户名需为 3-24 位字母、数字或下划线');
   if (password.length < 6) throw new ApiError(400, '密码至少 6 位');
   const exists = await db().prepare('SELECT 1 FROM users WHERE username = ?').get(username);
@@ -262,8 +317,9 @@ route('POST', '/api/auth/register', false, async (_req, res, _p, _u, body) => {
   json(res, 200, { token, user: { id: userId, travelId, username, nickname, avatarColor: '#2f6e4f', bio: '' } });
 });
 
-route('POST', '/api/auth/login', false, async (_req, res, _p, _u, body) => {
+route('POST', '/api/auth/login', false, async (req, res, _p, _u, body) => {
   const username = String(body.username || '').trim().toLowerCase();
+  rateLimit(req, `login:${username}`, 10);
   const user = await db().prepare('SELECT * FROM users WHERE username = ?').get(username) as any;
   if (!user || !verifyPassword(String(body.password || ''), user.password_hash)) {
     throw new ApiError(401, '用户名或密码错误');
@@ -283,22 +339,57 @@ route('POST', '/api/auth/logout', false, async (req, res) => {
   json(res, 200, { ok: true });
 });
 
+/** 微信静默登录：云托管 callContainer 请求由微信网关注入 x-wx-openid（免备案免鉴权）。
+ *  安全边界：x-wx-* 头仅微信专线内网可信——生产必须在云托管控制台关闭公网访问，
+ *  否则任何人都能通过公网默认域名伪造该头冒充任意用户。 */
+route('POST', '/api/auth/wechat', false, async (req, res) => {
+  const openid = String(req.headers['x-wx-openid'] || '').trim();
+  if (!openid) throw new ApiError(400, '缺少微信身份（x-wx-openid），请通过微信云托管 callContainer 调用');
+  if (!String(req.headers['x-wx-source'] || '')) throw new ApiError(403, '非微信通道调用已拒绝');
+  const user = await db().prepare('SELECT * FROM users WHERE wechat_openid = ?').get(openid) as any;
+  if (user) {
+    const token = await createSession(user.id);
+    return json(res, 200, {
+      token,
+      user: { id: user.id, travelId: user.travel_id, username: user.username, nickname: user.nickname, avatarColor: user.avatar_color, bio: user.bio, avatarUrl: user.avatar_url || '' },
+    });
+  }
+  // 静默注册：密码为随机值且不外泄，等同于仅可通过微信登录
+  const username = `wx_${openid}`;
+  if (await db().prepare('SELECT 1 FROM users WHERE username = ?').get(username)) {
+    throw new ApiError(409, '微信账号绑定冲突，请改用账号密码登录');
+  }
+  const travelId = await allocateTravelId();
+  const r = await db().prepare('INSERT INTO users (travel_id, username, password_hash, nickname, avatar_color, bio, wechat_openid, created_at) VALUES (?,?,?,?,?,?,?,?)')
+    .run(travelId, username, hashPassword(crypto.randomBytes(24).toString('hex')), '微信用户', '#2f6e4f', '', openid, nowISO());
+  const userId = Number(r.lastInsertRowid);
+  const token = await createSession(userId);
+  json(res, 200, { token, user: { id: userId, travelId, username, nickname: '微信用户', avatarColor: '#2f6e4f', bio: '', avatarUrl: '' } });
+});
+
 route('GET', '/api/me', true, async (_req, res, _p, user) => {
   json(res, 200, { ...user, createdAt: nowISO() });
 });
 
 route('PATCH', '/api/me', true, async (_req, res, _p, user, body) => {
   const nickname = body.nickname != null ? String(body.nickname).trim().slice(0, 20) : user.nickname;
-  const avatarColor = body.avatarColor != null ? String(body.avatarColor).slice(0, 20) : user.avatarColor;
+  const avatarColor = body.avatarColor != null ? String(body.avatarColor).slice(0, 16) : user.avatarColor;
   const bio = body.bio != null ? String(body.bio).slice(0, 120) : user.bio;
-  await db().prepare('UPDATE users SET nickname = ?, avatar_color = ?, bio = ? WHERE id = ?').run(nickname || user.nickname, avatarColor, bio, user.id);
+  // 头像为压缩后的 dataURL（与游记图片同模式，避免依赖公网可访问的静态文件）
+  let avatarUrl = user.avatarUrl;
+  if (body.avatarUrl != null) {
+    const dataUrl = String(body.avatarUrl);
+    if (dataUrl && dataUrl.length > 200_000) throw new ApiError(400, '头像图片过大，请重新选择');
+    avatarUrl = dataUrl;
+  }
+  await db().prepare('UPDATE users SET nickname = ?, avatar_color = ?, bio = ?, avatar_url = ? WHERE id = ?').run(nickname || user.nickname, avatarColor, bio, avatarUrl, user.id);
   if (body.newPassword) {
     if (String(body.newPassword).length < 6) throw new ApiError(400, '新密码至少 6 位');
     const row = await db().prepare('SELECT password_hash FROM users WHERE id = ?').get(user.id) as any;
     if (!verifyPassword(String(body.oldPassword || ''), row.password_hash)) throw new ApiError(400, '原密码不正确');
     await db().prepare('UPDATE users SET password_hash = ? WHERE id = ?').run(hashPassword(String(body.newPassword)), user.id);
   }
-  json(res, 200, { id: user.id, travelId: user.travelId, username: user.username, nickname: nickname || user.nickname, avatarColor, bio });
+  json(res, 200, { id: user.id, travelId: user.travelId, username: user.username, nickname: nickname || user.nickname, avatarColor, bio, avatarUrl });
 });
 
 /* ======== 旅程 ======== */
@@ -327,15 +418,16 @@ route('GET', '/api/trips', true, async (_req, res, _p, user) => {
 route('POST', '/api/trips', true, async (_req, res, _p, user, body) => {
   const title = String(body.title || '').trim().slice(0, 60) || '未命名旅程';
   const destination = String(body.destination || '').trim().slice(0, 60);
-  const description = String(body.description || '').slice(0, 600);
+  const description = String(body.description || '').slice(0, 512);
   const startDate = /^\d{4}-\d{2}-\d{2}$/.test(body.startDate || '') ? body.startDate : todayStr();
   const endDate = /^\d{4}-\d{2}-\d{2}$/.test(body.endDate || '') && body.endDate >= startDate ? body.endDate : startDate;
   const coverEmoji = String(body.coverEmoji || '🧭').slice(0, 8);
-  const coverColor = String(body.coverColor || '#2f6e4f').slice(0, 20);
+  const coverColor = String(body.coverColor || '#2f6e4f').slice(0, 16);
+  const coverImage = body.coverImage ? String(body.coverImage).slice(0, 2_000_000) : '';
   const budget = Math.max(0, Number(body.budget) || 0);
   const now = nowISO();
-  const r = await db().prepare('INSERT INTO trips (owner_id, title, destination, description, start_date, end_date, cover_emoji, cover_color, budget, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)')
-    .run(user.id, title, destination, description, startDate, endDate, coverEmoji, coverColor, budget, now, now);
+  const r = await db().prepare('INSERT INTO trips (owner_id, title, destination, description, start_date, end_date, cover_emoji, cover_color, cover_image, budget, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)')
+    .run(user.id, title, destination, description, startDate, endDate, coverEmoji, coverColor, coverImage, budget, now, now);
   const tripId = Number(r.lastInsertRowid);
   await db().prepare('INSERT INTO trip_members (trip_id, user_id, role, display_name, avatar_color, joined_at) VALUES (?,?,?,?,?,?)')
     .run(tripId, user.id, 'owner', user.nickname, user.avatarColor, now);
@@ -360,14 +452,15 @@ route('PATCH', '/api/trips/:id', true, async (_req, res, p, user, body) => {
   const vals: any[] = [];
   const map: Record<string, string> = {
     title: 'title', destination: 'destination', description: 'description', startDate: 'start_date',
-    endDate: 'end_date', coverEmoji: 'cover_emoji', coverColor: 'cover_color', budget: 'budget',
+    endDate: 'end_date', coverEmoji: 'cover_emoji', coverColor: 'cover_color', coverImage: 'cover_image', budget: 'budget',
   };
   for (const [k, col] of Object.entries(map)) {
     if (body[k] != null) {
       let v = body[k];
       if (k === 'budget') v = Math.max(0, Number(v) || 0);
-      if (k === 'description') v = String(v).slice(0, 600);
+      if (k === 'description') v = String(v).slice(0, 512);
       if (k === 'title') v = String(v).trim().slice(0, 60) || trip.title;
+      if (k === 'coverImage') v = v ? String(v).slice(0, 2_000_000) : '';
       fields.push(`${col} = ?`);
       vals.push(v);
     }
@@ -615,10 +708,11 @@ route('POST', '/api/days/:id/activities', true, async (_req, res, p, user, body)
   const time = /^([01]?\d|2[0-3])[:：][0-5]\d$/.test(String(body.time || '')) ? String(body.time).replace('：', ':') : null;
   const lat = body.lat != null && isFinite(Number(body.lat)) ? Number(body.lat) : null;
   const lng = body.lng != null && isFinite(Number(body.lng)) ? Number(body.lng) : null;
-  const r = await db().prepare('INSERT INTO activities (trip_id, day_id, sort, time, end_time, kind, title, place, lat, lng, cost, notes, assignee_id, created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)')
-    .run(day.trip_id, day.id, Number(maxSort.m || 0) + 1, time, null, String(body.kind || 'sight'), title,
+  const r = await db().prepare('INSERT INTO activities (trip_id, day_id, sort, time, end_time, kind, title, place, lat, lng, cost, notes, status, assignee_id, created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)')
+    .run(day.trip_id, day.id, Number(maxSort.m || 0) + 1, time, null, String(body.kind || 'sight').slice(0, 16), title,
       String(body.place || '').slice(0, 60), lat, lng, Math.max(0, Number(body.cost) || 0),
-      String(body.notes || '').slice(0, 300), body.assigneeId != null ? Number(body.assigneeId) : null, nowISO());
+      String(body.notes || '').slice(0, 300), body.status ? normStatus(body.status) : null,
+      body.assigneeId != null ? Number(body.assigneeId) : null, nowISO());
   await logActivity(Number(day.trip_id), me, '添加了行程', title);
   notify(Number(day.trip_id), 'activity', 'create', me.id);
   json(res, 200, { id: Number(r.lastInsertRowid) });
@@ -630,7 +724,7 @@ route('PATCH', '/api/activities/:id', true, async (_req, res, p, user, body) => 
   const me = await requireMember(Number(act.trip_id), user, 'editor');
   const time = body.time !== undefined ? (/^([01]?\d|2[0-3])[:：][0-5]\d$/.test(String(body.time || '')) ? String(body.time).replace('：', ':') : null) : act.time;
   const title = body.title != null ? String(body.title).trim().slice(0, 100) || act.title : act.title;
-  const kind = body.kind != null ? String(body.kind) : act.kind;
+  const kind = body.kind != null ? String(body.kind).slice(0, 16) : act.kind;
   const place = body.place != null ? String(body.place).slice(0, 60) : act.place;
   const cost = body.cost != null ? Math.max(0, Number(body.cost) || 0) : act.cost;
   const notes = body.notes != null ? String(body.notes).slice(0, 300) : act.notes;
@@ -639,8 +733,9 @@ route('PATCH', '/api/activities/:id', true, async (_req, res, p, user, body) => 
   const assigneeId = body.assigneeId !== undefined ? (body.assigneeId === null ? null : Number(body.assigneeId)) : act.assignee_id;
   const dayId = body.dayId != null ? Number(body.dayId) : act.day_id;
   const sort = body.sort != null ? Number(body.sort) : act.sort;
-  await db().prepare('UPDATE activities SET time=?, title=?, kind=?, place=?, cost=?, notes=?, lat=?, lng=?, assignee_id=?, day_id=?, sort=? WHERE id = ?')
-    .run(time, title, kind, place, cost, notes, lat, lng, assigneeId, dayId, sort, act.id);
+  const status = body.status !== undefined ? (body.status === null ? null : normStatus(body.status)) : act.status;
+  await db().prepare('UPDATE activities SET time=?, title=?, kind=?, place=?, cost=?, notes=?, status=?, lat=?, lng=?, assignee_id=?, day_id=?, sort=? WHERE id = ?')
+    .run(time, title, kind, place, cost, notes, status, lat, lng, assigneeId, dayId, sort, act.id);
   await logActivity(Number(act.trip_id), me, '更新了行程', title);
   notify(Number(act.trip_id), 'activity', 'update', me.id);
   json(res, 200, { ok: true });
@@ -687,7 +782,7 @@ route('POST', '/api/trips/:id/expenses', true, async (_req, res, p, user, body) 
   const title = String(body.title || '').trim().slice(0, 60) || '未命名支出';
   const payerMemberId = Number(body.payerMemberId) || me.id;
   const r = await db().prepare('INSERT INTO expenses (trip_id, payer_member_id, amount, category, title, date, split_mode, participants, created_by, created_at) VALUES (?,?,?,?,?,?,?,?,?,?)')
-    .run(tripId, payerMemberId, amount, String(body.category || '其他'), title,
+    .run(tripId, payerMemberId, amount, String(body.category || '其他').slice(0, 16), title,
       /^\d{4}-\d{2}-\d{2}$/.test(body.date || '') ? body.date : todayStr(),
       body.splitMode === 'payer' ? 'payer' : 'equal', JSON.stringify(Array.isArray(body.participants) ? body.participants : []), user.id, nowISO());
   await logActivity(tripId, me, '记了一笔账', `${title} ¥${amount}`);
@@ -701,7 +796,7 @@ route('PATCH', '/api/expenses/:id', true, async (_req, res, p, user, body) => {
   const me = await requireMember(Number(exp.trip_id), user, 'editor');
   const amount = body.amount != null ? Math.max(0, Number(body.amount) || 0) : exp.amount;
   const title = body.title != null ? String(body.title).trim().slice(0, 60) || exp.title : exp.title;
-  const category = body.category != null ? String(body.category) : exp.category;
+  const category = body.category != null ? String(body.category).slice(0, 16) : exp.category;
   const date = body.date != null && /^\d{4}-\d{2}-\d{2}$/.test(body.date) ? body.date : exp.date;
   const payerMemberId = body.payerMemberId != null ? Number(body.payerMemberId) : exp.payer_member_id;
   const splitMode = body.splitMode != null ? (body.splitMode === 'payer' ? 'payer' : 'equal') : exp.split_mode;
@@ -740,7 +835,7 @@ route('POST', '/api/trips/:id/packing', true, async (_req, res, p, user, body) =
   } else {
     const title = String(body.title || '').trim().slice(0, 60);
     if (!title) throw new ApiError(400, '请填写物品名称');
-    const r = await ins.run(tripId, String(body.category || '其他'), title, body.assigneeMemberId != null ? Number(body.assigneeMemberId) : null,
+    const r = await ins.run(tripId, String(body.category || '其他').slice(0, 16), title, body.assigneeMemberId != null ? Number(body.assigneeMemberId) : null,
       Math.max(1, Number(body.quantity) || 1), String(body.note || '').slice(0, 100), nowISO());
     ids.push(Number(r.lastInsertRowid));
   }
@@ -773,7 +868,7 @@ route('PATCH', '/api/packing/:id', true, async (_req, res, p, user, body) => {
   const me = await requireMember(Number(item.trip_id), user, 'editor');
   const done = body.done != null ? (body.done ? 1 : 0) : item.done;
   const title = body.title != null ? String(body.title).trim().slice(0, 60) || item.title : item.title;
-  const category = body.category != null ? String(body.category) : item.category;
+  const category = body.category != null ? String(body.category).slice(0, 16) : item.category;
   const assigneeMemberId = body.assigneeMemberId !== undefined ? (body.assigneeMemberId === null ? null : Number(body.assigneeMemberId)) : item.assignee_member_id;
   const note = body.note != null ? String(body.note).slice(0, 100) : item.note;
   const quantity = body.quantity != null ? Math.max(1, Number(body.quantity) || 1) : item.quantity;
@@ -1057,10 +1152,11 @@ route('POST', '/api/trips/:id/links', true, async (_req, res, p, user, body) => 
   let parsed: URL;
   try { parsed = new URL(url); } catch { throw new ApiError(400, '请填写有效的链接地址'); }
   if (!['http:', 'https:'].includes(parsed.protocol)) throw new ApiError(400, '链接仅支持 http/https');
+  const safeUrl = parsed.toString().slice(0, 512);
   const type = normalizeLinkType(body.type);
   const note = String(body.note || '').trim().slice(0, 200);
   const r = await db().prepare('INSERT INTO travel_links (trip_id, type, title, url, note, created_by, created_at) VALUES (?,?,?,?,?,?,?)')
-    .run(tripId, type, title, url, note, me.id, nowISO());
+    .run(tripId, type, title, safeUrl, note, me.id, nowISO());
   notify(tripId, 'link', 'create', me.id);
   json(res, 200, rowToLink(await db().prepare('SELECT * FROM travel_links WHERE id = ?').get(Number(r.lastInsertRowid)) as any));
 });
@@ -1071,6 +1167,127 @@ route('DELETE', '/api/links/:id', true, async (_req, res, p, user) => {
   const me = await requireMember(Number(row.trip_id), user, 'editor');
   await db().prepare('DELETE FROM travel_links WHERE id = ?').run(row.id);
   notify(Number(row.trip_id), 'link', 'delete', me.id);
+  json(res, 200, { ok: true });
+});
+
+/* ======== 地点（候选景点/餐厅 + 正式地点） ======== */
+
+route('GET', '/api/trips/:id/places', true, async (_req, res, p, user) => {
+  const tripId = Number(p.id);
+  await requireMember(tripId, user, 'viewer');
+  const rows = await db().prepare('SELECT * FROM trip_places WHERE trip_id = ? ORDER BY candidate, sort, id').all(tripId) as any[];
+  json(res, 200, rows.map(rowToPlace));
+});
+
+route('POST', '/api/trips/:id/places', true, async (_req, res, p, user, body) => {
+  const tripId = Number(p.id);
+  const me = await requireMember(tripId, user, 'editor');
+  const name = String(body.name || '').trim().slice(0, 128);
+  if (!name) throw new ApiError(400, '请填写地点名称');
+  const lat = body.lat != null && isFinite(Number(body.lat)) ? Number(body.lat) : null;
+  const lng = body.lng != null && isFinite(Number(body.lng)) ? Number(body.lng) : null;
+  const maxSort = await db().prepare('SELECT COALESCE(MAX(sort),0) AS m FROM trip_places WHERE trip_id = ?').get(tripId) as any;
+  const r = await db().prepare('INSERT INTO trip_places (trip_id, kind, name, city, address, lat, lng, note, dishes, status, candidate, sort, created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)')
+    .run(tripId, normPlaceKind(body.kind), name, String(body.city || '').slice(0, 64), String(body.address || '').slice(0, 256),
+      lat, lng, String(body.note || '').slice(0, 512), String(body.dishes || '').slice(0, 512),
+      normStatus(body.status), body.candidate ? 1 : 0, Number(maxSort.m || 0) + 1, nowISO());
+  await logActivity(tripId, me, '添加了地点', name);
+  notify(tripId, 'place', 'create', me.id);
+  json(res, 200, { id: Number(r.lastInsertRowid) });
+});
+
+route('PATCH', '/api/places/:id', true, async (_req, res, p, user, body) => {
+  const row = await db().prepare('SELECT * FROM trip_places WHERE id = ?').get(Number(p.id)) as any;
+  if (!row) throw new ApiError(404, '地点不存在');
+  const me = await requireMember(Number(row.trip_id), user, 'editor');
+  const lat = body.lat !== undefined ? (isFinite(Number(body.lat)) && body.lat !== null ? Number(body.lat) : null) : row.lat;
+  const lng = body.lng !== undefined ? (isFinite(Number(body.lng)) && body.lng !== null ? Number(body.lng) : null) : row.lng;
+  const candidate = body.candidate !== undefined ? (body.candidate ? 1 : 0) : row.candidate;
+  await db().prepare('UPDATE trip_places SET kind=?, name=?, city=?, address=?, lat=?, lng=?, note=?, dishes=?, status=?, candidate=?, sort=? WHERE id = ?')
+    .run(
+      body.kind != null ? normPlaceKind(body.kind) : row.kind,
+      body.name != null ? String(body.name).trim().slice(0, 128) || row.name : row.name,
+      body.city != null ? String(body.city).slice(0, 64) : row.city,
+      body.address != null ? String(body.address).slice(0, 256) : row.address,
+      lat, lng,
+      body.note != null ? String(body.note).slice(0, 512) : row.note,
+      body.dishes != null ? String(body.dishes).slice(0, 512) : row.dishes,
+      body.status !== undefined ? (body.status === null ? null : normStatus(body.status)) : row.status,
+      candidate,
+      body.sort != null ? Number(body.sort) : row.sort,
+      row.id,
+    );
+  notify(Number(row.trip_id), 'place', 'update', me.id);
+  json(res, 200, { ok: true });
+});
+
+route('DELETE', '/api/places/:id', true, async (_req, res, p, user) => {
+  const row = await db().prepare('SELECT * FROM trip_places WHERE id = ?').get(Number(p.id)) as any;
+  if (!row) throw new ApiError(404, '地点不存在');
+  const me = await requireMember(Number(row.trip_id), user, 'editor');
+  await db().prepare('DELETE FROM trip_places WHERE id = ?').run(row.id);
+  notify(Number(row.trip_id), 'place', 'delete', me.id);
+  json(res, 200, { ok: true });
+});
+
+/* ======== 现金准备 ======== */
+
+route('GET', '/api/trips/:id/cash', true, async (_req, res, p, user) => {
+  const tripId = Number(p.id);
+  await requireMember(tripId, user, 'viewer');
+  const rows = await db().prepare('SELECT * FROM trip_cash_items WHERE trip_id = ? ORDER BY id').all(tripId) as any[];
+  json(res, 200, rows.map(rowToCash));
+});
+
+route('POST', '/api/trips/:id/cash', true, async (_req, res, p, user, body) => {
+  const tripId = Number(p.id);
+  const me = await requireMember(tripId, user, 'editor');
+  const title = String(body.title || '').trim().slice(0, 128);
+  if (!title) throw new ApiError(400, '请填写现金项目名称');
+  const amount = Math.max(0, Number(body.amount) || 0);
+  const perPerson = !!body.perPerson;
+  const people = Math.max(1, Math.floor(Number(body.people) || 1));
+  // 合计只在后端算一次，前端只读 total，避免多端口径不一导致重复计算
+  const total = Math.round(amount * (perPerson ? people : 1) * 100) / 100;
+  const refKind = ['day', 'transport', 'stay'].includes(String(body.refKind)) ? (String(body.refKind) as CashRefKind) : null;
+  const r = await db().prepare('INSERT INTO trip_cash_items (trip_id, title, amount, currency, per_person, people, total, day_id, ref_kind, ref_id, created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)')
+    .run(tripId, title, amount, String(body.currency || 'CNY').slice(0, 8), perPerson ? 1 : 0, people, total,
+      body.dayId != null ? Number(body.dayId) : null, refKind, body.refId != null ? Number(body.refId) : null, nowISO());
+  await logActivity(tripId, me, '添加了现金项目', title);
+  notify(tripId, 'cash', 'create', me.id);
+  json(res, 200, { id: Number(r.lastInsertRowid), total });
+});
+
+route('PATCH', '/api/cash/:id', true, async (_req, res, p, user, body) => {
+  const row = await db().prepare('SELECT * FROM trip_cash_items WHERE id = ?').get(Number(p.id)) as any;
+  if (!row) throw new ApiError(404, '现金项目不存在');
+  const me = await requireMember(Number(row.trip_id), user, 'editor');
+  const amount = body.amount != null ? Math.max(0, Number(body.amount) || 0) : row.amount;
+  const perPerson = body.perPerson !== undefined ? !!body.perPerson : !!row.per_person;
+  const people = body.people != null ? Math.max(1, Math.floor(Number(body.people) || 1)) : (Number(row.people) || 1);
+  const total = Math.round(amount * (perPerson ? people : 1) * 100) / 100;
+  const refKind = ['day', 'transport', 'stay'].includes(String(body.refKind)) ? (String(body.refKind) as CashRefKind) : (row.ref_kind || null);
+  await db().prepare('UPDATE trip_cash_items SET title=?, amount=?, currency=?, per_person=?, people=?, total=?, day_id=?, ref_kind=?, ref_id=? WHERE id = ?')
+    .run(
+      body.title != null ? String(body.title).trim().slice(0, 128) || row.title : row.title,
+      amount,
+      body.currency != null ? String(body.currency).slice(0, 8) : row.currency,
+      perPerson ? 1 : 0, people, total,
+      body.dayId !== undefined ? (body.dayId === null ? null : Number(body.dayId)) : row.day_id,
+      refKind,
+      body.refId !== undefined ? (body.refId === null ? null : Number(body.refId)) : row.ref_id,
+      row.id,
+    );
+  notify(Number(row.trip_id), 'cash', 'update', me.id);
+  json(res, 200, { ok: true, total });
+});
+
+route('DELETE', '/api/cash/:id', true, async (_req, res, p, user) => {
+  const row = await db().prepare('SELECT * FROM trip_cash_items WHERE id = ?').get(Number(p.id)) as any;
+  if (!row) throw new ApiError(404, '现金项目不存在');
+  const me = await requireMember(Number(row.trip_id), user, 'editor');
+  await db().prepare('DELETE FROM trip_cash_items WHERE id = ?').run(row.id);
+  notify(Number(row.trip_id), 'cash', 'delete', me.id);
   json(res, 200, { ok: true });
 });
 
@@ -1250,6 +1467,54 @@ route('GET', '/api/users/search', true, async (req, res, _p, _user) => {
   const rows = await db().prepare('SELECT id, travel_id, username, nickname, avatar_color FROM users WHERE travel_id = ? OR username = ? OR nickname = ? LIMIT 5')
     .all(Number(q) || -1, q, q) as any[];
   json(res, 200, rows.map(r => ({ id: r.id, travelId: r.travel_id, username: r.username, nickname: r.nickname, avatarColor: r.avatar_color })));
+});
+
+/* ======== 一次性数据迁移通道（PocketBay PG → 云托管 MySQL） ========
+ * 令牌放 server/src/admin-migrate-token.txt（gitignore 排除）：文件不存在或
+ * token 不匹配一律 404，常规构建与仓库部署天然不含该文件，通道关闭。
+ * 端到端用法见 server/src/migrate.ts 头部注释。 */
+function requireMigrateToken(req: IncomingMessage): void {
+  let token: string | null = null;
+  try {
+    token = readFileSync(new URL('./admin-migrate-token.txt', import.meta.url), 'utf8').trim();
+    if (!/^[0-9a-f]{64}$/.test(token)) token = null;
+  } catch { token = null; }
+  const url = new URL(req.url || '', 'http://localhost');
+  if (!token || url.searchParams.get('token') !== token) throw new ApiError(404, '接口不存在');
+}
+
+route('GET', '/api/admin/migrate/dump', false, async (req, res) => {
+  requireMigrateToken(req);
+  const tables: Record<string, any[]> = {};
+  const counts: Record<string, number> = {};
+  for (const t of MIGRATE_TABLES) {
+    tables[t] = await db().prepare(`SELECT * FROM ${t} ORDER BY id`).all();
+    counts[t] = tables[t].length;
+  }
+  json(res, 200, { driver: dbDriver(), exportedAt: nowISO(), counts, tables });
+});
+
+route('GET', '/api/admin/migrate/script', false, async (req, res) => {
+  requireMigrateToken(req);
+  const src = readFileSync(new URL('./migrate.ts', import.meta.url));
+  res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'no-store' });
+  res.end(src);
+});
+
+route('POST', '/api/admin/migrate/import', false, async (req, res, _p, _u, body) => {
+  requireMigrateToken(req);
+  if (dbDriver() !== 'mysql') throw new ApiError(400, '导入仅面向 MySQL 目标库（当前驱动 ' + dbDriver() + '）');
+  const dump = body?.tables?.users ? (body as DumpData) : null;
+  if (!dump) throw new ApiError(400, '请提交 /api/admin/migrate/dump 返回的完整导出');
+  const adapter: DbAdapter = {
+    driver: 'mysql',
+    rows: async (sql, params = []) => await db().prepare(sql).all(...params),
+    exec: async (sql, params = []) => { await db().prepare(sql).run(...params); },
+  };
+  const report = await runImport(adapter, dump, {
+    pbOrigin: String(body.pbOrigin || ''),
+  });
+  json(res, 200, report);
 });
 
 /* ------------------------- 分发 ------------------------- */

@@ -2,10 +2,25 @@ import { useEffect, useMemo, useState } from 'react';
 import { api } from '../../api';
 import { useApp } from '../../store';
 import { Modal, KIND_META, fmtDate, weekOf, yuan } from '../../components/ui';
+import { StatusBadge, default as StatusPicker } from '../../components/StatusPicker';
+import { cashMoney } from './CashTab';
+import SensitiveText from '../../components/SensitiveText';
 import TripMode from '../../components/TripMode';
 import type { TabCtx } from './tabCtx';
 import type { Activity, TripDay } from '@shared/types';
 import PoiSearch from '../../components/PoiSearch';
+
+/** 今天（本地时区 YYYY-MM-DD） */
+function todayStr(): string {
+  const d = new Date();
+  const p = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+}
+
+/** 跨日条目：标题/备注出现「次日」「+1 天」「第二天」即视为次日抵达 */
+function isNextDayArrival(a: Activity): boolean {
+  return /次日|\+1\s*天|第二天/.test(`${a.title} ${a.notes || ''}`);
+}
 
 /* 行程体检结果（与服务端 checkup.ts 的 CheckupFinding 对应） */
 interface CheckupFinding {
@@ -17,7 +32,7 @@ interface CheckupFinding {
   message: string;
 }
 
-export default function ItineraryTab({ bundle, reload, weather, canEdit }: TabCtx) {
+export default function ItineraryTab({ bundle, reload, weather, canEdit, goTab }: TabCtx) {
   const { toast } = useApp();
   const [editing, setEditing] = useState<Activity | null>(null);
   const [addingToDay, setAddingToDay] = useState<TripDay | null>(null);
@@ -51,6 +66,43 @@ export default function ItineraryTab({ bundle, reload, weather, canEdit }: TabCt
   }, [days, activities]);
 
   const weatherByDate = useMemo(() => new Map(weather.map(w => [w.date, w])), [weather]);
+
+  /** 待确认中心：真实未解决项（活动 + 地点里 status=待确认/未预订）。
+   *  「现场选择」「可选」「暂定」等不影响主行程的状态不计入——全部解决后本板块自动消失。 */
+  const pendingItems = useMemo(() => {
+    const out: { key: string; label: string; tab: string }[] = [];
+    for (const a of activities) {
+      if (a.status === '待确认' || a.status === '未预订') {
+        out.push({ key: `a${a.id}`, label: `行程：${a.title}（${a.status}）`, tab: 'itinerary' });
+      }
+    }
+    for (const p of bundle.places || []) {
+      if (p.status === '待确认' || p.status === '未预订') {
+        out.push({ key: `p${p.id}`, label: `地点：${p.name}（${p.status}）`, tab: 'places' });
+      }
+    }
+    return out;
+  }, [activities, bundle.places]);
+
+  /** 现金项按 refKind:refId 索引，供行程/交通/住宿卡片内联显示（合计只在后端算一次） */
+  const cashByRef = useMemo(() => {
+    const m = new Map<string, typeof bundle.cash>();
+    for (const c of bundle.cash || []) {
+      if (!c.refId || !c.refKind) continue;
+      const k = `${c.refKind}:${c.refId}`;
+      m.set(k, [...(m.get(k) || []), c]);
+    }
+    return m;
+  }, [bundle.cash]);
+
+  // 默认展开当天；旅行未开始则展开第一天
+  const [openDay, setOpenDay] = useState<number | null>(() => {
+    const t = todayStr();
+    const hit = days.find(d => d.date === t);
+    if (hit) return hit.dayNumber;
+    const first = [...days].sort((a, b) => a.dayNumber - b.dayNumber)[0];
+    return first ? first.dayNumber : null;
+  });
 
   /* 拖拽排序：放下后按新顺序提交 */
   const onDrop = async (targetDayId: number, beforeIndex: number) => {
@@ -96,6 +148,22 @@ export default function ItineraryTab({ bundle, reload, weather, canEdit }: TabCt
         )}
       </div>
 
+      {/* 待确认中心：只汇总真实未解决项，全部解决后整块消失（导航/板块/统计一并隐藏） */}
+      {pendingItems.length > 0 && (
+        <div className="todo-center">
+          <div className="hd">⚠️ 待确认 <span className="cnt">{pendingItems.length} 项</span></div>
+          <div className="todo-list">
+            {pendingItems.slice(0, 8).map(it => (
+              <div className="todo-item" key={it.key}>
+                <span>{it.label}</span>
+                <button className="btn sm ghost go" onClick={() => goTab(it.tab)}>去处理</button>
+              </div>
+            ))}
+          </div>
+          {pendingItems.length > 8 && <p className="muted" style={{ fontSize: 12, margin: '6px 0 0' }}>还有 {pendingItems.length - 8} 项…</p>}
+        </div>
+      )}
+
       {days.length === 0 && <div className="card empty"><span className="big">🗓️</span>还没有行程日，点击「AI 助手」一键生成，或在旅程设置里调整日期。</div>}
 
       {checkup && (
@@ -125,18 +193,33 @@ export default function ItineraryTab({ bundle, reload, weather, canEdit }: TabCt
       {days.map(day => {
         const acts = actsByDay.get(day.id) || [];
         const w = weatherByDate.get(day.date);
+        // 当日时间范围：有时间的条目取首末
+        const timed = acts.filter(a => a.time).sort((x, y) => (x.time || '').localeCompare(y.time || ''));
+        const rangeStart = timed[0]?.time || '';
+        const rangeEnd = timed[timed.length - 1]?.endTime || '';
+        const isToday = day.date === todayStr();
         return (
-          <div className="day-block" key={day.id}
+          <details className="day-block day-card" key={day.id} id={`day-${day.dayNumber}`} data-day={day.dayNumber}
+            open={openDay === day.dayNumber}
+            onToggle={e => setOpenDay((e.currentTarget as HTMLDetailsElement).open ? day.dayNumber : null)}
             onDragOver={e => e.preventDefault()}
             onDrop={() => onDrop(day.id, acts.length)}>
-            <div className="day-head">
+            <summary className="day-head">
               <div className="day-num">
                 <span className="n">D{day.dayNumber}</span>
                 <span className="w">{weekOf(day.date)}</span>
               </div>
               <div className="info">
-                <div className="t">{fmtDate(day.date)}{day.title ? ` · ${day.title}` : ''}</div>
+                <div className="day-head-row">
+                  <span className="t">{fmtDate(day.date)}{day.title ? ` · ${day.title}` : ''}</span>
+                  {isToday && <span className="tag" style={{ color: 'var(--accent)' }}>今天</span>}
+                </div>
                 <div className="p">📍 {day.place || '待定'} · {acts.length} 项安排</div>
+                {(rangeStart || rangeEnd) && (
+                  <div className="day-time-range">
+                    🕘 {rangeStart || '待定'}{rangeEnd ? ` – ${rangeEnd}` : ''}
+                  </div>
+                )}
               </div>
               {w && w.tempMax != null && (
                 <div className="day-weather" title={w.label}>
@@ -145,7 +228,7 @@ export default function ItineraryTab({ bundle, reload, weather, canEdit }: TabCt
                   <b>{w.tempMax}° / {w.tempMin}°</b>
                 </div>
               )}
-            </div>
+            </summary>
             <div className="day-acts">
               {acts.length === 0 && <div className="empty" style={{ padding: '18px' }}>这一天还没安排，睡到自然醒也很幸福 🛌</div>}
               {acts.map((a, i) => (
@@ -156,18 +239,31 @@ export default function ItineraryTab({ bundle, reload, weather, canEdit }: TabCt
                   onDragOver={e => e.preventDefault()}
                   onDrop={e => { e.stopPropagation(); onDrop(day.id, i); }}>
                   {canEdit && <span className="drag-handle" title="拖拽排序">⋮⋮</span>}
-                  <span className="act-time">{a.time || '待定'}</span>
+                  <span className="act-time">
+                    {a.time || '待定'}
+                    {a.endTime && <span className="act-end">–{a.endTime}</span>}
+                  </span>
                   <span className={`act-icon kind-${a.kind}`}>{KIND_META[a.kind]?.icon || '📌'}</span>
                   <div className="act-main">
                     <div className="act-title">
                       {a.title}
+                      {isNextDayArrival(a) && <span className="ticket-nextday" style={{ marginLeft: 6 }}>次日抵达</span>}
                       {a.assigneeId != null && (() => {
                         const m = members.find(m => m.id === a.assigneeId);
                         return m ? <span className="tag gray">{m.displayName}负责</span> : null;
                       })()}
                     </div>
+                    <div className="act-title-row2">
+                      <StatusBadge status={a.status} />
+                      {cashByRef.get(`transport:${a.id}`)?.concat(cashByRef.get(`stay:${a.id}`) || []).map(c => (
+                        <span key={c.id} className="cash-inline" title={c.perPerson ? `每人 ${c.amount} × ${c.people} 人` : '总价'}>
+                          💴 {c.title}：{cashMoney(c)}
+                          {c.perPerson ? `（${c.amount}×${c.people}人）` : ''}
+                        </span>
+                      ))}
+                    </div>
                     {a.place && <div className="act-place">📍 {a.place}</div>}
-                    {a.notes && <div className="act-notes">{a.notes}</div>}
+                    {a.notes && <div className="act-notes"><SensitiveText text={a.notes} /></div>}
                   </div>
                   <div className="act-side">
                     {a.cost > 0 && <span className="act-cost">{yuan(a.cost)}</span>}
@@ -186,7 +282,7 @@ export default function ItineraryTab({ bundle, reload, weather, canEdit }: TabCt
                 </div>
               )}
             </div>
-          </div>
+          </details>
         );
       })}
 
@@ -227,11 +323,13 @@ function ActivityModal({ day, days, members, activity, onClose, onSaved }: {
   const { toast } = useApp();
   const [dayId, setDayId] = useState(activity?.dayId ?? day?.id ?? days[0]?.id ?? 0);
   const [time, setTime] = useState(activity?.time || '');
+  const [endTime, setEndTime] = useState(activity?.endTime || '');
   const [kind, setKind] = useState<string>(activity?.kind || 'sight');
   const [title, setTitle] = useState(activity?.title || '');
   const [place, setPlace] = useState(activity?.place || '');
   const [cost, setCost] = useState(activity?.cost ? String(activity.cost) : '');
   const [notes, setNotes] = useState(activity?.notes || '');
+  const [status, setStatus] = useState<any>(activity?.status || null);
   const [assigneeId, setAssigneeId] = useState(activity?.assigneeId?.toString() || '');
   const [busy, setBusy] = useState(false);
 
@@ -245,16 +343,19 @@ function ActivityModal({ day, days, members, activity, onClose, onSaved }: {
   const save = async () => {
     if (busy) return;
     if (!title.trim()) { toast('写一下要做什么吧', true); return; }
+    if (time && endTime && endTime < time) { toast('结束时间不能早于开始时间', true); return; }
     setBusy(true);
     const poi = (window as any).__pickedPoi;
     const payload = {
       dayId: Number(dayId),
       time: time || null,
+      endTime: endTime || null,
       kind,
       title: title.trim(),
       place: place.trim(),
       cost: Number(cost) || 0,
       notes: notes.trim(),
+      status,
       assigneeId: assigneeId ? Number(assigneeId) : null,
       lat: activity?.lat ?? poi?.lat ?? null,
       lng: activity?.lng ?? poi?.lng ?? null,
@@ -284,18 +385,22 @@ function ActivityModal({ day, days, members, activity, onClose, onSaved }: {
           {days.map(d => <option key={d.id} value={d.id}>第 {d.dayNumber} 天 · {d.date}{d.title ? ` · ${d.title}` : ''}</option>)}
         </select>
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: '110px 1fr', gap: 10 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
         <div className="field">
-          <label>时间</label>
+          <label>开始时间</label>
           <input className="input" type="time" value={time || ''} onChange={e => setTime(e.target.value)} />
         </div>
         <div className="field">
-          <label>类型</label>
-          <div className="row-ops">
-            {Object.entries(KIND_META).map(([k, m]) => (
-              <button key={k} type="button" className={`btn sm ${kind === k ? 'primary' : 'ghost'}`} onClick={() => setKind(k)}>{m.icon} {m.label}</button>
-            ))}
-          </div>
+          <label>结束时间</label>
+          <input className="input" type="time" value={endTime || ''} onChange={e => setEndTime(e.target.value)} />
+        </div>
+      </div>
+      <div className="field">
+        <label>类型</label>
+        <div className="row-ops">
+          {Object.entries(KIND_META).map(([k, m]) => (
+            <button key={k} type="button" className={`btn sm ${kind === k ? 'primary' : 'ghost'}`} onClick={() => setKind(k)}>{m.icon} {m.label}</button>
+          ))}
         </div>
       </div>
       <div className="field">
@@ -321,8 +426,12 @@ function ActivityModal({ day, days, members, activity, onClose, onSaved }: {
         </div>
       </div>
       <div className="field">
+        <label>确认状态</label>
+        <StatusPicker value={status} canEdit onChange={setStatus} />
+      </div>
+      <div className="field">
         <label>备注</label>
-        <textarea className="input" rows={2} value={notes} onChange={e => setNotes(e.target.value)} placeholder="开放时间、交通方式、注意事项…" maxLength={300} />
+        <textarea className="input" rows={3} value={notes} onChange={e => setNotes(e.target.value)} placeholder="补充信息（证件号/订单号/房间号会自动隐藏）" />
       </div>
       <div className="modal-ops">
         <button className="btn" onClick={onClose}>取消</button>

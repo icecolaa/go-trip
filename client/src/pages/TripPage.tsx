@@ -2,7 +2,10 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useParams, Link, useSearchParams } from 'react-router-dom';
 import { api, getToken, type TripBundle } from '../api';
 import { useApp } from '../store';
-import { Avatar, countdownText, tripProgress, yuan } from '../components/ui';
+import { Avatar, tripProgress, yuan, fmtDate, weekOf } from '../components/ui';
+import Countdown from '../components/Countdown';
+import CoverHero from '../components/CoverHero';
+import RouteMap, { deriveStops } from '../components/RouteMap';
 import ItineraryTab from './tabs/ItineraryTab';
 import UsageGuideModal from '../components/UsageGuideModal';
 import MapTab from './tabs/MapTab';
@@ -13,18 +16,33 @@ import MembersTab from './tabs/MembersTab';
 import ActivityTab from './tabs/ActivityTab';
 import HandbookTab from './tabs/HandbookTab';
 import LinksTab from './tabs/LinksTab';
+import TransportStayTab from './tabs/TransportStayTab';
+import PlacesTab from './tabs/PlacesTab';
 
+/** 板块顺序：行程｜交通住宿｜景点餐厅｜地图｜预算｜清单｜锦囊｜攻略｜日志｜成员｜动态 */
 const TABS = [
   { key: 'itinerary', label: '行程', ico: '🗓️' },
+  { key: 'transport', label: '交通住宿', ico: '✈️' },
+  { key: 'places', label: '景点餐厅', ico: '📍' },
   { key: 'map', label: '地图', ico: '🗺️' },
   { key: 'budget', label: '预算', ico: '💰' },
   { key: 'packing', label: '清单', ico: '🎒' },
-  { key: 'handbook', label: '锦囊', ico: '📖' },
-  { key: 'links', label: '攻略', ico: '🔗' },
-  { key: 'journal', label: '日志', ico: '✍️' },
-  { key: 'members', label: '成员', ico: '👥' },
-  { key: 'activity', label: '动态', ico: '📣' },
+  { key: 'handbook', label: '锦囊', ico: '📖', opt: true },
+  { key: 'links', label: '攻略', ico: '🔗', opt: true },
+  { key: 'journal', label: '日志', ico: '✍️', opt: true },
+  { key: 'members', label: '成员', ico: '👥', opt: true },
+  { key: 'activity', label: '动态', ico: '📣', opt: true },
 ] as const;
+
+/** 手机端横滚放不下的板块（opt: true）改从右上角「⋯」进入 */
+const OVERFLOW_TABS = TABS.filter(t => 'opt' in t && t.opt);
+
+/** 手机端导航放不下的项，收进右上角「⋯」菜单 */
+function todayStr(): string {
+  const d = new Date();
+  const p = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+}
 
 export default function TripPage() {
   const { id } = useParams();
@@ -37,7 +55,9 @@ export default function TripPage() {
   const tab = TABS.some(t => t.key === rawTab) ? rawTab : 'itinerary';
   const [weather, setWeather] = useState<TripBundle['weather']>([]);
   const [guideOpen, setGuideOpen] = useState(false);
+  const [moreOpen, setMoreOpen] = useState(false);
   const reloadTimer = useRef<number | null>(null);
+  const paneTop = useRef<HTMLDivElement | null>(null);
 
   const load = useCallback(async () => {
     setLoadErr('');
@@ -57,6 +77,11 @@ export default function TripPage() {
     load();
     loadWeather();
   }, [load, loadWeather]);
+
+  // 切换板块后平滑滚到板块标题处（不遮标题：scroll-margin-top 已留出导航高度）
+  useEffect(() => {
+    paneTop.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, [tab]);
 
   // 实时协作：订阅房间 + 变更自动刷新
   useEffect(() => {
@@ -114,59 +139,130 @@ export default function TripPage() {
   const { trip, members } = bundle;
   const onlineCount = bundle.onlineMemberIds.length;
   const canEdit = bundle.myRole === 'owner' || bundle.myRole === 'admin' || bundle.myRole === 'editor';
-  const ctx = { bundle, reload: load, reloadWeather: loadWeather, weather, canEdit };
+  const ctx = { bundle, reload: load, reloadWeather: loadWeather, weather, canEdit, goTab: (t: string) => setSearchParams({ tab: t }) };
+
+  // 主要路线与逐日地点（供路线总览图使用）
+  const dayPlaces = [...bundle.days].sort((a, b) => a.dayNumber - b.dayNumber).map(d => d.place).filter(Boolean);
+  const stops = deriveStops(trip.destination || '', dayPlaces);
+
+  // 下一段关键交通：未来第一条交通条目；行程未开始则取第一条
+  const dayById = new Map(bundle.days.map(d => [d.id, d]));
+  const transports = bundle.activities
+    .filter(a => a.kind === 'transport')
+    .sort((a, b) => {
+      const da = dayById.get(a.dayId)?.date || '';
+      const db = dayById.get(b.dayId)?.date || '';
+      return da === db ? (a.time || '').localeCompare(b.time || '') : da.localeCompare(db);
+    });
+  const today = todayStr();
+  const nextTransport = transports.find(a => (dayById.get(a.dayId)?.date || '') >= today) || transports[0];
 
   return (
     <div className="page">
-      {/* 旅程头部 */}
-      <div className="card trip-hero">
-        <div className="row1">
-          <span className="emoji-big">{trip.coverEmoji}</span>
-          <div style={{ flex: 1, minWidth: 220 }}>
-            <h1>{trip.title}</h1>
-            <div className="meta">
-              <span>📍 {trip.destination || '目的地待定'}</span>
-              <span>🗓️ {trip.startDate} ~ {trip.endDate}</span>
-              <span style={{ color: 'var(--orange)', fontWeight: 500 }}>{countdownText(trip)}</span>
-              {trip.budget > 0 && <span>💰 预算 {yuan(trip.budget)} · 已花 {yuan(bundle.budget.total)}</span>}
-              {onlineCount > 0 && <span className="tag"><span className="dot-online" aria-hidden="true" /> {onlineCount} 人在线</span>}
-            </div>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <div className="avatar-stack">
-              {members.slice(0, 6).map(m => (
-                <span key={m.id} style={{ position: 'relative' }}>
-                  <Avatar name={m.displayName} color={m.avatarColor} />
-                  {m.userId && bundle.onlineMemberIds.includes(m.userId) && (
-                    <span style={{ position: 'absolute', right: -1, bottom: -1, width: 11, height: 11, borderRadius: '50%', background: 'var(--green)', border: '2px solid var(--card)' }} />
-                  )}
-                </span>
-              ))}
-            </div>
+      {/* 旅程头图：标题/年份/地区/日期 + 出发倒计时 */}
+      <CoverHero
+        title={trip.title}
+        destination={trip.destination}
+        startDate={trip.startDate}
+        endDate={trip.endDate}
+        coverImage={trip.coverImage}
+      >
+        <div className="cover-hero-foot">
+          <Countdown startDate={trip.startDate} endDate={trip.endDate} />
+          <div className="cover-hero-side">
+            {trip.budget > 0 && <span className="cover-chip">预算 {yuan(trip.budget)} · 已花 {yuan(bundle.budget.total)}</span>}
+            {onlineCount > 0 && (
+              <span className="cover-chip"><span className="dot-online" aria-hidden="true" /> {onlineCount} 人在线</span>
+            )}
             <button className="btn sm" onClick={() => setSearchParams({ tab: 'members' })}>管理成员</button>
           </div>
         </div>
-        <div className="progress-line"><div style={{ width: `${tripProgress(trip)}%` }} /></div>
-        <div className="muted" style={{ marginTop: 5 }}>旅程进度 {tripProgress(trip)}%{trip.description ? ` · ${trip.description}` : ''}</div>
+        <div className="avatar-stack cover-avatars">
+          {members.slice(0, 6).map(m => (
+            <span key={m.id} style={{ position: 'relative' }}>
+              <Avatar name={m.displayName} color={m.avatarColor} />
+              {m.userId && bundle.onlineMemberIds.includes(m.userId) && (
+                <span className="avatar-online-dot" />
+              )}
+            </span>
+          ))}
+        </div>
+      </CoverHero>
+
+      {/* 路线总览 + 下一段关键交通 + 进度 */}
+      <div className="card trip-overview">
+        <RouteMap destination={trip.destination || ''} dayPlaces={dayPlaces} />
+        <div className="overview-foot">
+          <div className="ov-block">
+            <span className="ov-k">主要路线</span>
+            <span className="ov-v">{stops.length ? stops.map(s => s.name).join(' → ') : '待填写目的地'}</span>
+          </div>
+          <div className="ov-block">
+            <span className="ov-k">下一段关键交通</span>
+            {nextTransport ? (
+              <span className="ov-v">
+                {fmtDate(dayById.get(nextTransport.dayId)?.date || '')} {weekOf(dayById.get(nextTransport.dayId)?.date || '')}
+                {nextTransport.time ? ` ${nextTransport.time}` : ''} · {nextTransport.title}
+                {nextTransport.place ? `（${nextTransport.place}）` : ''}
+              </span>
+            ) : (
+              <span className="ov-v muted">暂无交通安排</span>
+            )}
+          </div>
+          <div className="ov-block ov-progress">
+            <span className="ov-k">旅程进度</span>
+            <div className="progress-line"><div style={{ width: `${tripProgress(trip)}%` }} /></div>
+            <span className="ov-v">
+              {tripProgress(trip)}%
+              {trip.description && <span className="ov-desc"> · {trip.description}</span>}
+            </span>
+          </div>
+        </div>
       </div>
 
       <div className="trip-layout">
-        {/* 侧边导航 */}
-        <nav className="card trip-nav">
+        {/* 板块导航：桌面左侧栏 / 手机 sticky 横滚条 */}
+        <nav className="card trip-nav" aria-label="旅程板块">
           {TABS.map(t => (
-            <Link key={t.key} to={`?tab=${t.key}`} className={tab === t.key ? 'on' : ''}>
+            <Link
+              key={t.key}
+              to={`?tab=${t.key}`}
+              className={`nav-link ${'opt' in t && t.opt ? 'opt' : ''} ${tab === t.key ? 'on' : ''}`}
+              aria-current={tab === t.key ? 'page' : undefined}
+            >
               <span className="ico">{t.ico}</span>{t.label}
             </Link>
           ))}
-          <div style={{ marginTop: 8, padding: '8px 12px', display: 'flex', flexDirection: 'column', gap: 6 }}>
-            <button className="ug-nav-btn muted" style={{ fontSize: 12.5 }} onClick={() => setGuideOpen(true)}>使用说明</button>
-            <Link to="/" className="muted" style={{ fontSize: 12.5 }}>← 返回全部旅程</Link>
+          <div className="more-wrap">
+            <button
+              type="button"
+              className="nav-link more-btn"
+              onClick={() => setMoreOpen(o => !o)}
+              aria-expanded={moreOpen}
+              aria-haspopup="menu"
+            >
+              <span className="ico">⋯</span>更多
+            </button>
+            {moreOpen && (
+              <div className="trip-more-menu" role="menu">
+                {OVERFLOW_TABS.map(t => (
+                  <button key={t.key} type="button" role="menuitem" className={tab === t.key ? 'on' : ''}
+                    onClick={() => { setMoreOpen(false); setSearchParams({ tab: t.key }); }}>
+                    <span className="ico">{t.ico}</span> {t.label}
+                  </button>
+                ))}
+                <button type="button" role="menuitem" onClick={() => { setMoreOpen(false); setGuideOpen(true); }}>📖 使用说明</button>
+                <button type="button" role="menuitem" onClick={() => { setMoreOpen(false); location.hash = '#/'; }}>← 返回全部旅程</button>
+              </div>
+            )}
           </div>
         </nav>
 
-        {/* 内容区 */}
-        <div className="tab-pane" key={tab}>
+        {/* 内容区：scroll-margin-top 显式留出顶栏+吸顶导航的高度，跳转不会遮住板块标题 */}
+        <div className="tab-pane" key={tab} ref={paneTop}>
           {tab === 'itinerary' && <ItineraryTab {...ctx} />}
+          {tab === 'transport' && <TransportStayTab {...ctx} />}
+          {tab === 'places' && <PlacesTab {...ctx} />}
           {tab === 'map' && <MapTab {...ctx} />}
           {tab === 'budget' && <BudgetTab {...ctx} />}
           {tab === 'packing' && <PackingTab {...ctx} />}

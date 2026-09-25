@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom/client';
 import { createHashRouter, RouterProvider, Outlet, Navigate, useLocation } from 'react-router-dom';
 import './styles.css';
 import { useApp } from './store';
+import { useThemeBootstrap } from './theme';
 import { Toasts, TopBar } from './components/ui';
 import UsageAssistant from './components/UsageAssistant';
 import LoginPage from './pages/LoginPage';
@@ -17,6 +18,7 @@ function Shell() {
   const { me, ready, loadMe } = useApp();
   const loc = useLocation();
 
+  useThemeBootstrap();
   useEffect(() => { loadMe(); }, [loadMe]);
 
   if (!ready) return <div className="spin" style={{ marginTop: 120 }} />;
