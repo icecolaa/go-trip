@@ -27,6 +27,7 @@
     "@tarojs/helper": "3.6.25",
     "@tarojs/plugin-framework-react": "3.6.25",
     "@tarojs/plugin-platform-weapp": "3.6.25",
+    "@tarojs/plugin-platform-h5": "3.6.25",
     "@tarojs/react": "3.6.25",
     "@tarojs/runtime": "3.6.25",
     "@tarojs/shared": "3.6.25",
@@ -37,12 +38,13 @@
   "devDependencies": {
     "@babel/core": "^7.24.4",
     "@tarojs/cli": "3.6.25",
+    "@tarojs/plugin-platform-h5": "^3.6.25",
     "@tarojs/webpack5-runner": "3.6.25",
     "@types/react": "^18.2.79",
     "@types/webpack-env": "^1.18.4",
     "babel-preset-taro": "3.6.25",
+    "miniprogram-ci": "^2.1.14",
     "typescript": "^5.4.5",
-    "webpack": "5.91.0",
-    "miniprogram-ci": "^2.1.14"
+    "webpack": "5.91.0"
   }
 }

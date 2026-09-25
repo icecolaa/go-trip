@@ -14,7 +14,9 @@ export default defineConfig(async (merge) => {
       828: 1.81 / 2,
     },
     sourceRoot: 'src',
-    outputRoot: 'dist',
+    // H5 产物独立目录，避免覆盖小程序 dist/（Taro 会把 h5 子配置合并进顶层，但 IH5Config 类型未声明 outputRoot，
+    // 故用官方支持的顶层字段按平台条件设置；process.env.TARO_ENV 在配置求值时由 CLI 注入）
+    outputRoot: process.env.TARO_ENV === 'h5' ? 'dist-h5' : 'dist',
     plugins: [],
     defineConstants: {},
     copy: {

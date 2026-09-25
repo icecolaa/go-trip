@@ -1,5 +1,6 @@
 node_modules/
 dist/
+dist-h5/
 *.db
 *.db-journal
 *.db-wal
@@ -11,6 +12,9 @@ data/
 Thumbs.db
 *.log
 .vite/
+
+# 云托管部署 staging（manageCloudRun 源码构建用，勿提交）
+work/cloudrun-deploy/
 
 # 一次性数据迁移令牌（server/src/admin-migrate-token.txt，绝不提交）
 server/src/admin-migrate-token.txt

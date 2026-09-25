@@ -12,7 +12,7 @@
 # 依赖（密钥一律从环境变量读，绝不写进本文件、绝不提交）：
 #   WXCLI_APPID    小程序 appId（wxcloud login 用）——必填
 #   WXCLI_KEY      小程序上传密钥文件路径（wxcloud login 用，private.*.key）——必填
-#   TCB_ENV_ID     云托管环境 ID，默认 gotrip-d7gh3d65l8b6d048e（CloudBase gotrip 环境）
+#   TCB_ENV_ID     云托管环境 ID，默认 gotrip-d1gb187o991f5260a（微信小程序云开发入口创建的 gotrip 环境）
 #   TCB_SERVICE    服务名，默认 gotrip
 #   TCB_PORT       容器监听端口，默认 8787
 #   TCB_ENV_PARAMS 版本环境变量，格式 xx=a&yy=b；缺省用内置的 TZ + 业务 6 项
@@ -38,7 +38,7 @@ while [ $# -gt 0 ]; do
   esac
 done
 
-ENV_ID="${TCB_ENV_ID:-gotrip-d7gh3d65l8b6d048e}"
+ENV_ID="${TCB_ENV_ID:-gotrip-d1gb187o991f5260a}"
 SERVICE="${TCB_SERVICE:-gotrip}"
 PORT="${TCB_PORT:-8787}"
 IMAGE="${CCR_IMAGE:-}"
@@ -181,7 +181,7 @@ log "发布版本（$SERVICE @ $ENV_ID）"
 log "已提交发布。等 2-3 分钟后验证："
 cat <<EOF
 
-  curl -sS https://${SERVICE}-1509709-1308923163.ap-shanghai.run.tcloudbase.com/health
+  curl -sS https://gotrip-gotrip-d1gb187o991f5260a-1308923163.ap-shanghai.run.wxcloudrun.com/health
 
   预期 {"ok":true}；再到控制台「服务日志」确认出现
   「➜ 数据库：MySQL（微信云托管内置）」——没有这行说明没连上 MySQL，

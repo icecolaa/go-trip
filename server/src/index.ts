@@ -34,6 +34,32 @@ const MIME: Record<string, string> = {
   '.map': 'application/json',
 };
 
+// CORS：H5 静态托管（*.tcloudbaseapp.com）跨域直连云托管公网域名时需要。
+// 浏览器不依赖 cookie，但带 Authorization Bearer，故允许凭据并确保返回具体来源（不能用 *）。
+const CORS_ALLOW = (process.env.CORS_ORIGINS || '')
+  .split(',').map((s) => s.trim()).filter(Boolean);
+
+function applyCors(req: http.IncomingMessage, res: http.ServerResponse): boolean {
+  const origin = req.headers.origin;
+  if (origin) {
+    const allowed = CORS_ALLOW.length > 0
+      ? CORS_ALLOW.includes(origin)
+      : origin.endsWith('.tcloudbaseapp.com') || origin.endsWith('.wxcloudrun.com');
+    if (allowed) {
+      res.setHeader('Access-Control-Allow-Origin', origin);
+      res.setHeader('Access-Control-Allow-Credentials', 'true');
+      res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PATCH,DELETE,OPTIONS');
+      res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Authorization');
+    }
+  }
+  if (req.method === 'OPTIONS') {
+    res.writeHead(204);
+    res.end();
+    return true;
+  }
+  return false;
+}
+
 function serveStatic(req: http.IncomingMessage, res: http.ServerResponse): boolean {
   const url = (req.url || '/').split('?')[0];
   if (!existsSync(CLIENT_DIST)) return false;
@@ -55,6 +81,8 @@ function serveStatic(req: http.IncomingMessage, res: http.ServerResponse): boole
 }
 
 const server = http.createServer(async (req, res) => {
+  // 跨域预检 / 来源校验必须最先处理，否则 503 守卫会拦截 OPTIONS
+  if (applyCors(req, res)) return;
   const url = req.url || '/';
   try {
     if (url === '/health' || url === '/healthz') {

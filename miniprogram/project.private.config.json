@@ -1,5 +1,5 @@
 {
-  "libVersion": "development",
+  "libVersion": "3.8.12",
   "projectname": "miniprogram",
   "condition": {},
   "setting": {
@@ -8,7 +8,7 @@
     "lazyloadPlaceholderEnable": false,
     "skylineRenderEnable": false,
     "preloadBackgroundData": false,
-    "autoAudits": false,
+    "autoAudits": true,
     "useApiHook": true,
     "showShadowRootInWxmlPanel": false,
     "useStaticServer": false,
