@@ -1,0 +1,50 @@
+/** 数据模型通用行操作（全部返回 camelCase 视图；写入口接受 camelCase）。
+ * 权限由模型层强制：list/get 只见自己的行（_openid 隔离），无需显式 where 自己。 */
+import { model } from './client';
+import { toCamel, toSnake } from './case';
+
+/* eslint-disable @typescript-eslint/no-explicit-any */
+export type Row = Record<string, any>;
+
+const MASTER = { $master: true };
+
+/** 按条件列行；orderBy 形如 [{ created_at: 'desc' }]（模型字段名）。 */
+export async function listRows(name: string, where: Row = {}, orderBy?: Row[], pageSize?: number): Promise<Row[]> {
+  const res = await model(name).list({
+    filter: { where },
+    select: MASTER,
+    ...(orderBy ? { orderBy } : {}),
+    ...(pageSize ? { pageSize } : {}),
+  });
+  return toCamel(res?.data?.records || []);
+}
+
+export async function getRowById(name: string, id: string): Promise<Row | null> {
+  const res = await model(name).get({ filter: { where: { _id: { $eq: id } } } });
+  const rec = res?.data;
+  return rec ? toCamel(rec) : null;
+}
+
+export async function createRow(name: string, data: Row): Promise<Row> {
+  const res = await model(name).create({ data: toSnake(data) });
+  // create 只回 id；读回完整行太贵，直接拼返回（调用方需要系统字段时自行 getRowById）
+  return { id: res?.data?.id, ...toCamel(data) };
+}
+
+export async function createRows(name: string, data: Row[]): Promise<void> {
+  if (!data.length) return;
+  await model(name).createMany({ data: toSnake(data) });
+}
+
+export async function updateRow(name: string, id: string, data: Row): Promise<void> {
+  await model(name).update({ data: toSnake(data), filter: { where: { _id: { $eq: id } } } });
+}
+
+export async function deleteRow(name: string, id: string): Promise<void> {
+  await model(name).delete({ filter: { where: { _id: { $eq: id } } } });
+}
+
+/** 按条件批量删（如删某行程全部活动）。 */
+export async function deleteRows(name: string, where: Row): Promise<void> {
+  await model(name).deleteMany({ filter: { where } });
+}

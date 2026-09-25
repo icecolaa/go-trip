@@ -23,11 +23,12 @@
   ],
   "dependencies": {
     "@babel/runtime": "^7.24.4",
+    "@cloudbase/wx-cloud-client-sdk": "^1.8.10",
     "@tarojs/components": "3.6.25",
     "@tarojs/helper": "3.6.25",
     "@tarojs/plugin-framework-react": "3.6.25",
-    "@tarojs/plugin-platform-weapp": "3.6.25",
     "@tarojs/plugin-platform-h5": "3.6.25",
+    "@tarojs/plugin-platform-weapp": "3.6.25",
     "@tarojs/react": "3.6.25",
     "@tarojs/runtime": "3.6.25",
     "@tarojs/shared": "3.6.25",
