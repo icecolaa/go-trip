@@ -1,22 +1,21 @@
 # 交接文档（HANDOFF）
 
 > 面向下一个接手的开发者或 AI 会话。先读根目录 `CLAUDE.md`（规则手册），再读本文（现状、过程与经验）。
-> 更新：2026-09-23（条目 41：CloudBase 新环境 + SQL 型数据库接通进行中）。
+> 更新：2026-09-25（条目 42：第三个环境 gotrip-d1gb187o991f5260a + SQL 库接通只差绑 VPC + Taro H5 双端上线）。
 
-## 当前状态一览（2026-09-23）
+## 当前状态一览（2026-09-25）
 
 | 项 | 值 |
 |---|---|
-| **生产环境（⚠️ 已整体迁移）** | 腾讯云 CloudBase 新环境 **`gotrip-d7gh3d65l8b6d048e`**（体验版），服务 `gotrip`，当前版本 **gotrip-014 状态正常**。旧环境 `prod-9g9b12cyd5f63833` 已弃用（里面那份 PocketBay 迁移数据 7用户/4旅程/112行程项 **未迁**，用户决定用新库重建；旧库还在，要数据可回旧环境导） |
-| **数据库（进行中⚠️）** | 目标：CloudBase「SQL 型数据库」云开发自带实例。**当前卡点：连接管理页「连接配置信息」为空（暂无数据）——没建连接配置就没有网络端点，这是此前 `connect ETIMEDOUT` 68 次的根因**。用户已删掉手填的 `MYSQL_*`，服务现回退 **SQLite**（能跑，gotrip-014，但容器文件系统临时，**缩容/重新发布即丢数据，不能当生产**）。**下一步见条目 41 的四步** |
-| 小程序 | `CLOUD_ENV='gotrip-d7gh3d65l8b6d048e'`、`WX_SERVICE='gotrip'`（`miniprogram/src/config.ts`）；WS 已改走 `wx.cloud.connectContainer` 专线（条目 39），**不需要域名/公网**；新版待上传（`npm run upload -- 1.0.1`，需 IP 白名单） |
-| 默认域名 | 新格式 `https://gotrip-31719112-1308923163.sn.run.tcloudbase.com`（注意 `.sn.`），**公网访问当前开着**——⚠️ 数据库通了之后建议关闭（`/api/auth/wechat` 可被伪造 `x-wx-openid`；关掉不影响 callContainer 与 connectContainer WS） |
-| 备案 | 小程序已过 ICP：**京ICP备2026064373号-1X**（2026-09-21）。自定义域名可绑但**按需**（仅 Web 端/外部入口用；WS 已不需要域名）；证书需自行上传（非自动签发） |
-| 仓库 | Gitee `ice-colaa/go-trip` + GitHub `icecolaa/go-trip` 双端同步，分支 `feat/miniprogram`，HEAD **`aeb6c7e`**（041 手册化 + CloudBase 迁移 + connectContainer WS 全部在此） |
-| 部署 | 首选 `scripts/deploy-tcb.sh`（CLI 源码构建，只需 `WXCLI_APPID`+`WXCLI_KEY` 两个密钥；**登录曾失败 → 上传密钥 IP 白名单**，当时出口 IP `223.160.128.120`/IPv6 `240a:4280:...`）；用户实际走控制台「本地上传」部署（gotrip-014）。**构建成功 ≠ 已发布**，版本状态探针见 deploy-wxcloudrun.md |
-| 冒烟 | `scripts/smoke.sh` **111/0**（含 places/cash/status 12 条新断言；**现已会 exit 1**，可当 CI 门禁）；本地 Docker MySQL 5.7.44 全链路验证过（建表+种子+幂等重跑+111/0） |
-| 旅行手册化 | 已完成并推送（条目 40）：后端 2 新表+status+cover_image、网页版浅/深双主题+11 板块、小程序去重+token+3 新页。**已在线上跑（gotrip-014）** |
-| 待办 Top3 | ① 建连接配置接通 SQL 库（条目 41）→ ② 关公网 → ③ 上传小程序新版 + 真机验证 connectContainer WS |
+| **生产环境（⚠️ 又迁了）** | 腾讯云 CloudBase **`gotrip-d1gb187o991f5260a`**（用户 09-25 11:29 从**微信小程序云开发入口**创建，个人版已付费至 2027-03-25）。服务 `gotrip`，当前版本 **gotrip-004 状态正常**（公网开着——H5 浏览器直连需要它）。**前两个环境都已删除**：`prod-9g9b12cyd5f63833`（旧微信云托管）、`gotrip-d7gh3d65l8b6d048e`（`.sn.run.` 域名 DNS 已不解析） |
+| **数据库（只差一步⚠️）** | 云开发自带 **TDSQL-C MySQL 8.0.30** 集群 `cynosdbmysql-nk66sr40`，端点 **`10.0.224.11:3306`**（vpc-8e22nsna/subnet-b1cnoas5，闲置自动暂停首连激活）。**已就绪**：`gotrip` 应用账号（库级全权，MCP root 直接建的）+ `gotrip` 空库 + 服务环境变量 `MYSQL_*` 已设（gotrip-003 起）。**唯一卡点：服务的 VpcConf 为空 → 容器连库 ETIMEDOUT**——文档明确：连云开发 MySQL（小租户）必须在服务设置开「私有网络」，本机 MCP deploy 写不进 VpcConf → **用户控制台一步绑定（见条目 42 操作单）** |
+| 小程序 | 1.0.2「迁CloudBase新环境」**已上传成功**（IP 白名单已通；`npm run upload -- x.y.z "描述"`），待用户在公众平台设体验版；`CLOUD_ENV='gotrip-d1gb187o991f5260a'`；WS 走 `wx.cloud.connectContainer`（不需要域名/公网） |
+| Taro H5（新） | `npm run build:h5` → `dist-h5/`（hash 路由），已部署静态托管 **https://gotrip-d1gb187o991f5260a-1308923163.tcloudbaseapp.com/**（index/error 文档已配）；浏览器无 callContainer → 生产 H5 直连云托管公网域名，服务端 CORS 白名单放行 `*.tcloudbaseapp.com`/`*.wxcloudrun.com`（`CORS_ORIGINS` 可显式覆盖）。**浏览器全流程验证待 DB 通后做** |
+| 备案 | 京ICP备2026064373号-1X（小程序已过）；自定义域名按需（H5 用静态托管默认域名即可，不强制） |
+| 仓库 | Gitee `ice-colaa/go-trip` + GitHub `icecolaa/go-trip` 双端同步，分支 `feat/miniprogram`，HEAD **`46503a5`**（H5+CORS+新环境配置）。09-25 那次 push GitHub 因本机代理未开失败，Gitee 成功——下次记得补推 |
+| 部署 | 首选 CloudBase MCP `manageCloudRun(deploy, targetPath=干净staging)`（build:weapp 同理本地构建）；staging 做法=仓库里 Dockerfile/package.json/package-lock/shared/server/client 六项，排除 node_modules/dist/data；`scripts/deploy-tcb.sh` 默认环境已更新但走 wxcloud CLI |
+| 冒烟 | `scripts/smoke.sh` **111/0**；⚠️ 本地起 server 必须显式清空 `MYSQL_ADDRESS=` 等（Windows 用户级环境变量残留 `MYSQL_ADDRESS=10.0.224.3:3306` 死端点，见条目 42 踩坑⑤） |
+| 待办 Top3 | ① 控制台给 gotrip 服务绑 VPC（vpc-8e22nsna/subnet-b1cnoas5）→ DB 即通 ② 公众平台把 1.0.2 设为体验版 + 真机验证 connectContainer WS ③ DB 通后：/health 应 driver=mysql + H5 浏览器全流程验证 |
 
 ## 2026-08~09 主要交付（按主题）
 
@@ -46,6 +45,14 @@
     **过程**：① `scripts/deploy-tcb.sh` CLI 部署脚本（源码构建为主路径，只需 appId+私钥；**默认不传 `--envParams`——该参数会同步覆盖服务设置，只传部分会冲掉 `MYSQL_*` 致回退 SQLite**；分支锁 `feat/miniprogram`）；本地 Docker 预检全过（镜像构建、MySQL 5.7.44 建表+种子+幂等重跑无 ER_DUP_KEYNAME、冒烟 111/0）。② `wxcloud login` 失败 → **上传密钥有 IP 白名单**（出口 IP `223.160.128.120` / IPv6），用户未配，改走控制台本地上传。③ 用户部署 gotrip-012/013 后 `[db] 初始化失败 connect ETIMEDOUT` 68 次——**webshell 里 `net.connect(3306,'10.0.224.3')` 超时，判定网络层不通**；对照官方「资源互联自查指南」后定位真根因：**「SQL 型数据库 → 连接管理 → 连接配置信息」是空的（暂无数据）——没建连接配置就没有网络端点**，用户填的 `10.0.224.3:3306` 不是真实端点。④ 用户删掉 `MYSQL_*` → 回退 SQLite → gotrip-014 状态正常、新域名可访问（**公网开着**，数据库通了之后要关，防 wechat 路由伪造 `x-wx-openid`；关掉不影响 callContainer/connectContainer）。
     **▶ 下一步（给新窗口的操作单，卡点就是第 1 步）**：① CloudBase 控制台 → SQL 型数据库 → **连接管理 → 「连接数据库」** 建一条连接配置（MySQL，设密码）→ 得到 `admin@10.x.x.x:3306/gotrip` 样式的连接串 → 拆成 `MYSQL_ADDRESS=ip:port`（`@` 后 `/` 前）、`MYSQL_USERNAME=@` 前部分、`MYSQL_PASSWORD`，加到**服务设置 → 环境变量**（别用部署脚本的 `TCB_ENV_PARAMS`，避免覆盖）→ 重新发布 → 运行日志必须出现 `➜ 数据库：MySQL（…服务端版本 x.x.x）` + `种子数据：空库，已写入…`（出现 SQLite 即变量没读到）。② 日志通了之后**关闭公网访问**。③ `cd miniprogram && npm run upload -- 1.0.1 "迁 CloudBase"`（同样需 IP 白名单）→ 设体验版。④ **真机验证 connectContainer WS**（`wx.cloud.connectContainer` 基础库 ≥2.21.1，返回 socketTask——**此能力推翻了此前「callContainer 不支持长连接」的旧判断**：WS 不再需要域名/公网，`x-wx-openid` 边界保留；我们鉴权走 `?token=` 不依赖 openid，iOS 高性能+ 不带 openid 也不影响；但升级请求经 callContainer 的转发行为与 15s 超时对长连接的影响**文档未写、未实测**，是唯一悬而未决的一环，连不上会静默失败不白屏）。⑤ 可选：绑已备案自定义域名（证书**自行上传**非自动签发；CNAME 按控制台返回值配）。
     **本阶段踩坑沉淀**：① CloudBase「SQL 型数据库（云开发自带实例）」**不是**云托管内置 MySQL——后者平台自动注入 `MYSQL_*` 且同 VPC 零配置，前者必须手动建连接配置才有端点，且可能涉及其它 VPC（资源互联/对等连接/安全组，官方自查指南 `scene/noun/vpc.html`）；② Serverless MySQL 闲置暂停 → 首连要激活（等 1-2 分钟），但**激活救不了「没有连接配置端点」**；③ `ETIMEDOUT`（而非 `Access denied`）= 网络层不通，与账号密码无关——webshell 里 `net.connect` 八秒探针一锤定音；④ `smoke.sh` 此前从不 `exit 1`（FAIL>0 也返回 0），任何 CI 门禁都会假通过——已修 `[ "$FAIL" -eq 0 ] || exit 1` 并模拟失败验证；⑤ 顶栏/导航 sticky 失效两连：`#root` 不能 `height:100%`（包含块只有一屏）、单列 grid 下子项 sticky 包含块只有自身一行（要 `block`）；⑥ `wx.cloud.connectContainer` 是 WS 正解，别再走「等备案域名」弯路；⑦ 部署脚本 `--remark` 参数解析不能用 for+shift 组合（会吞参），用 while+case。
+
+42. **第三环境落位 + SQL 库接通收口到「绑 VPC」一步 + Taro H5 双端上线（2026-09-25，提交 46503a5）**：接手时发现工作区有一批未提交改动（H5 构建、CORS、config 指向 `gotrip-d1gb187o991f5260a`）——用户已在前一个会话里**从微信小程序云开发入口又建了第三个环境**（个人版，付费到 2027-03-25），并把第二环境 `gotrip-d7gh3d65l8b6d048e` 删了（`.sn.run.` 域名公共 DNS 均不解析，实锤已释放）。
+    **① SQL 库接通（MCP 大幅推进，剩控制台一步）**：登录 CloudBase MCP（设备码，用户扫码）后实测——环境里 **TDSQL-C MySQL 8.0.30** 集群 `cynosdbmysql-nk66sr40` RUNNING，端点 `10.0.224.11:3306`（vpc-8e22nsna/subnet-b1cnoas5，子网名就叫 `cloudbase_run_tdsqlc_subnet`）；**MCP 以 `root@%` 直连**，于是绕开控制台：`CREATE USER 'gotrip'@'%'` + `CREATE DATABASE gotrip` + `GRANT ALL ON gotrip.*`（**`GRANT ON *.*` 被 TDSQL-C 拒 1045**，库级可行；应用 db.ts 会 `CREATE DATABASE IF NOT EXISTS gotrip`，库级 CREATE 已覆盖）。`MYSQL_*` 三变量按「全量合并」原则并入服务 EnvParams（`manageCloudRun deploy` 不传 EnvParams 会 RMW 保留远程，传则按 key 合并覆盖）。部署 gotrip-003/004 后**仍 ETIMEDOUT**——查官方文档定案：**连「云开发 MySQL（小租户）」必须在云托管服务设置开启「私有网络」并选库所在 VPC**，FAQ 明说「VpcId 为空 = 未绑定 VPC」；本机 MCP 插件版本没有 `updateConfig`、deploy 传 VpcConf 也**不生效**（gotrip-004 复核 VpcConf 仍空，且 AccessTypes 被动多出 OA——下次配置写回时顺手修回 PUBLIC+MINIAPP）→ **唯一剩余动作：用户在控制台「服务设置 → 网络配置 → 开启私有网络」选 vpc-8e22nsna/subnet-b1cnoas5 保存**（触发服务更新，重启用现有 EnvParams 即连库）。出向公网开关保持开启，GLM/高德/FlyAI 等外呼不受影响。
+    **② 安全实测（修正条目 41 的担忧）**：公网域名伪造 `x-wx-openid` + `x-wx-source` 实测 → **403「非微信通道调用已拒绝」**——网关放行了 openid 但**剥离了 `x-wx-source`**，服务端 `!x-wx-source → 403` 的检查实测成立，**公网开着也不会被伪造微信身份**；H5 要浏览器直连，公网就保持开着，不算裸奔。
+    **③ Taro H5 双端**：工作区改动里加了 `@tarojs/plugin-platform-h5`（build:h5 → `dist-h5/`，hash 路由）+ 服务端 CORS（OPTIONS 预检在 503 守卫**之前**处理；白名单默认 `*.tcloudbaseapp.com`/`*.wxcloudrun.com`，或 `CORS_ORIGINS` 显式列表）。H5 生产 `USE_CLOUD=false` 直连云托管公网域名（浏览器无 callContainer）；五处 USE_CLOUD 守卫（cloud.init/callContainer/静默登录/微信按钮/WS）已核，H5 不触碰微信专属 API。**类型坑：`h5.outputRoot` 运行时有效**（Taro Config.js 把 `initialConfig[platform]` Object.assign 进顶层生效配置）**但 `IH5Config` 类型没声明** → tsc TS2353；正解是顶层 `outputRoot: process.env.TARO_ENV === 'h5' ? 'dist-h5' : 'dist'`（配置求值时 CLI 已注入 TARO_ENV）。H5 已部署静态托管 `https://gotrip-d1gb187o991f5260a-1308923163.tcloudbaseapp.com/`（34 文件 + index/error 文档；浏览器全流程验证等 DB 通后做）。
+    **④ 部署通道沉淀**：`manageCloudRun(deploy, targetPath=干净staging)` 走通——staging=仓库里 `Dockerfile/package.json/package-lock.json/shared/server/client` 六项（tar 排除 node_modules/dist/data），远端构建约 1 分钟；构建日志 `getDeployLog`、运行日志走 CLS `queryLogs`。小程序 `npm run upload -- 1.0.2 "迁CloudBase新环境"` **成功**（IP 白名单已通，upload 脚本不自动构建，要先 `build:weapp`）。
+    **▶ 给用户的操作单（就差这三步）**：① CloudBase 控制台 → 云托管 → gotrip 服务 → **服务设置 → 网络配置 → 开启私有网络**，选 `vpc-8e22nsna` / `subnet-b1cnoas5` → 保存（触发服务更新）→ 完成后 `curl https://gotrip-gotrip-d1gb187o991f5260a-1308923163.ap-shanghai.run.wxcloudrun.com/health` 应见 `"driver":"mysql"` + 运行日志出现「➜ 数据库：MySQL（…服务端版本 8.0.30…）」「种子数据：空库，已写入…」。② 公众平台 → 版本管理 → 开发版本 → 把 **1.0.2** 设为体验版。③ 真机：connectContainer WS 验证（基础库 ≥2.21.1；连不上静默失败不白屏）。
+    **本阶段踩坑沉淀**：① **Windows 用户级环境变量残留 `MYSQL_ADDRESS=10.0.224.3:3306/MYSQL_USERNAME=admin/MYSQL_PASSWORD=Qq123456`**（条目 41 用户手填的死端点进了系统环境变量，每个进程都继承）→ 本地起 server 假连库 ETIMEDOUT、冒烟 107 假挂；本地跑 server 必须显式 `MYSQL_ADDRESS= MYSQL_USERNAME= MYSQL_PASSWORD=` 清空，建议直接从「系统属性→环境变量」删掉这三条。② **`miniprogram/backend` 是个指向仓库根自己的 NTFS junction**（今天 20:11 某会话 `mklink /J` 的产物，`backend/backend/backend…` 无限递归，`find/du` 看不见内容、误删会顺着链接伤真身）→ 用 `cmd /c rmdir` 只删链接本身已清理；`.deploy-src/`（09-23 过期 staging）一并删除。③ 冒烟管道坑重演：`smoke.sh | tail` 的 `$?` 是 tail 的，**要用 `> 文件 2>&1; echo $?` 或 PIPESTATUS**。④ MCP `GRANT ALL ON *.*` 会被 TDSQL-C 代理拒 1045，`CREATE USER`/库级 GRANT 可行。⑤ GitHub push 走本机代理，代理没开就失败（Gitee 直连正常）——失败不影响 Gitee 侧。⑥ MCP 设备码登录：`auth(start_auth)` 出链接+验证码，10 分钟有效，用户扫码后 `auth(set_env)` 绑环境（本次自动绑定了唯一候选环境）。
 6. **内容收藏**：旅行日志支持多图上传（前端 canvas 压缩 1600/400 双尺寸，JPEG 0.85）+ 缩略图；新增「攻略」Tab 收藏小红书/公众号链接。
 7. **质量**：多轮代码 review 修复；`scripts/smoke.sh` 冒烟 91 项；验收报告归档。
 
