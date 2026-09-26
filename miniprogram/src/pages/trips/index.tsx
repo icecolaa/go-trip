@@ -1,36 +1,25 @@
 import { useState } from 'react'
 import { View, Text, Button } from '@tarojs/components'
 import Taro, { useDidShow, usePullDownRefresh } from '@tarojs/taro'
-import { api, getToken, setToken, ApiFail } from '../../api/request'
-import { wechatLogin } from '../../api/auth'
-import { USE_CLOUD } from '../../config'
-import type { TripCardInfo } from '../../types'
+import { ensureProfile, listTrips } from '../../rdb/trip'
+import { seedDemoTrip } from '../../rdb/seed'
+import type { Profile, TripCardInfo } from '../../types'
 
-/** 旅程列表：验证「域名 / 证书 / Bearer 会话 / shared 类型」全链路的脚手架页面 */
+/** 我的旅程：rdb 直连（数据模型），无登录概念——原生身份静默建档。 */
 export default function Trips() {
   const [trips, setTrips] = useState<TripCardInfo[]>([])
+  const [profile, setProfile] = useState<Profile | null>(null)
   const [error, setError] = useState('')
+  const [seeding, setSeeding] = useState(false)
 
   const load = async () => {
-    if (!getToken() && USE_CLOUD) {
-      // 生产 callContainer 通道：微信网关注入 openid，无 token 先试静默登录/注册
-      try { await wechatLogin() } catch { /* 失败落到下方登录页兜底 */ }
-    }
-    if (!getToken()) {
-      Taro.redirectTo({ url: '/pages/login/index' })
-      return
-    }
     try {
       setError('')
-      const list = await api.get<TripCardInfo[]>('/api/trips')
-      setTrips(list)
+      const me = await ensureProfile()
+      setProfile(me)
+      setTrips(await listTrips())
     } catch (e) {
-      if (e instanceof ApiFail && e.status === 401) {
-        setToken('')
-        Taro.redirectTo({ url: '/pages/login/index' })
-        return
-      }
-      setError(e instanceof ApiFail ? e.message : '加载失败，请下拉重试')
+      setError(e instanceof Error ? e.message : '加载失败，请下拉重试')
     }
   }
 
@@ -42,17 +31,25 @@ export default function Trips() {
     load().finally(() => Taro.stopPullDownRefresh())
   })
 
-  const logout = () => {
-    setToken('')
-    Taro.redirectTo({ url: '/pages/login/index' })
-  }
-
-  const open = (id: number) => {
+  const open = (id: string) => {
     Taro.navigateTo({ url: `/pages/trip/index?id=${id}` })
   }
 
   const goCreate = () => {
     Taro.navigateTo({ url: '/pages/trip-create/index' })
+  }
+
+  const importDemo = async () => {
+    if (!profile || seeding) return
+    setSeeding(true)
+    try {
+      await seedDemoTrip(profile.nickname)
+      await load()
+    } catch (e) {
+      setError(e instanceof Error ? e.message : '导入失败，请重试')
+    } finally {
+      setSeeding(false)
+    }
   }
 
   return (
@@ -63,17 +60,21 @@ export default function Trips() {
       </View>
       <View className="head">
         <Text className="title">我的旅程</Text>
-        <View style={{ display: 'flex', gap: '12rpx' }}>
-          <Button className="submit-inline" size="mini" onClick={goCreate}>＋ 新建</Button>
-          <Button className="ghost" size="mini" onClick={logout}>退出</Button>
-        </View>
+        <Button className="submit-inline" size="mini" onClick={goCreate}>＋ 新建</Button>
       </View>
 
       {error && <View className="error">{error}</View>}
 
       {!error && trips.length === 0 && (
         <View className="empty">
-          <Text>还没有旅程，去网页版创建一段吧</Text>
+          <Text>还没有旅程</Text>
+          <Button
+            className="submit"
+            style={{ marginTop: '24rpx' }}
+            loading={seeding}
+            disabled={seeding}
+            onClick={importDemo}
+          >导入演示行程</Button>
         </View>
       )}
 
@@ -84,7 +85,7 @@ export default function Trips() {
             <Text className="title">{t.title}</Text>
           </View>
           <View className="meta">
-            <Text>📍 {t.destination || '目的地待定'} · {t.activityCount} 项安排</Text>
+            <Text>📍 {t.destination || '目的地待定'} · {t.activityCount} 项安排 · 已花 ¥{t.totalSpent}</Text>
           </View>
           <View className="meta">
             <Text className="date">{t.startDate} ~ {t.endDate}</Text>
