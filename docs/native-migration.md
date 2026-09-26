@@ -19,7 +19,7 @@
 - 小程序 SDK：`@cloudbase/wx-cloud-client-sdk@1.8.10`（已装）。用法：`wx.cloud.init({env: CLOUD_ENV})` → `init(wx.cloud)` → `client.models['gt_trips']`。API：`list({filter:{where}, select:{$master:true}, orderBy:[{字段:'asc'|'desc'}], pageSize, pageNumber, getCount})` / `get({filter:{where:{_id:{$eq}}}})` / `create({data})` / `createMany({data:[]})` / `update({data, filter:{where}})` / `delete({filter:{where}})` / `upsert`。list 返回 `{records, total}`。
 - 模型文本字段 ≤4000 字节 → **头像/封面/日志配图全部改云存储 fileID**（`wx.cloud.uploadFile`），彻底废除 base64 入库。
 - MySQL 无 watch；若未来要实时：NoSQL 才有 collection.watch()。当前单主人无实时需求。
-- 容器 REST 鉴权待验证：环境级 API Key → access token → Bearer（docs.cloudbase.net/http-api/basic/access-token）。
+- ~~环境级 API Key~~：已不需要——flywhere_watch 改客户端按用户读写，share 读暂缓，容器零数据库访问。
 - 身份：小程序 wx.cloud 原生 openid，`models` 调用平台自动注入身份；客户端**不需要也不获取** openid（list 自己的行即得 profile）。
 - callContainer 请求带 `x-wx-source`（公网直连会被网关剥离，已实测）→ 容器新端点用它做身份门槛，防公网白嫖 AI/高德 key。
 
