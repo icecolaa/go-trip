@@ -1,22 +1,24 @@
 # 交接文档（HANDOFF）
 
 > 面向下一个接手的开发者或 AI 会话。先读根目录 `CLAUDE.md`（规则手册），再读本文（现状、过程与经验）。
-> 更新：2026-09-26（条目 43：CloudBase 原生化重构完成——去协作 + 数据模型 rdb 直连 + 容器无状态代理，小程序 1.1.1）。
+> 更新：2026-09-26（条目 44：阶段二 Web 版完成——全栈 rdb 直连收官；upload 双通道；写后读延迟等四项 review 修复，小程序 1.1.4）。
+> 上一条：2026-09-26（条目 43：原生化重构去协作 + 数据模型直连 + 容器无状态代理）。
 > 上一条：2026-09-25（条目 42：第三个环境 + SQL 库接通 + H5 双端）。
 
-## 当前状态一览（2026-09-25）
+## 当前状态一览（2026-09-26，阶段二收官）
 
 | 项 | 值 |
 |---|---|
-| **生产环境（⚠️ 又迁了）** | 腾讯云 CloudBase **`gotrip-d1gb187o991f5260a`**（用户 09-25 11:29 从**微信小程序云开发入口**创建，个人版已付费至 2027-03-25）。服务 `gotrip`，当前版本 **gotrip-004 状态正常**（公网开着——H5 浏览器直连需要它）。**前两个环境都已删除**：`prod-9g9b12cyd5f63833`（旧微信云托管）、`gotrip-d7gh3d65l8b6d048e`（`.sn.run.` 域名 DNS 已不解析） |
-| **架构（2026-09-26 起原生化）** | **去协作 + rdb 直连**：小程序数据层走 CloudBase **数据模型**（14 个 gt_* 模型，`@cloudbase/wx-cloud-client-sdk` models.*，_openid 行级隔离，零安全规则配置）；容器 = 无状态代理（AI/飞哪儿/POI/天气，x-wx-source 403 门），**不再连任何数据库**。MySQL TCP 私有网络问题就此绕开。设计/进度/映射约定全在 `docs/native-migration.md`（先读它） |
-| 小程序 | **1.1.1 已上传**待设体验版；12 页全部 rdb 直连（tsc 0）；飞哪儿走异步 job（callContainer 15s 硬超时已绕开）；日志图/封面/头像=云存储 fileID |
-| Web/H5（暂不可用） | 容器上仍是旧前端、API 已删——**阶段二**切 @cloudbase/js-sdk rdb + 身份认证后恢复；H5 静态托管域名仍在 |
-| 备案 | 京ICP备2026064373号-1X（小程序已过）；自定义域名按需（H5 用静态托管默认域名即可，不强制） |
-| 仓库 | Gitee `ice-colaa/go-trip` + GitHub `icecolaa/go-trip` 双端同步，分支 `feat/miniprogram`，HEAD **`46503a5`**（H5+CORS+新环境配置）。09-25 那次 push GitHub 因本机代理未开失败，Gitee 成功——下次记得补推 |
-| 部署 | 首选 CloudBase MCP `manageCloudRun(deploy, targetPath=干净staging)`（build:weapp 同理本地构建）；staging 做法=仓库里 Dockerfile/package.json/package-lock/shared/server/client 六项，排除 node_modules/dist/data；`scripts/deploy-tcb.sh` 默认环境已更新但走 wxcloud CLI |
-| 冒烟 | `scripts/smoke.sh` **10/0**（容器代理 9 断言 + shared 纯函数；旧 111 项 CRUD 冒烟随数据层迁移退役） |
-| 待办 Top3 | ① 用户真机验收 1.1.1（日志图片上传=云存储首验、AI 解析、锦囊、飞哪儿）② 阶段二 Web/H5 切 rdb（另行规划）③ GitHub push 补推（本机代理常关） |
+| **生产环境** | CloudBase `gotrip-d1gb187o991f5260a`（个人版，付费至 2027-03-25）。云托管 gotrip 容器 = **gotrip-017 无状态代理**（AI/飞哪儿/POI/天气，双通道身份门，不连任何数据库），`/health` 探针 `{"ok":true,"db":"none","mode":"proxy"}`。公网开着（Web 直连需要）。**已合入 master**（Gitee/GitHub 同步，master=5198351 含 GitHub PR#1 合并记录；feat 领先 master 一个 gitignore 提交 fa350f7，下次合并即齐） |
+| **架构（原生化完成）** | 全栈数据模型直连：小程序 `@cloudbase/wx-cloud-client-sdk` models.*（openid 身份）；Web `@cloudbase/js-sdk` 3.10.1（其 `./model` 子路径 **re-export wx-cloud-client-sdk**，两端 API 同构）+ 身份认证（账密+匿名已开启）。14 个 gt_* 模型 `_openid` 行级隔离。设计/映射/进度全在 `docs/native-migration.md`（接手先读它和条目 43/44） |
+| 小程序 | **1.1.4 已上传**（开发者工具通道，发布者=冰可乐），待设体验版；12 页 rdb 直连 tsc 0；飞哪儿异步 job（15s 超时已绕开，用户实测 ✓） |
+| Web/H5 | **已恢复可用（阶段二完成，浏览器实测 ✓）**：游客/账密登录 → 建档 → 建行程/导入演示（9 项安排 ✓）→ 13 板块。域名=云托管公网 + 风险提示页（绑自定义域名可去掉）。**Web 与小程序身份不互通**（CloudBase uid vs openid，各一套数据，既定设计） |
+| 容器身份门（双通道） | x-wx-source（小程序 callContainer，公网剥离实测）OR x-gotrip-key=WEB_PROXY_KEY（Web/H5 共享密钥，随 bundle 可见属可接受风险）。环境变量已配在 gotrip-017 |
+| 数据库 | 云开发自带 TDSQL-C MySQL 8.0（端点已由用户经「数据库连接配置」建成公网 43.179.225.7:24735，容器不再需要）；**行程相关 12 表已清空重来**（旧测试数据含丢失活动的行程），当前库内仅浏览器验证产生的 1 匿名用户+1 演示行程（可清） |
+| 仓库 | Gitee+GitHub 双端已同步（feat=fa350f7 含 gitignore 修正，master=5198351）；GitHub push 需本机代理（时好时坏） |
+| 冒烟 | `scripts/smoke.sh` **10/0**（容器代理 9 断言 + shared 纯函数）；旧 111 项 CRUD 冒烟已退役 |
+| 本地 skill | ip-as-logo 已装 `.zcode/skills/`（`.zcode*/skills-lock.json` 已 gitignore 不入库，用户拍板） |
+| 待办 Top3 | ① 小程序 1.1.4 设体验版 + 真机验收（日志图片上传=云存储首验、AI 解析、锦囊）② Web 账密注册/登录自测（目前只验了游客通道）③ 清理浏览器验证的匿名身份数据（可选） |
 
 ## 2026-08~09 主要交付（按主题）
 
@@ -58,6 +60,9 @@
     **本轮踩坑沉淀**：① **MySQL 表 ACL 无 CUSTOM**（`Permission CUSTOM is not allowed for resourceType table`）——「安全规则管协作」此路不通是去协作的决策依据；PG 未开通（PG_NOT_READY）；② **callContainer 15s 硬超时**：日志 `499 REQUEST_CANCELED timeCost=15007` 实锤，长任务（飞哪儿 10-40s）必须异步 job 模式（POST 秒回 jobId + GET 轮询，任务存单实例内存，**MaxNum 必须锁 1**）；③ **webpack @shared alias 一直误指 `miniprogram/shared`**（曾靠 junction 碰巧能用），运行时 shared 导入须放 `src/shared/` 本地副本（webpack 对 src 外 .ts 无 loader，`import type` 能过纯因类型擦除）；④ **UTC+8 日期偏移**：`toISOString().slice(0,10)` 在东八区把日期整体偏一天，建行程/种子/AI 写入/记账四处全中招，一律本地格式化；⑤ `showModal` 的 editable/placeholderText 参数 Taro 类型未收录（as any）；⑥ devtools callContainer 注入 `X-Wx-Source: wx_devtools` + `X-Wx-Openid`，403 门在开发工具同样生效；⑦ 用户用「数据库连接配置」弹窗给 TDSQL-C 建了**公网端点**（43.179.225.7:24735）——此前 ETIMEDOUT 的库其实已通，但 rdb 架构下容器不再需要它。
     **验收状态（2026-09-26）**：devtools 实测行程创建/列表不报错（models.* 身份注入 ✓）、飞哪儿不再报网络失败（用户确认 ✓）；余下真机项：日志图片上传（云存储首验）、AI 解析、锦囊、1.1.1 设体验版。**Web 版暂不可用**（旧前端+API 已删），阶段二恢复。
     **本阶段踩坑沉淀**：① **Windows 用户级环境变量残留 `MYSQL_ADDRESS=10.0.224.3:3306/MYSQL_USERNAME=admin/MYSQL_PASSWORD=Qq123456`**（条目 41 用户手填的死端点进了系统环境变量，每个进程都继承）→ 本地起 server 假连库 ETIMEDOUT、冒烟 107 假挂；本地跑 server 必须显式 `MYSQL_ADDRESS= MYSQL_USERNAME= MYSQL_PASSWORD=` 清空，建议直接从「系统属性→环境变量」删掉这三条。② **`miniprogram/backend` 是个指向仓库根自己的 NTFS junction**（今天 20:11 某会话 `mklink /J` 的产物，`backend/backend/backend…` 无限递归，`find/du` 看不见内容、误删会顺着链接伤真身）→ 用 `cmd /c rmdir` 只删链接本身已清理；`.deploy-src/`（09-23 过期 staging）一并删除。③ 冒烟管道坑重演：`smoke.sh | tail` 的 `$?` 是 tail 的，**要用 `> 文件 2>&1; echo $?` 或 PIPESTATUS**。④ MCP `GRANT ALL ON *.*` 会被 TDSQL-C 代理拒 1045，`CREATE USER`/库级 GRANT 可行。⑤ GitHub push 走本机代理，代理没开就失败（Gitee 直连正常）——失败不影响 Gitee 侧。⑥ MCP 设备码登录：`auth(start_auth)` 出链接+验证码，10 分钟有效，用户扫码后 `auth(set_env)` 绑环境（本次自动绑定了唯一候选环境）。
+44. **阶段二完成：Web 切 rdb + 身份认证 + upload 双通道 + review 四修（2026-09-26，提交 5f4db4d/126b27e/d83d2eb/767b1bf/fa350f7，小程序 1.1.4，gotrip-017）**：承接条目 43。Web 用 `@cloudbase/js-sdk` 3.10.1（**其 `./model` 子路径 re-export `@cloudbase/wx-cloud-client-sdk`**——两端 API 同构是阶段二最大的省力发现，client/src/rdb 七件套近乎原样移植）；身份认证开启账密+匿名（MCP patchLoginStrategy）；13 个 tabs 子代理迁移；删 api.ts/JoinPage/SharePage/WS/token；封面/日志图改云存储 fileID+tempUrls 换链；新增 rdb/apply-guide（AI 落库共享助手，trip-ai/CreateTripModal 复用）。**浏览器实测全链路 ✓**：游客登录→建档→导入演示行程→9 项安排 ¥1736。
+    **本条目核心踩坑（全部实测实锤）**：① **「写后立即 list」有平台可见性延迟**——seed 的 createMany(days) 后回读得空 → 活动 day_id 全空被过滤 → **gt_activities 0 行静默丢失**（expenses 用同步返回的 id 才幸免）。铁律：**新行 id 必须取 createMany 返回的 idList**（与传入顺序对应），已全仓库执行（seed/trip-ai/apply-guide）。② **models list 平台缺省每页 10 条**——listRows 不传 pageSize 超 10 行静默截断，已显式 100（SDK 纯透传无默认值）。③ **guide_cards items 双重 JSON 编码**：页面 payload 已 stringify，写入层再 stringify 一次 → 读回仍字符串渲染崩；改 ops 层 encodeItems 幂等，items 解析收敛到 listGuideCards。④ **UTC+8 日期偏移**：`toISOString().slice(0,10)` 东八区整体偏一天×4 处，一律本地格式化。⑤ **容器身份门双通道**：Web 无 callContainer，x-wx-source 拿不到 → 加 x-gotrip-key=WEB_PROXY_KEY（环境变量已配 gotrip-017；密钥随 bundle 可见属可接受风险）；本地四态探针全过。⑥ **身份认证安全域名漏配云托管公网域名** → 匿名登录报 Unknown error（envDomainManagement create 后 ~2 分钟生效）。⑦ **upload 双通道**：优先开发者工具 HTTP 服务（发布者=工具登录账号冰可乐）/v2/upload，踩坑三连——服务端口在 `User Data/<hash>/Default/.ide`（不是 User Data/Default）、`/v2/islogin` 字段是 `login` 非 islogin、`/v2/upload` 参数名是 **project**（非 projectpath）且成功响应无 code 只有 `success:true`；失败自动降级 miniprogram-ci（后台显示 ci机器人1，**官方不可改名**）。⑧ **mp IP 白名单只收 IPv4**（IPv6 被控制台拒「格式不正确」），Node 可能走 v6 出口——upload.js 已 `dns.setDefaultResultOrder('ipv4first')`。⑨ **miniprogram/.git 嵌套仓库**（旧实验残留）会吞掉 miniprogram 目录内执行的 git 命令（IPv4 提交曾被吞进其 master 305fc71），已拆除并全仓扫描。⑩ GitHub master 上多出 PR#1 合并提交（用户网页操作）致 push 被拒非快进——fetch 后 merge 该提交（无内容差异）再推即可；**曾误把远端合并进 feat 分支，`git reset --hard` 干净回退**（未外泄）。⑪ 本地装第三方 skill：`npx skills add s1dashu/ip-as-logo-skill --agent zcode -y`（交互式选 agent 在非 TTY 下需 --agent 显式指定），装到 `.zcode/skills/`，用户拍板不入库（gitignore）。
+    **▶ 给用户的验收单**：① 小程序 1.1.4 设体验版 → 真机：日志图片上传（云存储首验）、AI 解析、锦囊、飞哪儿；② Web：注册自己的账密（目前只验了游客通道）→ 建行程 → 全板块；③ 可选：清理浏览器验证的匿名身份数据（gt_users 1 条+演示行程 1 个，不影响正式用户）。
 6. **内容收藏**：旅行日志支持多图上传（前端 canvas 压缩 1600/400 双尺寸，JPEG 0.85）+ 缩略图；新增「攻略」Tab 收藏小红书/公众号链接。
 7. **质量**：多轮代码 review 修复；`scripts/smoke.sh` 冒烟 91 项；验收报告归档。
 
