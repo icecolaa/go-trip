@@ -117,7 +117,7 @@ export async function logActivity(tripId: string, memberName: string, action: st
 /* ---------------- 行程生命周期 ---------------- */
 
 export function daysFromRange(startDate: string, endDate: string): { day_number: number; date: string; title: string; place: string }[] {
-  return planDaysSync([], startDate, endDate).create.map(d => ({ ...d, title: '', place: '' }));
+  return planDaysSync([], startDate, endDate).create.map(d => ({ day_number: d.dayNumber, date: d.date, title: '', place: '' }));
 }
 
 export async function createTrip(input: {
