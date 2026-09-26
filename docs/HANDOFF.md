@@ -9,9 +9,9 @@
 
 | 项 | 值 |
 |---|---|
-| **生产环境** | CloudBase `gotrip-d1gb187o991f5260a`（个人版，付费至 2027-03-25）。云托管 gotrip 容器 = **gotrip-017 无状态代理**（AI/飞哪儿/POI/天气，双通道身份门，不连任何数据库），`/health` 探针 `{"ok":true,"db":"none","mode":"proxy"}`。公网开着（Web 直连需要）。**已合入 master**（Gitee/GitHub 同步，master=5198351 含 GitHub PR#1 合并记录；feat 领先 master 一个 gitignore 提交 fa350f7，下次合并即齐） |
+| **生产环境** | CloudBase `gotrip-d1gb187o991f5260a`（个人版，付费至 2027-03-25）。云托管 gotrip 容器 = **gotrip-018 无状态代理**（2026-09-27 部署，含条目 45/46 Web 修复，bundle index-CPmExgbn.js 线上实测 ✓）（AI/飞哪儿/POI/天气，双通道身份门，不连任何数据库），`/health` 探针 `{"ok":true,"db":"none","mode":"proxy"}`。公网开着（Web 直连需要）。**已合入 master**（Gitee/GitHub 同步，master=5198351 含 GitHub PR#1 合并记录；feat 领先 master 一个 gitignore 提交 fa350f7，下次合并即齐） |
 | **架构（原生化完成）** | 全栈数据模型直连：小程序 `@cloudbase/wx-cloud-client-sdk` models.*（openid 身份）；Web `@cloudbase/js-sdk` 3.10.1（其 `./model` 子路径 **re-export wx-cloud-client-sdk**，两端 API 同构）+ 身份认证（账密+匿名已开启）。14 个 gt_* 模型 `_openid` 行级隔离。设计/映射/进度全在 `docs/native-migration.md`（接手先读它和条目 43/44） |
-| 小程序 | **1.1.4 已上传但带条目 46 的行 id 断裂 bug（未设体验版，万幸）——修复后需重传 1.1.5 再设体验版**；12 页 rdb 直连 tsc 0；飞哪儿异步 job（15s 超时已绕开，用户实测 ✓） |
+| 小程序 | **1.1.5 已上传**（2026-09-27，行 id 归一修复；⚠️走的 miniprogram-ci 降级通道，发布者=ci机器人1，开发者工具没开；要改发布者就开着工具重传）**待设体验版**；12 页 rdb 直连 tsc 0；飞哪儿异步 job（15s 超时已绕开，用户实测 ✓） |
 | Web/H5 | **已恢复可用（阶段二完成，浏览器实测 ✓）**：游客/账密登录 → 建档 → 建行程/导入演示（9 项安排 ✓）→ 13 板块。域名=云托管公网 + 风险提示页（绑自定义域名可去掉）。**Web 与小程序身份不互通**（CloudBase uid vs openid，各一套数据，既定设计）。**条目 45 后：注册入口已移除**（平台不支持纯账密自助注册），正式账号=云控制台「身份认证→用户管理」手动创建；登录页=账密登录+游客模式。条目 46 修复待随容器部署上线 |
 | 容器身份门（双通道） | x-wx-source（小程序 callContainer，公网剥离实测）OR x-gotrip-key=WEB_PROXY_KEY（Web/H5 共享密钥，随 bundle 可见属可接受风险）。环境变量已配在 gotrip-017 |
 | 数据库 | 云开发自带 TDSQL-C MySQL 8.0（端点已由用户经「数据库连接配置」建成公网 43.179.225.7:24735，容器不再需要）；**行程相关 12 表已清空重来**（旧测试数据含丢失活动的行程），当前库内仅浏览器验证产生的 1 匿名用户+1 演示行程（可清） |
