@@ -14,7 +14,7 @@
     "dev:weapp": "npm run build:weapp -- --watch",
     "check": "tsc --noEmit",
     "preview": "node scripts/upload.js preview",
-    "upload": "node scripts/upload.js"
+    "upload": "node --dns-result-order=ipv4first scripts/upload.js"
   },
   "browserslist": [
     "last 3 versions",
