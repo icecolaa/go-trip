@@ -42,12 +42,6 @@ export default function Trip() {
   const goAddActivity = (dayId: string) => Taro.navigateTo({ url: `/pages/activity/index?tripId=${tripId}&dayId=${dayId}` })
   const goEditActivity = (a: Activity) => Taro.navigateTo({ url: `/pages/activity/index?tripId=${tripId}&dayId=${a.dayId}&activityId=${a.id}` })
 
-  const daysByGroup = bundle
-    ? bundle.days.map(d => ({ day: d, acts: bundle.activities.filter(a => a.dayId === d.id).sort((x, y) => (x.sort || 0) - (y.sort || 0)) }))
-    : []
-
-  const progress = bundle ? tripProgress(bundle.trip.startDate, bundle.trip.endDate) : 0
-
   if (error) {
     return (
       <View className="page">
@@ -57,8 +51,18 @@ export default function Trip() {
     )
   }
   if (!bundle) return <View className="page"><Text className="muted">加载中…</Text></View>
+  if (!bundle.trip) {
+    return (
+      <View className="page">
+        <View className="error">行程不存在或已被删除</View>
+        <Button className="ghost" onClick={() => Taro.redirectTo({ url: '/pages/trips/index' })}>返回旅程列表</Button>
+      </View>
+    )
+  }
 
   const { trip } = bundle
+  const daysByGroup = bundle.days.map(d => ({ day: d, acts: bundle.activities.filter(a => a.dayId === d.id).sort((x, y) => (x.sort || 0) - (y.sort || 0)) }))
+  const progress = tripProgress(trip.startDate, trip.endDate)
   const spent = bundle.budget.total
 
   return (

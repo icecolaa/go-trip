@@ -12,6 +12,13 @@ const MASTER = { $master: true };
  * 100 覆盖本项目所有单表读取（活动/清单 ≤80、feed 60）；超出时上层自行分页。 */
 const PAGE_SIZE = 100;
 
+/** SDK 返回不对称（实测）：create 回 {id}，list/get 的行只有 _id 没有 id。
+ * 读路径统一补 id 字段，全链（卡片跳转/分组/编辑/删除定位）才拿得到行 id。 */
+function withId(row: Row): Row {
+  if (row && row.id == null && row._id != null) return { ...row, id: row._id };
+  return row;
+}
+
 /** 按条件列行；orderBy 形如 [{ created_at: 'desc' }]（模型字段名）。 */
 export async function listRows(name: string, where: Row = {}, orderBy?: Row[], pageSize?: number): Promise<Row[]> {
   const res = await model(name).list({
@@ -20,19 +27,20 @@ export async function listRows(name: string, where: Row = {}, orderBy?: Row[], p
     pageSize: pageSize || PAGE_SIZE,
     ...(orderBy ? { orderBy } : {}),
   });
-  return toCamel(res?.data?.records || []);
+  return toCamel(res?.data?.records || []).map(withId);
 }
 
 export async function getRowById(name: string, id: string): Promise<Row | null> {
   const res = await model(name).get({ filter: { where: { _id: { $eq: id } } } });
   const rec = res?.data;
-  return rec ? toCamel(rec) : null;
+  // 平台 get 未命中回 {}（不是 null），以 _id 存在与否判定真找到
+  return rec && rec._id ? withId(toCamel(rec)) : null;
 }
 
 export async function createRow(name: string, data: Row): Promise<Row> {
   const res = await model(name).create({ data: toSnake(data) });
   // create 只回 id；读回完整行太贵，直接拼返回（调用方需要系统字段时自行 getRowById）
-  return { id: res?.data?.id, ...toCamel(data) };
+  return { id: res?.data?.id ?? res?.data?._id, ...toCamel(data) };
 }
 
 /** 批量建行，返回按传入顺序对应的 _id 列表。

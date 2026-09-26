@@ -1,8 +1,8 @@
 # 交接文档（HANDOFF）
 
 > 面向下一个接手的开发者或 AI 会话。先读根目录 `CLAUDE.md`（规则手册），再读本文（现状、过程与经验）。
-> 更新：2026-09-26（条目 45：Web 账密注册通道证实不可用并移除——平台 501 + SDK 吞错双实锤；登录页改登录+游客双通道）。
-> 上一条：2026-09-26（条目 44：阶段二 Web 版完成——全栈 rdb 直连收官；upload 双通道；写后读延迟等四项 review 修复，小程序 1.1.4）。
+> 更新：2026-09-27（条目 46：行 id 全链断裂修复——SDK create 回 id / list·get 只回 _id 不对称实锤，两端 entities 归一；1.1.4 带此 bug 待重传 1.1.5）。
+> 上一条：2026-09-26（条目 45：Web 账密注册通道证实不可用并移除——平台 501 + SDK 吞错双实锤；登录页改登录+游客双通道）。
 > 上一条：2026-09-25（条目 42：第三个环境 + SQL 库接通 + H5 双端）。
 
 ## 当前状态一览（2026-09-26，阶段二收官）
@@ -11,8 +11,8 @@
 |---|---|
 | **生产环境** | CloudBase `gotrip-d1gb187o991f5260a`（个人版，付费至 2027-03-25）。云托管 gotrip 容器 = **gotrip-017 无状态代理**（AI/飞哪儿/POI/天气，双通道身份门，不连任何数据库），`/health` 探针 `{"ok":true,"db":"none","mode":"proxy"}`。公网开着（Web 直连需要）。**已合入 master**（Gitee/GitHub 同步，master=5198351 含 GitHub PR#1 合并记录；feat 领先 master 一个 gitignore 提交 fa350f7，下次合并即齐） |
 | **架构（原生化完成）** | 全栈数据模型直连：小程序 `@cloudbase/wx-cloud-client-sdk` models.*（openid 身份）；Web `@cloudbase/js-sdk` 3.10.1（其 `./model` 子路径 **re-export wx-cloud-client-sdk**，两端 API 同构）+ 身份认证（账密+匿名已开启）。14 个 gt_* 模型 `_openid` 行级隔离。设计/映射/进度全在 `docs/native-migration.md`（接手先读它和条目 43/44） |
-| 小程序 | **1.1.4 已上传**（开发者工具通道，发布者=冰可乐），待设体验版；12 页 rdb 直连 tsc 0；飞哪儿异步 job（15s 超时已绕开，用户实测 ✓） |
-| Web/H5 | **已恢复可用（阶段二完成，浏览器实测 ✓）**：游客/账密登录 → 建档 → 建行程/导入演示（9 项安排 ✓）→ 13 板块。域名=云托管公网 + 风险提示页（绑自定义域名可去掉）。**Web 与小程序身份不互通**（CloudBase uid vs openid，各一套数据，既定设计）。**条目 45 后：注册入口已移除**（平台不支持纯账密自助注册），正式账号=云控制台「身份认证→用户管理」手动创建；登录页=账密登录+游客模式 |
+| 小程序 | **1.1.4 已上传但带条目 46 的行 id 断裂 bug（未设体验版，万幸）——修复后需重传 1.1.5 再设体验版**；12 页 rdb 直连 tsc 0；飞哪儿异步 job（15s 超时已绕开，用户实测 ✓） |
+| Web/H5 | **已恢复可用（阶段二完成，浏览器实测 ✓）**：游客/账密登录 → 建档 → 建行程/导入演示（9 项安排 ✓）→ 13 板块。域名=云托管公网 + 风险提示页（绑自定义域名可去掉）。**Web 与小程序身份不互通**（CloudBase uid vs openid，各一套数据，既定设计）。**条目 45 后：注册入口已移除**（平台不支持纯账密自助注册），正式账号=云控制台「身份认证→用户管理」手动创建；登录页=账密登录+游客模式。条目 46 修复待随容器部署上线 |
 | 容器身份门（双通道） | x-wx-source（小程序 callContainer，公网剥离实测）OR x-gotrip-key=WEB_PROXY_KEY（Web/H5 共享密钥，随 bundle 可见属可接受风险）。环境变量已配在 gotrip-017 |
 | 数据库 | 云开发自带 TDSQL-C MySQL 8.0（端点已由用户经「数据库连接配置」建成公网 43.179.225.7:24735，容器不再需要）；**行程相关 12 表已清空重来**（旧测试数据含丢失活动的行程），当前库内仅浏览器验证产生的 1 匿名用户+1 演示行程（可清） |
 | 仓库 | Gitee+GitHub 双端已同步（feat=fa350f7 含 gitignore 修正，master=5198351）；GitHub push 需本机代理（时好时坏） |
@@ -70,6 +70,13 @@
     **账号开通的新正道**：CloudBase 控制台 → 身份认证 → 用户管理 → 新建用户（用户名+密码）→ 用户在 Web 登录页直接登录（首次登录自动建档）。账密登录 API 本身工作正常（4043 校验实测正常），已验至错误路径；成功路径待用户建号后自测一条即闭环。
     **本轮踩坑沉淀**：① **「MCP hint 写着 SDK/provider dependent; verify before use」的警告不是废话**——signUp 正是没先验证的那一环，阶段二验收漏网；② js-sdk v3 auth 返回值形态必须逐一核对（有的 throw、有的 {error}、有的裸 body），照搬 v2/小程序经验会静默吞错；③ IAB 浏览器注入对本页按钮 click 三路全挂（locator/dom_cua/cua 均 timeout）但 fill 正常——fallback 是 `evaluate(() => el.click())`（React 合成事件正常响应）；toast 数秒即逝，抓 toast 要提交后立刻轮询 `.toast-wrap`；④ 抓 SDK 真实错误先 monkey-patch `window.fetch` 再复现，别信 UI toast 的文案（models 层兜底文案会掩盖 auth 层真实 4043）；⑤ 数据模型物理表在 `<envId>` schema 下（`gotrip-d1gb187o991f5260a`.gt_users），不在 gotrip schema（那是旧容器时代的遗留表，仍在但已无人读写）；⑥ 身份认证安全域名加 localhost:5173/127.0.0.1:5173 后本地 dev 可直连测试（本次提交即生效，未等 10 分钟）。
     **▶ 给用户的操作单**：① 控制台建号：CloudBase 控制台 → 身份认证 → 用户管理 → 新建用户（填用户名+密码，如 bingkele/你的密码）→ Web 登录页登录自测（应见「欢迎回来」+昵称「旅行者」，可在「我的」页改昵称）；② 本次修复需**重新部署容器**才上线（Web bundle 在镜像里），确认后跑部署；③ 可选：清理 gt_users 里 2026-09-26 的测试行（本机 IAB 指纹 identifiable：昵称「微信用户」的 21:03 行 + 昵称「旅行者」的最新行）。
+
+46. **行 id 全链断裂修复：SDK create/list/get 返回不对称（2026-09-27，本地浏览器全链路复验过）**：用户点行程卡报整页崩，URL 是 `/trip/undefined`。**根因（页面内直驱 SDK 实测三接口返回形状）**：① `create` 只回 `{data:{id}}`，而 `list`/`get` 的行**只有 `_id` 没有 `id`**——`case.ts` 的 SYS 集合把 `_id` 原样保留，全链代码读 `.id` 全是 undefined：仪表盘卡片跳转、行程页天分组（`a.dayId === d.id` 永假）、活动编辑/删除/reorder 定位、syncDays，**两端（client 与 miniprogram 的 rdb 七件套同构）同病**。② 雪上加霜：`get` 未命中回 `{data:{}}` **空对象而非 null**，`getRowById` 的 truthy 判断被空对象骗过，「行程不存在」分支永远走不到（先渲染空壳行程页，再因 Countdown 拿 undefined 日期 `split` 崩整页）。
+    **为何阶段二「9 项安排 ✓」没暴露**：ItineraryTab 分组循环对未知 dayId 有「孤组兜底」渲染，活动照常列出；计数/预算合计不依赖行 id；创建/导入流程用的 create/createMany 返回值（id 正确），只有「list 再读行 id」的路径全废。深层教训：**展示层「看起来对」≠ 数据链路通，验收要再点一层交互（编辑/删除/跳转）**。
+    **修复（双端 entities.ts 同步 + 两处防御）**：① `withId` 归一——listRows/getRowById 读路径统一补 `id: _id`，createRow 兼容 `id ?? _id` 两种拼写；② `getRowById` 以 `rec._id` 存在判定真找到（空对象→null，loadTripBundle 正常 throw「行程不存在或无权访问」）；③ web Countdown 空日期直接不出块（坏数据不再崩整页）；④ 两端 TripPage 加「行程不存在或已被删除」守卫卡。
+    **验证（localhost:5173 浏览器全链路）**：`/trip/undefined` → 🚫 错误卡+返回链接；仪表盘卡片 → `/trip/EBPVMHG6FS`（真实 id）；D1/D2/D3 各 3 项正确分组；「修改行程」弹窗带出真实数据且天下拉选中真实 day id；双端 tsc 0；冒烟 10/0。
+    **⚠️ 波及**：**1.1.4（已上传未设体验版）带此 bug，修复后需重传 1.1.5 再设体验版**；Web 修复需随容器重新部署上线。
+    **踩坑沉淀**：① **同一平台的 API 返回形状不对称必须逐一实测**（create≠list≠get，三个形状三种坑），「models API 两端同构」不等于「文档描述可信」；② 聚合读的行 id 在读路径入口处归一（entities 层单点），别指望每个调用点自己记得取 `_id`；③ 探针技巧：Vite dev 页面内 `new Function('u','return import(u)')('/@id/@cloudbase/js-sdk')` 可直驱 SDK 实测返回形状（playwright.evaluate 会改写裸 import 语句，必须用 Function 构造器绕过）；④ IAB evaluate 里不能写 TypeScript 标注。
 6. **内容收藏**：旅行日志支持多图上传（前端 canvas 压缩 1600/400 双尺寸，JPEG 0.85）+ 缩略图；新增「攻略」Tab 收藏小红书/公众号链接。
 7. **质量**：多轮代码 review 修复；`scripts/smoke.sh` 冒烟 91 项；验收报告归档。
 

@@ -110,6 +110,18 @@ export default function TripPage() {
   }
 
   const { trip, members } = bundle;
+  if (!trip) {
+    return (
+      <div className="page">
+        <div className="card empty">
+          <span className="big">🧭</span>
+          行程不存在或已被删除
+          <br /><br />
+          <Link className="btn" to="/">← 返回全部旅程</Link>
+        </div>
+      </div>
+    );
+  }
   const canEdit = true; // 单主人架构：当前登录身份即主人
   const ctx = { bundle, reload: load, reloadWeather: loadWeather, weather, canEdit, goTab: (t: string) => setSearchParams({ tab: t }) };
 
