@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { View, Text, Map, Button } from '@tarojs/components'
 import Taro from '@tarojs/taro'
-import { api, ApiFail } from '../../api/request'
+import { loadTripBundle } from '../../rdb/trip'
 import type { TripBundle, Activity } from '../../types'
 
 const KIND_EMOJI: Record<string, string> = {
@@ -11,15 +11,15 @@ const KIND_EMOJI: Record<string, string> = {
 
 export default function TripMap() {
   const router = Taro.getCurrentInstance().router
-  const tripId = Number(router?.params.tripId || 0)
+  const tripId = String(router?.params.tripId || '')
   const [bundle, setBundle] = useState<TripBundle | null>(null)
   const [error, setError] = useState('')
 
   const load = async () => {
     try {
-      setBundle(await api.get<TripBundle>(`/api/trips/${tripId}`))
+      setBundle(await loadTripBundle(tripId))
     } catch (e) {
-      setError(e instanceof ApiFail ? e.message : '加载失败')
+      setError(e instanceof Error ? e.message : '加载失败')
     }
   }
   if (!bundle) {
@@ -32,8 +32,8 @@ export default function TripMap() {
     .filter(a => a.lat != null && a.lng != null)
     .map(a => ({ ...a, dayNumber: bundle.days.find(d => d.id === a.dayId)?.dayNumber || 0 }))
 
-  const markers = located.map(a => ({
-    id: a.id,
+  const markers = located.map((a, i) => ({
+    id: i,
     latitude: a.lat as number,
     longitude: a.lng as number,
     iconPath: '/assets/marker.png',

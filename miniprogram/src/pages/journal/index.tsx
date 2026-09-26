@@ -1,31 +1,19 @@
 import { useState } from 'react'
 import { View, Text, Button, Input, Image } from '@tarojs/components'
 import Taro, { usePullDownRefresh } from '@tarojs/taro'
-import { api, ApiFail } from '../../api/request'
+import { loadTripBundle } from '../../rdb/trip'
+import { createJournal } from '../../rdb/ops'
+import { tempUrls, uploadImage } from '../../rdb/storage'
 import type { TripBundle } from '../../types'
 
 const MOODS = ['🎉', '🥰', '😎', '😴', '🤯', '🌧️', '🍜', '📝']
 const MAX_IMAGES = 9
 
-interface JournalImage { full: string; thumb: string }
-
-/** 读本地文件为 dataURL（服务端只收 data:image/(jpeg|png|webp);base64） */
-function readAsDataUrl(path: string): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const fs = Taro.getFileSystemManager()
-    fs.readFile({
-      filePath: path,
-      encoding: 'base64',
-      success: res => resolve(`data:image/jpeg;base64,${res.data}`),
-      fail: () => reject(new Error('读取图片失败')),
-    })
-  })
-}
-
 export default function Journal() {
   const router = Taro.getCurrentInstance().router
-  const tripId = Number(router?.params.tripId || 0)
+  const tripId = String(router?.params.tripId || '')
   const [bundle, setBundle] = useState<TripBundle | null>(null)
+  const [urlMap, setUrlMap] = useState<Record<string, string>>({})
   const [content, setContent] = useState('')
   const [mood, setMood] = useState('📝')
   const [images, setImages] = useState<string[]>([]) // 本地临时路径
@@ -35,9 +23,12 @@ export default function Journal() {
   const load = async () => {
     try {
       setError('')
-      setBundle(await api.get<TripBundle>(`/api/trips/${tripId}`))
+      const b = await loadTripBundle(tripId)
+      setBundle(b)
+      const ids = b.journal.flatMap(j => (j.images || []).flatMap(im => [im.full, im.thumb])).filter(Boolean)
+      setUrlMap(await tempUrls(ids))
     } catch (e) {
-      setError(e instanceof ApiFail ? e.message : '加载失败')
+      setError(e instanceof Error ? e.message : '加载失败')
     }
   }
   usePullDownRefresh(() => {
@@ -66,22 +57,26 @@ export default function Journal() {
     if (!content.trim()) { Taro.showToast({ title: '写点什么再发布吧', icon: 'none' }); return }
     setBusy(true)
     try {
-      // ① 图片先压缩读取为 dataURL，走 /uploads 存储换取服务端路径（与网页版同一条链路）
-      let imagePayload: JournalImage[] = []
+      // ① 图片压上传云存储，记录 fileID（模型文本 4000 字节上限，禁止 base64 入库）
+      let imagePayload: { full: string; thumb: string }[] = []
       if (images.length) {
-        Taro.showLoading({ title: '处理图片…' })
-        const pairs = await Promise.all(images.map(async (p) => {
+        Taro.showLoading({ title: '上传图片…' })
+        imagePayload = await Promise.all(images.map(async (p) => {
           let full = p
           try { const c = await Taro.compressImage({ src: p, quality: 75 }); full = c.tempFilePath } catch { /* 压缩失败用原图 */ }
-          const b64 = await readAsDataUrl(full)
-          return { full: b64, thumb: b64 }
+          const fileID = await uploadImage(full, 'journal')
+          return { full: fileID, thumb: fileID }
         }))
-        const up = await api.post<{ images: JournalImage[] }>(`/api/trips/${tripId}/uploads`, { images: pairs })
-        imagePayload = up.images
         Taro.hideLoading()
       }
-      // ② 发布日志
-      await api.post(`/api/trips/${tripId}/journal`, { content: content.trim(), mood, dayId: null, images: imagePayload })
+      // ② 发布日志（rdb 直连，_openid 自动归属）
+      await createJournal(tripId, {
+        dayId: null,
+        authorMemberId: bundle?.members[0]?.id || '',
+        content: content.trim(),
+        mood,
+        images: imagePayload,
+      }, bundle?.members[0]?.displayName || '我')
       setContent(''); setImages([]); setMood('📝')
       setBusy(false)
       await load()
@@ -89,11 +84,12 @@ export default function Journal() {
     } catch (e) {
       Taro.hideLoading()
       setBusy(false)
-      Taro.showToast({ title: e instanceof ApiFail ? e.message : '发布失败', icon: 'none' })
+      Taro.showToast({ title: e instanceof Error ? e.message : '发布失败', icon: 'none' })
     }
   }
 
   const journal = bundle!.journal
+  const memberName = (id: string): string => bundle?.members.find(m => m.id === id)?.displayName || '我'
 
   return (
     <View className="page">
@@ -126,14 +122,14 @@ export default function Journal() {
       {journal.map(j => (
         <View key={j.id} className="panel">
           <View className="row-between">
-            <Text className="j-author">{j.author?.nickname || '旅伴'} {j.mood}</Text>
-            <Text className="muted">{new Date(j.createdAt).toLocaleDateString('zh-CN')}</Text>
+            <Text className="j-author">{memberName(j.authorMemberId)} {j.mood}</Text>
+            <Text className="muted">{j.createdAt ? new Date(j.createdAt).toLocaleDateString('zh-CN') : ''}</Text>
           </View>
           <View className="j-body"><Text>{j.content}</Text></View>
           {(j.images || []).length > 0 && (
             <View className="thumbs">
               {(j.images || []).map((im, i) => (
-                <Image key={i} src={im.thumb} mode="aspectFill" className="thumb-img thumb" />
+                <Image key={i} src={urlMap[im.thumb] || im.thumb} mode="aspectFill" className="thumb-img thumb" />
               ))}
             </View>
           )}

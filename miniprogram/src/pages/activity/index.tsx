@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
 import { View, Input, Button, Text, Picker } from '@tarojs/components'
 import Taro from '@tarojs/taro'
-import { api, ApiFail } from '../../api/request'
-import type { Activity } from '../../types'
+import { createActivity, deleteActivity, updateActivity } from '../../rdb/ops'
+import type { ActivityKind, Activity } from '../../types'
+import { ensureProfile } from '../../rdb/trip'
 
 const KINDS: { value: string; label: string }[] = [
   { value: 'sight', label: '🏞️ 景点' },
@@ -17,10 +18,10 @@ const KIND_LABEL: Record<string, string> = Object.fromEntries(KINDS.map(k => [k.
 
 export default function ActivityPage() {
   const router = Taro.getCurrentInstance().router
-  const tripId = Number(router?.params.tripId || 0)
-  const dayId = Number(router?.params.dayId || 0)
-  const activityId = Number(router?.params.activityId || 0)
-  const editing = activityId > 0
+  const tripId = String(router?.params.tripId || '')
+  const dayId = String(router?.params.dayId || '')
+  const activityId = String(router?.params.activityId || '')
+  const editing = !!activityId
 
   const [title, setTitle] = useState('')
   const [time, setTime] = useState('')
@@ -35,8 +36,8 @@ export default function ActivityPage() {
     if (!editing) return
     ;(async () => {
       try {
-        const b = await api.get<{ activities: Activity[] }>(`/api/trips/${tripId}`)
-        const a = b.activities.find(x => x.id === activityId)
+        const { getRowById } = await import('../../rdb/entities')
+        const a = await getRowById('gt_activities', activityId) as unknown as Activity | null
         if (!a) { Taro.showToast({ title: '行程不存在', icon: 'none' }); Taro.navigateBack(); return }
         setTitle(a.title); setTime(a.time || ''); setPlace(a.place)
         setCost(a.cost ? String(a.cost) : ''); setNotes(a.notes); setKind(a.kind)
@@ -59,15 +60,16 @@ export default function ActivityPage() {
       place: place.trim(),
       cost: Number(cost) || 0,
       notes: notes.trim(),
-      kind,
+      kind: kind as ActivityKind,
     }
     try {
-      if (editing) await api.patch(`/api/activities/${activityId}`, body)
-      else await api.post(`/api/days/${dayId}/activities`, body)
+      const me = await ensureProfile()
+      if (editing) await updateActivity(tripId, activityId, body, me.nickname)
+      else await createActivity(tripId, dayId, body, me.nickname)
       Taro.showToast({ title: editing ? '已更新' : '已添加', icon: 'success' })
       setTimeout(() => Taro.navigateBack(), 500)
     } catch (e) {
-      Taro.showToast({ title: e instanceof ApiFail ? e.message : '保存失败', icon: 'none' })
+      Taro.showToast({ title: e instanceof Error ? e.message : '保存失败', icon: 'none' })
       setBusy(false)
     }
   }
@@ -79,10 +81,11 @@ export default function ActivityPage() {
       success: async (r) => {
         if (!r.confirm) return
         try {
-          await api.del(`/api/activities/${activityId}`)
+          const me = await ensureProfile()
+          await deleteActivity(tripId, activityId, title.trim(), me.nickname)
           Taro.navigateBack()
         } catch (e) {
-          Taro.showToast({ title: e instanceof ApiFail ? e.message : '删除失败', icon: 'none' })
+          Taro.showToast({ title: e instanceof Error ? e.message : '删除失败', icon: 'none' })
         }
       },
     })

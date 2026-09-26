@@ -1,7 +1,9 @@
 import { useState } from 'react'
 import { View, Text, Button, Input, Picker } from '@tarojs/components'
 import Taro, { usePullDownRefresh } from '@tarojs/taro'
-import { api, ApiFail } from '../../api/request'
+import { loadTripBundle } from '../../rdb/trip'
+import { createExpense, deleteExpense } from '../../rdb/ops'
+import { ensureProfile } from '../../rdb/trip'
 import type { TripBundle, TripMember, Expense } from '../../types'
 
 const CATS = ['交通', '住宿', '餐饮', '门票', '购物', '娱乐', '其他']
@@ -9,7 +11,7 @@ const yuan = (n: number): string => `¥${(Math.round(n * 100) / 100).toLocaleStr
 
 export default function Budget() {
   const router = Taro.getCurrentInstance().router
-  const tripId = Number(router?.params.tripId || 0)
+  const tripId = String(router?.params.tripId || '')
   const [bundle, setBundle] = useState<TripBundle | null>(null)
   const [showAdd, setShowAdd] = useState(false)
   const [title, setTitle] = useState('')
@@ -20,9 +22,9 @@ export default function Budget() {
 
   const load = async () => {
     try {
-      setBundle(await api.get<TripBundle>(`/api/trips/${tripId}`))
+      setBundle(await loadTripBundle(tripId))
     } catch (e) {
-      Taro.showToast({ title: e instanceof ApiFail ? e.message : '加载失败', icon: 'none' })
+      Taro.showToast({ title: e instanceof Error ? e.message : '加载失败', icon: 'none' })
     }
   }
   usePullDownRefresh(() => {
@@ -43,19 +45,23 @@ export default function Budget() {
     if (!isFinite(amt) || amt <= 0) { Taro.showToast({ title: '请填写正确的金额', icon: 'none' }); return }
     setBusy(true)
     try {
-      await api.post(`/api/trips/${tripId}/expenses`, {
+      const me = await ensureProfile()
+      await createExpense(tripId, {
+        tripId,
         title: title.trim() || '未命名支出',
         amount: amt,
         category,
         date: today,
-        payerMemberId: payer?.id,
-      })
+        payerMemberId: payer?.id || '',
+        splitMode: 'equal',
+        participants: [],
+      }, me.nickname)
       setTitle(''); setAmount('')
       setShowAdd(false)
       await load()
       Taro.showToast({ title: '已记账', icon: 'success' })
     } catch (e) {
-      Taro.showToast({ title: e instanceof ApiFail ? e.message : '记账失败', icon: 'none' })
+      Taro.showToast({ title: e instanceof Error ? e.message : '记账失败', icon: 'none' })
       setBusy(false)
     }
   }
@@ -66,16 +72,17 @@ export default function Budget() {
       success: async (r) => {
         if (!r.confirm) return
         try {
-          await api.del(`/api/expenses/${exp.id}`)
+          const me = await ensureProfile()
+          await deleteExpense(tripId, exp.id, exp.title, me.nickname)
           await load()
         } catch (e) {
-          Taro.showToast({ title: e instanceof ApiFail ? e.message : '删除失败', icon: 'none' })
+          Taro.showToast({ title: e instanceof Error ? e.message : '删除失败', icon: 'none' })
         }
       },
     })
   }
 
-  const payerName = (id: number): string => members.find(m => m.id === id)?.displayName || '—'
+  const payerName = (id: string): string => members.find(m => m.id === id)?.displayName || '—'
   const budgetTotal = bundle.trip.budget
   const spent = bundle.budget.total
   const pct = budgetTotal > 0 ? Math.min(100, Math.round((spent / budgetTotal) * 100)) : 0
