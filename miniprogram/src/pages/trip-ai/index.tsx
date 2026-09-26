@@ -1,14 +1,17 @@
 import { useState } from 'react'
 import { View, Text, Button, Input, Textarea } from '@tarojs/components'
 import Taro from '@tarojs/taro'
-import { api, ApiFail } from '../../api/request'
+import { api } from '../../api/request'
+import { createRows, deleteRow, deleteRows, listRows } from '../../rdb/entities'
+import { logActivity } from '../../rdb/trip'
+import type { ParsedActivity } from '../../types'
 import type { ParsedGuide } from '../../types'
 
 interface GuideDay { dayNumber: number; date?: string; title?: string; activities?: { time?: string; title?: string }[] }
 
 export default function TripAI() {
   const router = Taro.getCurrentInstance().router
-  const tripId = Number(router?.params.tripId || 0)
+  const tripId = String(router?.params.tripId || '')
   const maxDay = Number(router?.params.maxDay || 0)
   const [text, setText] = useState('')
   const [guide, setGuide] = useState<ParsedGuide | null>(null)
@@ -28,26 +31,84 @@ export default function TripAI() {
       Taro.hideLoading()
     } catch (e) {
       Taro.hideLoading()
-      Taro.showToast({ title: e instanceof ApiFail ? e.message : '解析失败', icon: 'none' })
+      Taro.showToast({ title: e instanceof Error ? e.message : '解析失败', icon: 'none' })
       setBusy(false)
     }
   }
 
+  // 写入改客户端执行：容器只做 AI 解析，落库在这里做（保证 _openid 归属）
   const apply = async (targeted: boolean) => {
     if (!guide || busy) return
     setBusy(true)
     try {
       Taro.showLoading({ title: '写入行程中…' })
-      const body = targeted ? { guide, targeted: true } : { guide, replaceDays: true }
-      const r = await api.post<{ replacedDays?: number[] }>(`/api/trips/${tripId}/ai/apply`, body)
+      const dayRows = (await listRows('gt_days', { trip_id: { $eq: tripId } }, [{ day_number: 'asc' }])) as any[]
+      const touched = new Set<string>()
+      if (targeted) {
+        for (const d of guide.days) {
+          const n = Math.round(Number(d.dayNumber)) || 0
+          const hit = dayRows.find(r => r.dayNumber === n || (d.date && r.date === d.date))
+          if (!hit) continue
+          touched.add(hit.id)
+          await deleteRows('gt_activities', { day_id: { $eq: hit.id } })
+          await deleteRow('gt_days', hit.id)
+        }
+        let seq = dayRows.length
+        for (const d of guide.days) {
+          const n = Math.round(Number(d.dayNumber)) || 0
+          if (!dayRows.some(r => r.dayNumber === n)) continue
+          seq += 1
+          await createRows('gt_days', [{ trip_id: tripId, day_number: n, date: d.date || dayRows[0]?.date || '', title: d.title || '', place: '' }])
+        }
+      } else {
+        await deleteRows('gt_activities', { trip_id: { $eq: tripId } })
+        await deleteRows('gt_days', { trip_id: { $eq: tripId } })
+        const startBase = dayRows[0]?.date
+        let seq = 0
+        for (const d of guide.days) {
+          seq += 1
+          const date = d.date || (startBase ? offsetDate(startBase, seq - 1) : '')
+          await createRows('gt_days', [{ trip_id: tripId, day_number: seq, date, title: d.title || '', place: '' }])
+        }
+      }
+      const freshDays = (await listRows('gt_days', { trip_id: { $eq: tripId } }, [{ day_number: 'asc' }])) as any[]
+      const acts: any[] = []
+      for (const d of guide.days) {
+        const n = Math.round(Number(d.dayNumber)) || 0
+        const hit = freshDays.find(r => r.dayNumber === n) || freshDays[0]
+        if (!hit) continue
+        for (const a of d.activities || []) {
+          acts.push({ dayId: hit.id, tripId, ...(a as any) })
+        }
+      }
+      if (acts.length) {
+        const perDay: Record<string, number> = {}
+        await createRows('gt_activities', acts.map(a => {
+          perDay[a.dayId] = (perDay[a.dayId] || 0)
+          return {
+            trip_id: a.tripId, day_id: a.dayId, sort: perDay[a.dayId]++,
+            time: a.time || null, end_time: a.endTime || null,
+            kind: (a.kind || 'sight'), title: a.title || '', place: a.place || '',
+            lat: (a as any).lat ?? null, lng: (a as any).lng ?? null,
+            cost: a.cost || 0, notes: a.notes || '', status: '待确认', assignee_member_id: null,
+          }
+        }))
+      }
+      await logActivity(tripId, '我', targeted ? 'AI 重写了部分行程' : 'AI 重写了全部行程')
       Taro.hideLoading()
-      Taro.showToast({ title: targeted && r.replacedDays?.length ? `已重写第 ${r.replacedDays.join('、')} 天` : '已写入行程', icon: 'success' })
+      Taro.showToast({ title: targeted ? `已重写 ${touched.size} 天` : '已写入行程', icon: 'success' })
       setTimeout(() => Taro.navigateBack(), 600)
     } catch (e) {
       Taro.hideLoading()
-      Taro.showToast({ title: e instanceof ApiFail ? e.message : '写入失败', icon: 'none' })
+      Taro.showToast({ title: e instanceof Error ? e.message : '写入失败', icon: 'none' })
       setBusy(false)
     }
+  }
+
+  const offsetDate = (base: string, days: number): string => {
+    const d = new Date(base + 'T00:00:00')
+    d.setDate(d.getDate() + days)
+    return d.toISOString().slice(0, 10)
   }
 
   return (

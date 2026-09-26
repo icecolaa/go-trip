@@ -1,15 +1,17 @@
 import { useState } from 'react'
 import { View, Text, Button } from '@tarojs/components'
 import Taro, { usePullDownRefresh } from '@tarojs/taro'
-import { api, ApiFail } from '../../api/request'
-import type { TripBundle, GuideCard } from '../../types'
+import { api } from '../../api/request'
+import { createGuideCards, deleteGuideCard, listGuideCards } from '../../rdb/ops'
+import type { GuideCard } from '../../types'
+
+const safeParse = (v: any, fb: { label?: string; text: string }[] = []) => { if (v == null || v === '') return fb; if (typeof v !== 'string') return v; try { return JSON.parse(v) } catch { return fb } }
 
 const INTERESTS = ['美食', '自然', '人文', '亲子', '购物', '夜生活']
 
 export default function Handbook() {
   const router = Taro.getCurrentInstance().router
-  const tripId = Number(router?.params.tripId || 0)
-  const [bundle, setBundle] = useState<TripBundle | null>(null)
+  const tripId = String(router?.params.tripId || '')
   const [cards, setCards] = useState<GuideCard[]>([])
   const [interests, setInterests] = useState<string[]>([])
   const [busy, setBusy] = useState(false)
@@ -17,19 +19,16 @@ export default function Handbook() {
 
   const load = async () => {
     try {
-      const [b, c] = await Promise.all([
-        api.get<TripBundle>(`/api/trips/${tripId}`),
-        api.get<GuideCard[]>(`/api/trips/${tripId}/handbook`),
-      ])
-      setBundle(b); setCards(c); setError('')
+      const c = await listGuideCards(tripId)
+      setCards((c as any).map((x: any) => ({ ...x, items: safeParse(x.items) }))); setError('')
     } catch (e) {
-      setError(e instanceof ApiFail ? e.message : '加载失败')
+      setError(e instanceof Error ? e.message : '加载失败')
     }
   }
   usePullDownRefresh(() => {
     load().finally(() => Taro.stopPullDownRefresh())
   })
-  if (!bundle) {
+  if (!cards) {
     load()
     return <View className="page"><Text className="muted">加载中…</Text></View>
   }
@@ -39,13 +38,23 @@ export default function Handbook() {
     setBusy(true)
     try {
       Taro.showLoading({ title: 'AI 整理锦囊中…' })
-      const fresh = await api.post<GuideCard[]>(`/api/trips/${tripId}/handbook/generate`, { interests })
-      setCards(fresh)
+      const fresh = await api.post<any[]>(`/api/trips/${tripId}/handbook/generate`, { interests })
+      // 兼容新旧容器：旧容器服务端已插入，这里先清掉非自建卡再写客户端副本，最终只有一份
+      for (const c of cards) if (c.source !== 'custom') await deleteGuideCard(tripId, c.id, '我')
+      const payload = fresh.map((c, i) => ({
+        trip_id: tripId, category: c.category || 'tip', icon: c.icon || '📌',
+        title: c.title || '', summary: c.summary || '',
+        items: typeof c.items === 'string' ? c.items : JSON.stringify(c.items || []),
+        source: c.source === 'custom' ? 'custom' : 'ai', sort: i,
+      }))
+      await createGuideCards(tripId, payload as any, '我')
+      const rows = await listGuideCards(tripId)
+      setCards(rows.map(c => ({ ...c, items: safeParse((c as any).items) })))
       Taro.hideLoading()
       Taro.showToast({ title: `已生成 ${fresh.length} 张卡片`, icon: 'success' })
     } catch (e) {
       Taro.hideLoading()
-      Taro.showToast({ title: e instanceof ApiFail ? e.message : '生成失败', icon: 'none' })
+      Taro.showToast({ title: e instanceof Error ? e.message : '生成失败', icon: 'none' })
     } finally {
       setBusy(false)
     }
@@ -57,10 +66,10 @@ export default function Handbook() {
       success: async (r) => {
         if (!r.confirm) return
         try {
-          await api.del(`/api/handbook/${c.id}`)
+          await deleteGuideCard(tripId, c.id, '我')
           setCards(prev => prev.filter(x => x.id !== c.id))
         } catch (e) {
-          Taro.showToast({ title: e instanceof ApiFail ? e.message : '删除失败', icon: 'none' })
+          Taro.showToast({ title: e instanceof Error ? e.message : '删除失败', icon: 'none' })
         }
       },
     })

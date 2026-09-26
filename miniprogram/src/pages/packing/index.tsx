@@ -1,7 +1,9 @@
 import { useState } from 'react'
 import { View, Text, Button, Input, Picker } from '@tarojs/components'
 import Taro, { usePullDownRefresh } from '@tarojs/taro'
-import { api, ApiFail } from '../../api/request'
+import { loadTripBundle } from '../../rdb/trip'
+import { createPackingItems, deletePackingItem, updatePackingItem } from '../../rdb/ops'
+import { PACKING_TEMPLATES } from '@shared/packing-templates'
 import type { TripBundle, PackingItem } from '../../types'
 
 const CATS = ['证件', '衣物', '电子', '洗护', '药品', '其他']
@@ -16,7 +18,7 @@ const TEMPLATES = [
 
 export default function Packing() {
   const router = Taro.getCurrentInstance().router
-  const tripId = Number(router?.params.tripId || 0)
+  const tripId = String(router?.params.tripId || '')
   const [bundle, setBundle] = useState<TripBundle | null>(null)
   const [newTitle, setNewTitle] = useState('')
   const [newCat, setNewCat] = useState('其他')
@@ -24,9 +26,9 @@ export default function Packing() {
 
   const load = async () => {
     try {
-      setBundle(await api.get<TripBundle>(`/api/trips/${tripId}`))
+      setBundle(await loadTripBundle(tripId))
     } catch (e) {
-      Taro.showToast({ title: e instanceof ApiFail ? e.message : '加载失败', icon: 'none' })
+      Taro.showToast({ title: e instanceof Error ? e.message : '加载失败', icon: 'none' })
     }
   }
   usePullDownRefresh(() => {
@@ -43,7 +45,7 @@ export default function Packing() {
   const toggle = async (item: PackingItem) => {
     setBundle({ ...bundle, packing: packing.map(p => p.id === item.id ? { ...p, done: !p.done } : p) })
     try {
-      await api.patch(`/api/packing/${item.id}`, { done: !item.done })
+      await updatePackingItem(tripId, item.id, { done: !item.done }, '我')
     } catch {
       await load()
     }
@@ -54,11 +56,11 @@ export default function Packing() {
     if (!newTitle.trim()) { Taro.showToast({ title: '请填写物品名称', icon: 'none' }); return }
     setBusy(true)
     try {
-      await api.post(`/api/trips/${tripId}/packing`, { title: newTitle.trim(), category: newCat })
+      await createPackingItems(tripId, [{ title: newTitle.trim(), category: newCat }], '我')
       setNewTitle('')
       await load()
     } catch (e) {
-      Taro.showToast({ title: e instanceof ApiFail ? e.message : '添加失败', icon: 'none' })
+      Taro.showToast({ title: e instanceof Error ? e.message : '添加失败', icon: 'none' })
     } finally {
       setBusy(false)
     }
@@ -68,13 +70,15 @@ export default function Packing() {
     Taro.showActionSheet({
       itemList: TEMPLATES.map(t => t.name),
       success: async (r) => {
-        const tpl = TEMPLATES[r.tapIndex]
+        const tpl = PACKING_TEMPLATES[r.tapIndex]
         try {
-          const res = await api.post<{ added: number }>(`/api/trips/${tripId}/packing/template`, { template: tpl.key })
-          Taro.showToast({ title: `已导入 ${res.added} 件`, icon: 'success' })
+          const existing = new Set((bundle?.packing || []).map(pi => pi.title))
+          const fresh = tpl.items.filter(([, title]) => !existing.has(title)).map(([category, title]) => ({ title, category }))
+          await createPackingItems(tripId, fresh, '我')
+          Taro.showToast({ title: `已导入 ${fresh.length} 件`, icon: 'success' })
           await load()
         } catch (e) {
-          Taro.showToast({ title: e instanceof ApiFail ? e.message : '导入失败', icon: 'none' })
+          Taro.showToast({ title: e instanceof Error ? e.message : '导入失败', icon: 'none' })
         }
       },
     })

@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { View, Input, Button, Text, Picker } from '@tarojs/components'
 import Taro from '@tarojs/taro'
-import { api, ApiFail } from '../../api/request'
+import { createTrip, ensureProfile } from '../../rdb/trip'
 
 const EMOJIS = ['🧭', '⛰️', '🏝️', '🏖️', '🏮', '🏯', '🎡', '🚄', '✈️', '🚗', '⛺', '🏂', '🍜', '🥾']
 const COLORS = ['#2f6e4f', '#b5543b', '#3b6ea5', '#c9a04e', '#7d5ba6', '#a0433b']
@@ -29,19 +29,21 @@ export default function TripCreate() {
     if (endDate < startDate) { Taro.showToast({ title: '结束日期不能早于开始日期', icon: 'none' }); return }
     setBusy(true)
     try {
-      const r = await api.post<{ id: number }>('/api/trips', {
+      const me = await ensureProfile()
+      const id = await createTrip({
         title: title.trim(),
         destination: destination.trim(),
+        description: '',
         startDate,
         endDate,
         budget: Number(budget) || 0,
         coverEmoji: emoji,
         coverColor: color,
-      })
+      }, me.nickname)
       Taro.showToast({ title: '旅程已创建', icon: 'success' })
-      Taro.redirectTo({ url: `/pages/trip/index?id=${r.id}` })
+      Taro.redirectTo({ url: `/pages/trip/index?id=${id}` })
     } catch (e) {
-      Taro.showToast({ title: e instanceof ApiFail ? e.message : '创建失败', icon: 'none' })
+      Taro.showToast({ title: e instanceof Error ? e.message : '创建失败', icon: 'none' })
       setBusy(false)
     }
   }

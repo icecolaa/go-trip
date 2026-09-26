@@ -220,6 +220,7 @@ export interface ParsedActivity {
 }
 
 export interface ParsedDay {
+  dayNumber: number
   title?: string
   date?: string | null
   activities: ParsedActivity[]
@@ -227,6 +228,7 @@ export interface ParsedDay {
 
 export interface ParsedGuide {
   days: ParsedDay[]
+  source?: string
 }
 
 export interface GeneratePlanReq {

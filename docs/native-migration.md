@@ -44,7 +44,7 @@
 - [x] 14 个数据模型创建（MCP，2026-09-26）
 - [x] SDK 调研（@cloudbase/wx-cloud-client-sdk 1.8.10，API 形态见二）
 - [x] shared/budget.ts + shared/checkup.ts（纯函数平移，id 改 string）
-- [ ] shared/packing-templates.ts、shared/handbook（内置锦囊）+ sync-days 纯函数
+- [x] shared/packing-templates.ts + sync-days（budget/checkup 同批）
 - [x] miniprogram/src/rdb/{client,case,entities,trip,storage}.ts（2026-09-26，tsc 对新文件自洽；页面报错属预期）
 - [ ] 小程序页面切换（trips/trip/trip-create/activity/budget/packing/journal/handbook/members/map/flywhere/login）
 - [ ] 容器瘦身 + REST（flywhere_watch/share）+ x-wx-source 门槛
