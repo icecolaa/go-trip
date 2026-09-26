@@ -2,20 +2,12 @@ import http from 'node:http';
 import { readFileSync, existsSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { initDb, dbReady, dbBootStatus, dbDriver } from './db.ts';
 import { handleApi } from './routes.ts';
-import { attachWs } from './ws.ts';
 import { json, ApiError } from './util.ts';
-import { readUpload } from './uploads.ts';
-import { purgeExpiredSessions } from './auth.ts';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 // PocketBay 等托管平台通过 PORT 注入端口；GOTRIP_PORT 为本地部署的备用变量
 const PORT = Number(process.env.PORT) || Number(process.env.GOTRIP_PORT) || 8787;
-
-// 数据库在后台初始化（失败按退避重试，见 db.ts 就绪状态注释）：端口必须先监听，
-// 否则云托管内置 MySQL 唤醒期间容器会被判为不健康反复重启，公网域名整段 504。
-void initDb().catch((e) => console.error('[db] 启动循环意外退出（接口将一直 503）：', e?.message || e));
 
 const CLIENT_DIST = path.resolve(__dirname, '../../client/dist');
 const MIME: Record<string, string> = {
@@ -34,8 +26,7 @@ const MIME: Record<string, string> = {
   '.map': 'application/json',
 };
 
-// CORS：H5 静态托管（*.tcloudbaseapp.com）跨域直连云托管公网域名时需要。
-// 浏览器不依赖 cookie，但带 Authorization Bearer，故允许凭据并确保返回具体来源（不能用 *）。
+// CORS：H5 静态托管跨域直连云托管公网域名时需要（阶段二 Web 切 rdb 前暂用）。
 const CORS_ALLOW = (process.env.CORS_ORIGINS || '')
   .split(',').map((s) => s.trim()).filter(Boolean);
 
@@ -47,7 +38,6 @@ function applyCors(req: http.IncomingMessage, res: http.ServerResponse): boolean
       : origin.endsWith('.tcloudbaseapp.com') || origin.endsWith('.wxcloudrun.com');
     if (allowed) {
       res.setHeader('Access-Control-Allow-Origin', origin);
-      res.setHeader('Access-Control-Allow-Credentials', 'true');
       res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PATCH,DELETE,OPTIONS');
       res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Authorization');
     }
@@ -81,34 +71,12 @@ function serveStatic(req: http.IncomingMessage, res: http.ServerResponse): boole
 }
 
 const server = http.createServer(async (req, res) => {
-  // 跨域预检 / 来源校验必须最先处理，否则 503 守卫会拦截 OPTIONS
   if (applyCors(req, res)) return;
   const url = req.url || '/';
   try {
     if (url === '/health' || url === '/healthz') {
-      // 永远 200：平台按状态码判定实例健康，503 会让冷启动期间一直被重启。
-      // 是否真的可用看 body 的 ok / db 字段（ok:false + db:"starting" = 数据库还没就绪）。
-      if (dbReady()) json(res, 200, { ok: true, db: 'ready', driver: dbDriver() });
-      else {
-        const boot = dbBootStatus();
-        json(res, 200, {
-          ok: false, db: 'starting', attempts: boot.attempts,
-          lastError: boot.lastError.slice(0, 200),
-        });
-      }
-      return;
-    }
-    // 数据库未就绪：接口一律 503，不能让请求打到还没建表的 db()。
-    // 静态资源放行——托管平台若用首页做探针，503 会被误判成实例故障。
-    if (!dbReady() && (url.startsWith('/api/') || url.startsWith('/uploads/'))) {
-      json(res, 503, { error: '服务启动中（数据库连接未就绪），请稍后重试' });
-      return;
-    }
-    if (url.startsWith('/uploads/')) {
-      const file = readUpload(url.slice('/uploads/'.length).split('?')[0]);
-      if (!file) return void json(res, 404, { error: 'Not Found' });
-      res.writeHead(200, { 'Content-Type': file.contentType, 'Cache-Control': 'public, max-age=31536000, immutable' });
-      res.end(file.buf);
+      // 无状态代理：恒 200（平台上按状态码判实例健康）
+      json(res, 200, { ok: true, db: 'none', mode: 'proxy' });
       return;
     }
     if (url.startsWith('/api/')) {
@@ -127,16 +95,9 @@ const server = http.createServer(async (req, res) => {
   }
 });
 
-attachWs(server);
-
-// 定期清理过期会话行（校验在 getUserByToken 里做，这里只负责删数据控表体积）
-setInterval(() => { purgeExpiredSessions().catch(() => undefined); }, 6 * 60 * 60 * 1000).unref();
-
 server.listen(PORT, () => {
   console.log('');
-  console.log('  🧭 GoTrip 出发吧 · 服务已启动');
+  console.log('  🧭 GoTrip 出发吧 · 代理服务已启动（数据走 CloudBase 数据模型）');
   console.log(`  ➜ http://localhost:${PORT}`);
-  console.log(`  ➜ 演示账号 demo / demo1234`);
   console.log('');
-  if (!dbReady()) console.log('  ⟳ 数据库初始化中（接口暂回 503，/health 可见进度）');
 });
