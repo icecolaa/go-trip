@@ -3,7 +3,7 @@ import { View, Text, Button, Input, Picker } from '@tarojs/components'
 import Taro, { usePullDownRefresh } from '@tarojs/taro'
 import { loadTripBundle } from '../../rdb/trip'
 import { createPackingItems, deletePackingItem, updatePackingItem } from '../../rdb/ops'
-import { PACKING_TEMPLATES } from '@shared/packing-templates'
+import { PACKING_TEMPLATES } from '../../shared/packing-templates'
 import type { TripBundle, PackingItem } from '../../types'
 
 const CATS = ['证件', '衣物', '电子', '洗护', '药品', '其他']

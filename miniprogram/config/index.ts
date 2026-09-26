@@ -45,7 +45,7 @@ export default defineConfig(async (merge) => {
         // @shared/* 与 @/* 路径别名（与 tsconfig 保持一致）
         const path = require('path')
         chain.resolve.alias
-          .set('@shared', path.resolve(__dirname, '..', 'shared'))
+          .set('@shared', path.resolve(__dirname, '..', '..', 'shared')) // 仓库根 shared/（此前误指 miniprogram/shared，靠已删除的 junction 碰巧能用）
           .set('@', path.resolve(__dirname, '..', 'src'))
       },
     },

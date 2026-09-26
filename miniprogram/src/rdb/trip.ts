@@ -1,6 +1,6 @@
 /** 行程域数据层：profile、行程列表/聚合、增删改 + 活动日志副作用。 */
-import { calcBudget } from '@shared/budget'
-import { planDaysSync } from '@shared/sync-days'
+import { calcBudget } from '../shared/budget'
+import { planDaysSync } from '../shared/sync-days'
 import type {
   Activity, Expense, Profile, Trip, TripBundle, TripCardInfo, TripDay, TripMember,
 } from '../types'
