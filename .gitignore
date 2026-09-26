@@ -19,3 +19,6 @@ work/cloudrun-deploy/
 # 一次性数据迁移令牌（server/src/admin-migrate-token.txt，绝不提交）
 server/src/admin-migrate-token.txt
 work/migration/
+
+# 架构图会话产物（archify 输出，不入库）
+docs/gotrip-architecture.visual-check.*
