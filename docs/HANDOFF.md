@@ -1,7 +1,8 @@
 # 交接文档（HANDOFF）
 
 > 面向下一个接手的开发者或 AI 会话。先读根目录 `CLAUDE.md`（规则手册），再读本文（现状、过程与经验）。
-> 更新：2026-09-27（条目 46：行 id 全链断裂修复——SDK create 回 id / list·get 只回 _id 不对称实锤，两端 entities 归一；1.1.4 带此 bug 待重传 1.1.5）。
+> 更新：2026-09-27（条目 47：会话收尾快照——gotrip-018 上线、1.1.5 已传待设体验版、工具上传通道适配新版异步 API、改版底稿就绪待拍板方向）。
+> 上一条：2026-09-27（条目 46：行 id 全链断裂修复——SDK create 回 id / list·get 只回 _id 不对称实锤，两端 entities 归一；1.1.4 带此 bug 待重传 1.1.5）。
 > 上一条：2026-09-26（条目 45：Web 账密注册通道证实不可用并移除——平台 501 + SDK 吞错双实锤；登录页改登录+游客双通道）。
 > 上一条：2026-09-25（条目 42：第三个环境 + SQL 库接通 + H5 双端）。
 
@@ -11,14 +12,15 @@
 |---|---|
 | **生产环境** | CloudBase `gotrip-d1gb187o991f5260a`（个人版，付费至 2027-03-25）。云托管 gotrip 容器 = **gotrip-018 无状态代理**（2026-09-27 部署，含条目 45/46 Web 修复，bundle index-CPmExgbn.js 线上实测 ✓）（AI/飞哪儿/POI/天气，双通道身份门，不连任何数据库），`/health` 探针 `{"ok":true,"db":"none","mode":"proxy"}`。公网开着（Web 直连需要）。**已合入 master**（Gitee/GitHub 同步，master=5198351 含 GitHub PR#1 合并记录；feat 领先 master 一个 gitignore 提交 fa350f7，下次合并即齐） |
 | **架构（原生化完成）** | 全栈数据模型直连：小程序 `@cloudbase/wx-cloud-client-sdk` models.*（openid 身份）；Web `@cloudbase/js-sdk` 3.10.1（其 `./model` 子路径 **re-export wx-cloud-client-sdk**，两端 API 同构）+ 身份认证（账密+匿名已开启）。14 个 gt_* 模型 `_openid` 行级隔离。设计/映射/进度全在 `docs/native-migration.md`（接手先读它和条目 43/44） |
-| 小程序 | **1.1.5 已上传**（2026-09-27，行 id 归一修复；⚠️走的 miniprogram-ci 降级通道，发布者=ci机器人1，开发者工具没开；要改发布者就开着工具重传）**待设体验版**；12 页 rdb 直连 tsc 0；飞哪儿异步 job（15s 超时已绕开，用户实测 ✓） |
+| 小程序 | **1.1.5 已上传**（行 id 归一修复；ci 通道，发布者=ci机器人1，代码已本地浏览器实测）**待设体验版+真机验收**。upload.js 已适配工具新版异步 API（303+自跳转轮询+keep-alive 坑，395faf4）；工具侧任务仍内部超时——要发布者「冰可乐」就**完全重启开发者工具**后重跑 `npm run upload -- 1.1.5 "desc"` |；12 页 rdb 直连 tsc 0；飞哪儿异步 job（15s 超时已绕开，用户实测 ✓） |
 | Web/H5 | **已恢复可用（阶段二完成，浏览器实测 ✓）**：游客/账密登录 → 建档 → 建行程/导入演示（9 项安排 ✓）→ 13 板块。域名=云托管公网 + 风险提示页（绑自定义域名可去掉）。**Web 与小程序身份不互通**（CloudBase uid vs openid，各一套数据，既定设计）。**条目 45 后：注册入口已移除**（平台不支持纯账密自助注册），正式账号=云控制台「身份认证→用户管理」手动创建；登录页=账密登录+游客模式。条目 46 修复待随容器部署上线 |
 | 容器身份门（双通道） | x-wx-source（小程序 callContainer，公网剥离实测）OR x-gotrip-key=WEB_PROXY_KEY（Web/H5 共享密钥，随 bundle 可见属可接受风险）。环境变量已配在 gotrip-017 |
 | 数据库 | 云开发自带 TDSQL-C MySQL 8.0（端点已由用户经「数据库连接配置」建成公网 43.179.225.7:24735，容器不再需要）；**行程相关 12 表已清空重来**（旧测试数据含丢失活动的行程），当前库内仅浏览器验证产生的 1 匿名用户+1 演示行程（可清） |
 | 仓库 | Gitee+GitHub 双端已同步（feat=fa350f7 含 gitignore 修正，master=5198351）；GitHub push 需本机代理（时好时坏） |
 | 冒烟 | `scripts/smoke.sh` **10/0**（容器代理 9 断言 + shared 纯函数）；旧 111 项 CRUD 冒烟已退役 |
+| **改版底稿** | `docs/miniprogram-features.md`（12 页功能事实+与 Web 差距+现状体检+硬约束，2026-09-27 逐页核对）；**改版方向待拍板：A 对齐 Web DESIGN.md / B 保留 flywhere 暖调做精** |
 | 本地 skill | ip-as-logo 已装 `.zcode/skills/`（`.zcode*/skills-lock.json` 已 gitignore 不入库，用户拍板） |
-| 待办 Top3 | ① 小程序 1.1.4 设体验版 + 真机验收（日志图片上传=云存储首验、AI 解析、锦囊）② 控制台建 Web 账号后自测账密登录（登录页已改登录+游客双通道，见条目 45）③ 清理浏览器验证的匿名身份数据（可选，含条目 45 自测新增的 2~3 条 gt_users 行） |
+| 待办 Top3 | ① **1.1.5 设体验版** → 真机：行程卡点入（46 修复主验）、日志图片上传、AI 解析、锦囊、飞哪儿 ② **控制台建 Web 账号**（身份认证→用户管理）→ 线上登录自测（唯一没验的成功路径）③ **拍板改版方向 A/B** → 按 miniprogram-features.md 出 DESIGN 规范→确认→实施（第一刀：app.css 去重 894→~223 行 + token 化）。可选：清理 gt_users 测试行（备份 work/incident-0115/ 同目录参考条目 45 操作单） |
 
 ## 2026-08~09 主要交付（按主题）
 
@@ -70,6 +72,15 @@
     **账号开通的新正道**：CloudBase 控制台 → 身份认证 → 用户管理 → 新建用户（用户名+密码）→ 用户在 Web 登录页直接登录（首次登录自动建档）。账密登录 API 本身工作正常（4043 校验实测正常），已验至错误路径；成功路径待用户建号后自测一条即闭环。
     **本轮踩坑沉淀**：① **「MCP hint 写着 SDK/provider dependent; verify before use」的警告不是废话**——signUp 正是没先验证的那一环，阶段二验收漏网；② js-sdk v3 auth 返回值形态必须逐一核对（有的 throw、有的 {error}、有的裸 body），照搬 v2/小程序经验会静默吞错；③ IAB 浏览器注入对本页按钮 click 三路全挂（locator/dom_cua/cua 均 timeout）但 fill 正常——fallback 是 `evaluate(() => el.click())`（React 合成事件正常响应）；toast 数秒即逝，抓 toast 要提交后立刻轮询 `.toast-wrap`；④ 抓 SDK 真实错误先 monkey-patch `window.fetch` 再复现，别信 UI toast 的文案（models 层兜底文案会掩盖 auth 层真实 4043）；⑤ 数据模型物理表在 `<envId>` schema 下（`gotrip-d1gb187o991f5260a`.gt_users），不在 gotrip schema（那是旧容器时代的遗留表，仍在但已无人读写）；⑥ 身份认证安全域名加 localhost:5173/127.0.0.1:5173 后本地 dev 可直连测试（本次提交即生效，未等 10 分钟）。
     **▶ 给用户的操作单**：① 控制台建号：CloudBase 控制台 → 身份认证 → 用户管理 → 新建用户（填用户名+密码，如 bingkele/你的密码）→ Web 登录页登录自测（应见「欢迎回来」+昵称「旅行者」，可在「我的」页改昵称）；② 本次修复需**重新部署容器**才上线（Web bundle 在镜像里），确认后跑部署；③ 可选：清理 gt_users 里 2026-09-26 的测试行（本机 IAB 指纹 identifiable：昵称「微信用户」的 21:03 行 + 昵称「旅行者」的最新行）。
+
+47. **会话收尾快照（2026-09-27 凌晨）——本窗口全过程与新窗口接手指南**：本窗口从条目 44 验收单出发，连打两场修复仗并完成一次部署、一次上传、一份改版底稿。**新窗口接手只读三样**：本文状态一览 + 条目 45/46/46b/47 + `docs/miniprogram-features.md`（若做改版）。
+    **本窗口时间线**：① Web 账密自测 → 发现注册假成功/登录报神秘错（条目 45，提交 07018b6）；② 用户点行程报 `/trip/undefined` 整页崩 → 行 id 全链断裂（条目 46，提交 7d91f70）；③ 用户确认后部署 gotrip-018 上线 + 1.1.5 上传（ci 通道，提交 3b2c73c 刷新状态）；④ 工具通道重传攻关：适配新版异步任务 API（提交 395faf4），传输层全通但工具侧任务内部超时，待重启工具；⑤ 改版功能盘点中发现 miniprogram 自嵌套事故并完整恢复（条目 46b，提交 a77cefc/1c48c8a），交付改版底稿。
+    **关键结论（三条主线的最终态）**：
+    - **线上（gotrip-018）**：45/46 全部 Web 修复已生效并线上实测（登录页无注册 tab、bundle index-CPmExgbn.js）；账密登录 API 正常、注册入口按平台能力移除，账号=控制台手动创建。
+    - **小程序 1.1.5**：已上传（ci机器人1，代码=本地浏览器全链路实测过的同一份），待设体验版；工具通道发布者问题解法见状态一览。
+    - **改版**：功能底稿已交付；**方向 A/B 未拍板**，这是新窗口的第一个待决问题。
+    **本窗口新增踩坑（细节散在 45/46/46b，此处收口）**：① CloudBase 两套 API 都「文档不可信」——auth 方法吞错、models 三接口形状不对称、signup 501，一切以实测为准（裸调端点/页面内直驱 SDK）；② 微信开发者工具 HTTP API 已升级为异步任务模式（303 自跳转轮询），老脚本全部失效，适配代码在 `miniprogram/scripts/upload.js`；③ 资源管理器整份拖拽仓库子目录=目录级事故，恢复套路见 46b；④ 验收「看起来对」不够——行程页 9 项安排渲染正常但分组/编辑全断，**每轮验收必须点进一层交互**。
+    **环境备忘**：身份认证安全域名已含 localhost:5173/127.0.0.1:5173（本地 dev 直连测试用）；本窗口后台还挂着 vite(5173)+server(8787)（`MYSQL_*` 已清空启动），新窗口本地验证自己重跑 `npm run dev`；miniprogram 上传密钥备份在 `work/incident-0115/`。
 
 46b. **miniprogram 自嵌套事故与恢复（2026-09-27 01:45）**：仓库根的整份内容（含 .git）被拷贝进 miniprogram/（原版内容被挤到 miniprogram/miniprogram/ 一层，src/project.config.json 等在 git 视角「被删」）。肇事者已确认：用户资源管理器误操作（另一并发会话 sess_e2070ae5 只在 E:/code/picture/gotrip-ui 操作截图素材，与本仓库无关）。已完整恢复：原版从嵌套层归位、根拷贝垃圾清除、git checkout 补齐、private.key 先备份到 work/incident-0115/ 再确认完好、tsc 0、git status 干净。**教训**：miniprogram 目录再次出现「内容像仓库根/嵌套 .git」即目录级拷贝事故，恢复套路=原版在嵌套层找回归位 + git checkout + 密钥先备份。
 46. **行 id 全链断裂修复：SDK create/list/get 返回不对称（2026-09-27，本地浏览器全链路复验过）**：用户点行程卡报整页崩，URL 是 `/trip/undefined`。**根因（页面内直驱 SDK 实测三接口返回形状）**：① `create` 只回 `{data:{id}}`，而 `list`/`get` 的行**只有 `_id` 没有 `id`**——`case.ts` 的 SYS 集合把 `_id` 原样保留，全链代码读 `.id` 全是 undefined：仪表盘卡片跳转、行程页天分组（`a.dayId === d.id` 永假）、活动编辑/删除/reorder 定位、syncDays，**两端（client 与 miniprogram 的 rdb 七件套同构）同病**。② 雪上加霜：`get` 未命中回 `{data:{}}` **空对象而非 null**，`getRowById` 的 truthy 判断被空对象骗过，「行程不存在」分支永远走不到（先渲染空壳行程页，再因 Countdown 拿 undefined 日期 `split` 崩整页）。
