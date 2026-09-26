@@ -38,20 +38,29 @@
 - 小程序删：pages/members 的账号部分（保留占位成员管理）、ws.ts、location 上报；trips 页静默登录改 profile 建档。
 - miniprogram/src/types.ts：重写为 rdb 视图（id: string，去 Invite/online 等协作字段）。shared/types.ts 本阶段**不动**（Web 还在用旧 API）。
 
-## 五、进度清单
+## 五、进度清单（2026-09-26 刷新）
 
-- [x] POC：MySQL 表无 CUSTOM 规则（决策依据）；PG 不可用
+- [x] POC：MySQL 表 ACL 无 CUSTOM（去协作决策依据）；PG 不可用
 - [x] 14 个数据模型创建（MCP，2026-09-26）
-- [x] SDK 调研（@cloudbase/wx-cloud-client-sdk 1.8.10，API 形态见二）
-- [x] shared/budget.ts + shared/checkup.ts（纯函数平移，id 改 string）
-- [x] shared/packing-templates.ts + sync-days（budget/checkup 同批）
-- [x] miniprogram/src/rdb/{client,case,entities,trip,storage}.ts（2026-09-26，tsc 对新文件自洽；页面报错属预期）
-- [ ] 小程序页面切换（trips/trip/trip-create/activity/budget/packing/journal/handbook/members/map/flywhere/login）
-- [ ] 容器瘦身 + REST（flywhere_watch/share）+ x-wx-source 门槛
-- [ ] 云存储上传封装（头像/封面/日志图）
-- [ ] 冒烟改造（容器端点段 + REST 数据段）
-- [ ] 部署 + 真机验收（1.1.0 体验版）
+- [x] SDK 调研（@cloudbase/wx-cloud-client-sdk 1.8.10；js-sdk 3.10.1 的 ./model re-export 之，两端同构）
+- [x] shared 纯函数（budget/checkup/sync-days/packing-templates）
+- [x] 小程序 rdb 七件套（client/case/entities/trip/ops/seed/storage）+ 12 页切换 tsc 0
+- [x] 容器瘦身：无状态代理（routes.ts 1549→约 230 行），双通道身份门（x-wx-source OR x-gotrip-key=WEB_PROXY_KEY）
+- [x] 冒烟重写 10/0；UTC+8 日期偏移修复×4；写后读延迟修复（createMany idList，三处）
+- [x] gotrip-015~017 部署；小程序 1.1.0→1.1.4 上传；devtools 实测行程创建 ✓、飞哪儿 ✓
+- [x] **阶段二完成**：Web 切 js-sdk rdb + 身份认证（账密+匿名），client/src/rdb 移植，13 tabs 迁移，删 api.ts/JoinPage/SharePage；浏览器实测游客登录→建档→导入演示行程 9 项安排 ¥1736 全链路 ✓；gotrip-017 上线
+- [ ] 用户验收：小程序 1.1.4 设体验版（真机：日志图片上传/AI/锦囊）；Web 版自己开账号密码玩一遍
+- [ ] 待清：浏览器验证的匿名身份数据（不影响正式用户）
 
+## 六、风险备忘
+
+- ~~models.* 身份注入未验证~~ 已验证：devtools（小程序）+ 浏览器（Web 匿名）双双通过
+- ~~pageSize 上限未知~~ 已修：listRows 显式 100（平台缺省 10 条，曾致静默截断）
+- ~~环境级 API Key~~ 已不需要：价格记忆客户端化，容器零数据库访问
+- 「写后立即 list」有平台可见性延迟——新行 id 必须取 createMany 返回的 idList（已全仓库执行）
+- 云托管公网域名必须加入「安全域名」（身份认证），漏配报 Unknown error
+- callContainer 15s 硬超时：长任务一律异步 job（飞哪儿模式：POST 秒回 jobId + GET 轮询，MaxNum 锁 1）
+- Windows 用户级环境变量残留 MYSQL 死端点——本地起 server 必须显式清空 MYSQL_*
 ## 六、风险备忘
 
 - models.* 对 MYSQL 模型的权限隔离/`_openid` 注入**未真机验证**——第一件事是开发者工具跑通一条 create→list 回读。
