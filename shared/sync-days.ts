@@ -16,13 +16,21 @@ export interface DaysSyncPlan {
 
 const MAX_DAYS = 90;
 
+/** 本地日期格式化（不能用 toISOString——UTC+8 会把日期整体偏移一天） */
+export function localDate(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
 export function dateRange(startISO: string, endISO: string): string[] {
   const out: string[] = [];
   const start = new Date(startISO + 'T00:00:00');
   const end = new Date(endISO + 'T00:00:00');
   if (isNaN(start.getTime()) || isNaN(end.getTime()) || end < start) return out;
   for (const d = new Date(start); d <= end && out.length < MAX_DAYS; d.setDate(d.getDate() + 1)) {
-    out.push(d.toISOString().slice(0, 10));
+    out.push(localDate(d));
   }
   return out;
 }

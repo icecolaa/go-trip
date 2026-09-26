@@ -37,7 +37,8 @@ export default function Budget() {
 
   const members: TripMember[] = bundle.members
   const payer = members[Math.min(payerIdx, members.length - 1)]
-  const today = new Date().toISOString().slice(0, 10)
+  const _now = new Date()
+  const today = `${_now.getFullYear()}-${String(_now.getMonth() + 1).padStart(2, '0')}-${String(_now.getDate()).padStart(2, '0')}`
 
   const add = async () => {
     if (busy) return

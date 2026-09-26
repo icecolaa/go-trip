@@ -1,15 +1,12 @@
 #!/bin/bash
-# GoTrip API 冒烟测试：认证、旅程、成员/邀请、行程、预算、清单、日志、AI、分享、天气
-# 说明：JSON 请求体一律先写入 UTF-8 临时文件再 --data-binary 上传，规避 Windows 控制台 GBK 编码问题
-# 同理，脚本里的 python -c 片段含中文字面量（如按 displayName 取成员 id）：Git Bash 会把
-# 命令行参数按 GBK 递交，python 侧比对失败 → 变量取空 → 接口路径缺段，伪装成「接口不存在」的假故障。
-# UTF-8 模式下 -c 源码与 stdio 都按 UTF-8 解码，Windows/Linux 一致。
+# GoTrip 冒烟（rdb 直连架构，2026-09-26）：
+#   A. 容器代理面（/health + x-wx-source 门槛 + AI/POI/天气代理）
+#   B. 静态检查（shared 纯函数）
+# 旧 111 项 CRUD 冒烟随数据层迁 CloudBase 数据模型而退役（客户端直连，无法从脚本侧伪造微信身份）。
 export PYTHONUTF8=1
 export PYTHONIOENCODING=utf-8
-BASE=http://localhost:8787
+BASE=${SMOKE_BASE:-http://localhost:8787}
 PASS=0; FAIL=0
-BJ=/tmp/gt_body.json
-SUF=$RANDOM
 
 check() {
   local name="$1" actual="$2" expect="$3"
@@ -20,379 +17,39 @@ check() {
   fi
 }
 
-jget() { echo "$1" | python -c "import sys,json; d=json.load(sys.stdin); print($2)" 2>/dev/null; }
+echo "== A1. 健康 / 门槛 =="
+check "health 200 proxy 模式" "$(curl -s -m 5 $BASE/health)" '"mode":"proxy"'
+check "无 x-wx-source 一律 403" "$(curl -s -m 5 -o /dev/null -w '%{http_code}' $BASE/api/ai/status)" '^403$'
+check "带 x-wx-source 可达" "$(curl -s -m 5 $BASE/api/ai/status -H 'x-wx-source: wx')" 'configured'
+check "旧 CRUD 路由已删(404)" "$(curl -s -m 5 -o /dev/null -w '%{http_code}' $BASE/api/trips -H 'x-wx-source: wx')" '^404$'
+check "伪造 openid 无 source 仍 403" "$(curl -s -m 5 -o /dev/null -w '%{http_code}' -X POST $BASE/api/assistant -H 'Content-Type: application/json' -H 'x-wx-openid: ofake' -d '{"history":[]}')" '^403$'
 
-req() { # method, path, token, [json-body]
-  local m="$1" p="$2" t="$3" data="$4"
-  local args=(curl -s -X "$m" "$BASE$p" -H "Authorization: Bearer $t")
-  if [ -n "$data" ]; then
-    printf '%s' "$data" > "$BJ"
-    args+=(-H "Content-Type: application/json" --data-binary @"$BJ")
-  fi
-  "${args[@]}"
-}
+echo "== A2. 代理端点 =="
+check "POI 兜底(内置库)" "$(curl -s -m 15 "$BASE/api/poi/search?q=%E6%B4%B1%E6%B5%B7&city=%E5%A4%A7%E7%90%86" -H 'x-wx-source: wx')" '"source"'
+check "天气代理(Open-Meteo)" "$(curl -s -m 15 "$BASE/api/weather?place=%E5%A4%A7%E7%90%86&dates=2026-10-05" -H 'x-wx-source: wx')" 'tempMax'
+check "锦囊生成(内置兜底)" "$(printf '{"city":"大理","days":2,"interests":[]}' > /tmp/gt_hb.json; curl -s -m 60 -X POST $BASE/api/trips/1/handbook/generate -H 'Content-Type: application/json' -H 'x-wx-source: wx' --data-binary @/tmp/gt_hb.json)" '"title"'
+check "geocode 端点结构" "$(printf '{"items":[{"id":"a1","title":"洱海","place":""}]}' > /tmp/gt_gc.json; curl -s -m 30 -X POST $BASE/api/poi/geocode -H 'Content-Type: application/json' -H 'x-wx-source: wx' --data-binary @/tmp/gt_gc.json)" '"coords"'
 
-echo "== 认证 =="
-R=$(req POST /api/auth/register "" "{\"username\":\"smoke_a_$SUF\",\"password\":\"smoke123\",\"nickname\":\"冒烟甲\"}")
-check "注册用户A" "$R" '"travelId"'
-TA=$(jget "$R" "d['token']")
-R=$(req POST /api/auth/register "" "{\"username\":\"smoke_b_$SUF\",\"password\":\"smoke123\",\"nickname\":\"冒烟乙\"}")
-check "注册用户B" "$R" '"travelId"'
-TB=$(jget "$R" "d['token']")
-R=$(req POST /api/auth/register "" '{"username":"BAD!","password":"1"}')
-check "非法用户名被拒绝" "$R" '用户名需为'
-R=$(req POST /api/auth/login "" '{"username":"nobody_xx","password":"wrongpass"}')
-check "错误密码被拒绝" "$R" '用户名或密码错误'
-R=$(req PATCH /api/me "$TA" '{"nickname":"冒烟甲改","bio":"喜欢爬山"}')
-check "更新个人资料(中文)" "$R" '冒烟甲改'
-R=$(req GET /api/me "")
-check "未登录访问受保护接口" "$R" '请先登录'
+echo "== B. 静态检查（shared 纯函数） =="
+node --input-type=module -e "
+import { calcBudget } from './shared/budget.ts';
+import { checkupTrip } from './shared/checkup.ts';
+import { planDaysSync } from './shared/sync-days.ts';
+const b = calcBudget(
+  [{ amount: 100, category: '餐', payerMemberId: 'a', splitMode: 'equal', participants: ['a','b'] }],
+  [{ id: 'a' }, { id: 'b' }]);
+if (b.total !== 100 || b.perMember.find(m => m.memberId === 'b')?.share !== 50) { console.error('calcBudget 数值不对'); process.exit(1); }
+const c = checkupTrip(
+  [{ id: 'd1', dayNumber: 1, date: '2026-10-01' }],
+  [{ id: 'x', dayId: 'd1', time: '10:00', endTime: null, title: 'A' }, { id: 'y', dayId: 'd1', time: '11:20', endTime: null, title: 'B', place: 'P' }]);
+if (!c.some(f => f.code === 'tight-transfer')) { console.error('checkup 漏报转场紧张'); process.exit(1); }
+const p = planDaysSync([{ id: 'k1', date: '2026-10-02', dayNumber: 1 }], '2026-10-01', '2026-10-03');
+if (p.keep.length !== 1 || p.create.length !== 2 || p.deleteIds.length !== 0 || !p.keep[0].dayNumberChanged) { console.error('syncDays 计划不对'); process.exit(1); }
+console.log('SMOKE_SHARED_OK');
+" 2>&1 | grep -q "SMOKE_SHARED_OK" \
+  && check "shared 纯函数（预算/体检/同步）" "SMOKE_SHARED_OK" "SMOKE_SHARED_OK" \
+  || check "shared 纯函数（预算/体检/同步）" "failed" "SMOKE_SHARED_OK"
 
-echo "== 旅程 =="
-R=$(req POST /api/trips "$TA" '{"title":"杭州三日游","destination":"杭州","startDate":"2026-10-01","endDate":"2026-10-03","budget":3000,"coverEmoji":"🏞️","coverColor":"#2f6e4f"}')
-check "创建旅程" "$R" '"id"'
-TRIP=$(jget "$R" "d['id']")
-R=$(req GET /api/trips "$TA")
-check "旅程列表含新旅程" "$R" '杭州三日游'
-R=$(req GET /api/trips/$TRIP "$TA")
-check "旅程详情(3天)" "$R" '"dayNumber":3'
-R=$(req GET /api/trips/$TRIP "$TB")
-check "非成员访问被拒" "$R" '不是该旅程的成员'
-R=$(req PATCH /api/trips/$TRIP "$TA" '{"endDate":"2026-10-04","budget":4000}')
-check "延长行程至4天" "$R" '"dayNumber":4'
-R=$(req PATCH /api/trips/$TRIP "$TB" '{"title":"hack"}')
-check "非成员修改被拒" "$R" '不是该旅程的成员'
-
-echo "== 成员与邀请 =="
-R=$(req POST /api/trips/$TRIP/invites "$TA" '{"maxUses":5,"expiresDays":7}')
-check "创建邀请" "$R" '"code"'
-CODE=$(jget "$R" "d['code']")
-R=$(req GET /api/invites/$CODE "")
-check "公开查看邀请" "$R" '杭州三日游'
-R=$(req POST /api/invites/$CODE/join "$TB" '')
-check "用户B通过邀请加入" "$R" '"tripId"'
-MB_USER=$(req GET "/api/users/search?q=smoke_b_$SUF" "$TA")
-MB_TRAVEL=$(jget "$MB_USER" "d[0]['travelId']")
-R=$(req POST /api/trips/$TRIP/members "$TA" "{\"travelId\":$MB_TRAVEL}")
-check "重复添加已有成员" "$R" '已经在旅程中'
-R=$(req POST /api/trips/$TRIP/members "$TA" '{"travelId":999999}')
-check "直接添加不存在的用户" "$R" '没有找到'
-R=$(req GET /api/trips/$TRIP/members "$TA")
-check "成员列表(2人)" "$R" '冒烟乙'
-MEM_B=$(jget "$R" "[m['id'] for m in d if m['displayName']=='冒烟乙'][0]")
-MEM_A=$(jget "$R" "[m['id'] for m in d if m['displayName']=='冒烟甲改'][0]")
-R=$(req POST /api/trips/$TRIP/members "$TA" '{"displayName":"占位阿姨","avatarColor":"#8a6d3b"}')
-check "添加占位成员" "$R" '占位阿姨'
-PH_ID=$(jget "$R" "d['id']")
-R=$(req PATCH /api/trips/$TRIP/members/$MEM_B "$TA" '{"role":"admin"}')
-check "提升B为管理员" "$R" '"role":"admin"'
-R=$(req POST /api/trips/$TRIP/location "$TB" '{"lat":30.25,"lng":120.16,"city":"杭州"}')
-check "更新成员位置" "$R" '"ok":true'
-R=$(req GET "/api/users/search?q=$MB_TRAVEL" "$TA")
-check "按旅行ID搜索用户" "$R" "smoke_b_$SUF"
-R=$(req PATCH /api/trips/$TRIP/members/$MEM_B "$TA" '{"role":"editor"}')
-check "降级B为编辑" "$R" '"role":"editor"'
-
-echo "== 行程与活动 =="
-DAYS=$(req GET /api/trips/$TRIP "$TA")
-DAY1=$(jget "$DAYS" "[x['id'] for x in d['days'] if x['dayNumber']==1][0]")
-DAY2=$(jget "$DAYS" "[x['id'] for x in d['days'] if x['dayNumber']==2][0]")
-R=$(req POST /api/days/$DAY1/activities "$TB" '{"title":"西湖断桥","time":"09:00","kind":"sight","place":"断桥残雪","lat":30.259,"lng":120.15,"cost":0}')
-check "B添加活动(编辑权限)" "$R" '"id"'
-ACT1=$(jget "$R" "d['id']")
-R=$(req POST /api/days/$DAY1/activities "$TA" '{"title":"楼外楼午餐","time":"12:00","kind":"food","cost":150}')
-check "A添加活动" "$R" '"id"'
-ACT2=$(jget "$R" "d['id']")
-R=$(req PATCH /api/activities/$ACT1 "$TA" '{"cost":30,"notes":"记得带学生证"}')
-check "修改活动" "$R" '"ok":true'
-R=$(req POST /api/trips/$TRIP/activities/reorder "$TA" "{\"items\":[{\"id\":$ACT1,\"dayId\":$DAY1,\"sort\":1},{\"id\":$ACT2,\"dayId\":$DAY1,\"sort\":0}]}")
-check "活动排序交换" "$R" '"ok":true'
-R=$(req POST /api/trips/$TRIP/days "$TA" '{"title":"乌镇一日","date":"2026-10-05"}')
-check "追加行程日" "$R" '"id"'
-R=$(req POST /api/days/$DAY2/activities "$TB" '{"title":"","kind":"sight"}')
-check "空标题活动被拒" "$R" '请填写行程内容'
-
-echo "== 预算 =="
-R=$(req POST /api/trips/$TRIP/expenses "$TA" "{\"amount\":150,\"title\":\"楼外楼午餐\",\"category\":\"餐饮\",\"payerMemberId\":$MEM_A,\"date\":\"2026-10-01\"}")
-check "记账" "$R" '"id"'
-R=$(req POST /api/trips/$TRIP/expenses "$TB" '{"amount":88,"title":"地铁交通","category":"交通"}')
-check "B记账" "$R" '"id"'
-EXP2=$(jget "$R" "d['id']")
-R=$(req PATCH /api/expenses/$EXP2 "$TB" '{"amount":66}')
-check "修改账目" "$R" '"ok":true'
-R=$(req POST /api/trips/$TRIP/expenses "$TA" '{"amount":-5,"title":"非法"}')
-check "非法金额被拒" "$R" '请填写正确的金额'
-BUNDLE=$(req GET /api/trips/$TRIP "$TA")
-TOTAL=$(jget "$BUNDLE" "d['budget']['total']")
-check "预算汇总(216=150+66)" "$TOTAL" '^216$'
-SETTLE=$(jget "$BUNDLE" "str(d['budget']['settlements'])[:160]")
-echo "      (结算建议: $SETTLE)"
-
-echo "== 打包清单 =="
-R=$(req POST /api/trips/$TRIP/packing "$TA" '{"items":[{"title":"充电宝","category":"电子"},{"title":"防晒霜","category":"洗护","quantity":2}]}')
-check "批量添加物品" "$R" '"ids":\['
-PK1=$(jget "$R" "d['ids'][0]")
-R=$(req POST /api/trips/$TRIP/packing/template "$TA" '{"template":"basic"}')
-check "导入打包模板" "$R" '"added"'
-R=$(req PATCH /api/packing/$PK1 "$TA" '{"done":true}')
-check "勾选物品" "$R" '"ok":true'
-
-echo "== 旅行日志与动态 =="
-R=$(req POST /api/trips/$TRIP/journal "$TA" "{\"content\":\"西湖的日落太美了！\",\"mood\":\"🥰\",\"dayId\":$DAY1}")
-check "发布日志" "$R" '"id"'
-J1=$(jget "$R" "d['id']")
-R=$(req PATCH /api/journal/$J1 "$TB" '{"content":"改别人的日志"}')
-check "他人改日志被拒" "$R" '只能编辑自己的日志'
-R=$(req PATCH /api/journal/$J1 "$TA" '{"content":"西湖的日落太美了，明天去灵隐寺。"}')
-check "作者改日志" "$R" '"ok":true'
-R=$(req POST /api/trips/$TRIP/journal "$TA" '{"content":"图片过滤冒烟","images":[{"full":"javascript:alert(1)","thumb":"http://evil.example/x.png"},{"full":"/uploads/smoke_ok.jpg","thumb":"javascript:alert(2)"}]}')
-check "发布日志(含非法图片)" "$R" '"id"'
-J2=$(jget "$R" "d['id']")
-BUNDLE=$(req GET /api/trips/$TRIP "$TA")
-check "非法图片被过滤" "$(jget "$BUNDLE" "len([n for n in d['journal'] if n['id']==$J2][0]['images'])")" '^1$'
-check "thumb非法回退full" "$(jget "$BUNDLE" "[n for n in d['journal'] if n['id']==$J2][0]['images'][0]['thumb']")" '^/uploads/smoke_ok\.jpg$'
-check "动态流有记录" "$BUNDLE" '创建了旅程'
-
-echo "== 行程体检 =="
-R=$(curl -s -o /dev/null -w "%{http_code}" "$BASE/api/trips/1/checkup")
-check "体检未登录拦截(401)" "$R" '^401$'
-R=$(req POST /api/days/$DAY1/activities "$TA" '{"title":"体检重叠A","time":"09:00","endTime":"12:00","place":"西湖"}')
-CKA=$(jget "$R" "d['id']")
-R=$(req POST /api/days/$DAY1/activities "$TA" '{"title":"体检重叠B","time":"10:30","place":"灵隐寺"}')
-CKB=$(jget "$R" "d['id']")
-R=$(req POST /api/days/$DAY1/activities "$TA" '{"title":"体检转场C","time":"13:15","place":"断桥残雪"}')
-CKC=$(jget "$R" "d['id']")
-R=$(req GET /api/trips/$TRIP/checkup "$TA")
-check "体检接口(200)" "$(echo "$R" | head -c 20)" '"findings"'
-check "体检检出时间重叠" "$R" '时间重叠'
-check "体检检出转场紧张" "$R" '分钟转场'
-req DELETE /api/activities/$CKA "$TA" > /dev/null
-req DELETE /api/activities/$CKB "$TA" > /dev/null
-req DELETE /api/activities/$CKC "$TA" > /dev/null
-R=$(req GET /api/trips/$TRIP/checkup "$TA")
-check "清理后体检无冲突" "$(jget "$R" "d['warnCount']")" '^0$'
-
-echo "== POI / 天气 / AI =="
-R=$(req GET "/api/poi/search?q=%E8%A5%BF%E6%B9%96&city=%E6%9D%AD%E5%B7%9E" "$TA")
-check "POI搜索返回结果" "$R" 'lat'
-R=$(req GET "/api/trips/$TRIP/weather" "$TA")
-check "天气查询" "$R" 'date|"error"'
-R=$(req GET /api/ai/status "$TA")
-check "AI状态接口" "$R" '"enabled"'
-R=$(req POST /api/trips/$TRIP/ai/parse-guide "$TA" '{"text":"Day1 西湖一日游 上午 断桥残雪"}')
-GUIDE_JSON='{"text":"Day1 09:30 人民公园喝盖碗茶\n15:00 武侯祠"}'
-printf '%s' "$GUIDE_JSON" > "$BJ"
-R=$(curl -s -X POST "$BASE/api/trips/$TRIP/ai/parse-guide" -H "Authorization: Bearer $TA" -H "Content-Type: application/json" --data-binary @"$BJ" --max-time 90)
-P_SRC=$(jget "$R" "d.get('source')")
-check "AI攻略解析(ai或builtin降级)" "$P_SRC" '^(ai|builtin)$'
-if [ "$P_SRC" = "ai" ]; then
-  check "AI解析出的天数" "$(jget "$R" "len(d.get('days',[]))")" '^[1-9]$'
-fi
-R=$(req POST /api/trips/$TRIP/ai/generate "$TA" '{"city":"杭州","days":2}')
-G_SRC=$(jget "$R" "d.get('source')")
-check "AI行程生成(ai或builtin降级)" "$G_SRC" '^(ai|builtin)$'
-if [ "$G_SRC" = "ai" ]; then
-  check "AI生成的天数" "$(jget "$R" "len(d.get('days',[]))")" '^2$'
-fi
-
-echo "== AI 精准替换某几天 =="
-TARGET_JSON='{"text":"D1：10月1日：测试路线A-B\n8:00 冒烟活动甲\n14:00 冒烟活动乙"}'
-printf '%s' "$TARGET_JSON" > "$BJ"
-R=$(curl -s -X POST "$BASE/api/trips/$TRIP/ai/parse-guide" -H "Authorization: Bearer $TA" -H "Content-Type: application/json" --data-binary @"$BJ" --max-time 90)
-check "解析识别D1天号" "$(jget "$R" "d['days'][0]['dayNumber']")" '^1$'
-printf '%s' "$R" > "$BJ"
-APPLY_BODY=$(python -c "
-import json,sys
-g=json.load(open(sys.argv[1],encoding='utf-8'))
-print(json.dumps({'guide':g,'targeted':True},ensure_ascii=False))
-" "$BJ")
-printf '%s' "$APPLY_BODY" > "$BJ"
-R=$(curl -s -X POST "$BASE/api/trips/$TRIP/ai/apply" -H "Authorization: Bearer $TA" -H "Content-Type: application/json" --data-binary @"$BJ" --max-time 90)
-check "targeted替换识别天" "$(jget "$R" "d.get('replacedDays')")" '\[1\]'
-check "targeted写入活动" "$(jget "$R" "d.get('activities')")" '^2$'
-BAD_JSON='{"text":"D9：10月9日：越界的天\n10:00 不应写入"}'
-printf '%s' "$BAD_JSON" > "$BJ"
-R=$(curl -s -X POST "$BASE/api/trips/$TRIP/ai/parse-guide" -H "Authorization: Bearer $TA" -H "Content-Type: application/json" --data-binary @"$BJ" --max-time 90)
-printf '%s' "$R" > "$BJ"
-APPLY_BODY=$(python -c "
-import json,sys
-g=json.load(open(sys.argv[1],encoding='utf-8'))
-print(json.dumps({'guide':g,'targeted':True},ensure_ascii=False))
-" "$BJ")
-printf '%s' "$APPLY_BODY" > "$BJ"
-R=$(curl -s -X POST "$BASE/api/trips/$TRIP/ai/apply" -H "Authorization: Bearer $TA" -H "Content-Type: application/json" --data-binary @"$BJ" --max-time 90)
-check "targeted越界天号被拒" "$R" '无法定位第'
-
-echo "== 旅行锦囊 =="
-R=$(req GET /api/trips/$TRIP/handbook "$TA")
-check "锦囊初始为空" "$R" '^\[\]$'
-R=$(req POST /api/trips/$TRIP/handbook/generate "$TA" '{"interests":["美食","自然"]}')
-check "按目的地生成锦囊" "$R" '"category"'
-GEN_COUNT=$(jget "$R" "len(d)")
-echo "      (生成 $GEN_COUNT 张卡片)"
-R=$(req POST /api/trips/$TRIP/handbook "$TA" '{"category":"tip","icon":"🧾","title":"我们的约定","summary":"团队内部","items":[{"label":"集合","text":"每天 9:00 大堂集合"}]}')
-check "添加自定义卡片" "$R" '"source":"custom"'
-CUSTOM_ID=$(jget "$R" "d['id']")
-R=$(req POST /api/trips/$TRIP/handbook "$TA" '{"category":"tip","title":"缺内容","items":[]}')
-check "空条目卡片被拒" "$R" '请至少写一条内容'
-R=$(req GET /api/trips/$TRIP/handbook "$TB")
-check "成员可读锦囊" "$R" '我们的约定'
-R=$(req DELETE /api/handbook/$CUSTOM_ID "$TA")
-check "删除自定义卡片" "$R" '"ok":true'
-R=$(req PATCH /api/trips/$TRIP "$TA" '{"destination":"大理 → 丽江"}')
-check "改目的地为多城" "$R" '"ok":true'
-R=$(req POST /api/trips/$TRIP/handbook/generate "$TA" '{}')
-MULTI=$(jget "$R" "len(d)")
-MULTI_SRC=$(jget "$R" "d[0].get('source') if d else 'none'")
-if [ "$MULTI_SRC" = "ai" ]; then
-  # 配置 AI 时由大模型生成（约 5-6 张），仍须有效
-  check "多目的地锦囊AI生成(有效)" "$MULTI" '^([4-9]|1[0-9])$'
-  echo "      (AI 生成 $MULTI 张卡片)"
-else
-  # 未配置 AI 时内置库合并：大理4 + 丽江5
-  check "多目的地锦囊内置合并(>=8张)" "$MULTI" '^((8|9)|1[0-9])$'
-  echo "      (内置合并生成 $MULTI 张卡片)"
-fi
-
-echo "== 分享 =="
-R=$(req POST /api/trips/$TRIP/share "$TA" '{"enable":true}')
-check "开启分享链接" "$R" '"shareToken"'
-TOKEN=$(jget "$R" "d['shareToken']")
-R=$(req GET /api/share/$TOKEN "")
-check "公开访问分享页" "$R" '杭州三日游'
-R=$(req POST /api/trips/$TRIP/share "$TA" '{"enable":false}')
-check "关闭分享" "$R" 'null'
-R=$(req GET /api/share/$TOKEN "")
-check "关闭后分享失效" "$R" '不存在或已关闭'
-
-echo "== 图片上传与攻略链接 =="
-TINY_JPEG_B64='/9j/4AAQSkZJRgABAQEAYABgAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0aHBwcJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/2wBDAQkJCQwLDBgNDRgyIRwhMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjL/wAARCAABAAEDASIAAhEBAxEB/8QAHwAAAQUBAQEBAQEAAAAAAAAAAAECAwQFBgcICQoL/8QAtRAAAgEDAwIEAwUFBAQAAAF9AQIDAAQRBRIhMUEGE1FhByJxFDKBkaEII0KxwRVS0fAkM2JyggkKFhcYGRolJicoKSo0NTY3ODk6Q0RFRkdISUpTVFVWV1hZWmNkZWZnaGlqc3R1dnd4eXqDhIWGh4iJipKTlJWWl5iZmqKjpKWmp6ipqrKztLW2t7i5usLDxMXGx8jJytLT1NXW19jZ2uHi4+Tl5ufo6erx8vP09fb3+Pn6/9oADAMBAAIRAxEAPwD3+iiigD//2Q=='
-python -c "
-import json
-tiny = '$TINY_JPEG_B64'
-open('up_body.json', 'w', encoding='utf-8').write(json.dumps({'images': ['data:image/jpeg;base64,' + tiny, 'data:image/jpeg;base64,' + tiny]}))
-"
-UP=$(curl -s -m 30 -X POST "$BASE/api/trips/$TRIP/uploads" -H "Authorization: Bearer $TA" -H "Content-Type: application/json" --data-binary @up_body.json)
-IMG_URL=$(echo "$UP" | python -c "import sys,json; d=json.load(sys.stdin); print(d['images'][0]['full'] if d.get('images') else 'ERR:'+json.dumps(d)[:80])")
-check "图片上传返回路径" "$IMG_URL" '^/uploads/'
-R=$(curl -s -o /dev/null -w "%{http_code}" "$BASE$IMG_URL")
-check "上传图片可访问(200)" "$R" '^200$'
-printf '%s' '{"type":"xhs","title":"验收链接","url":"https://www.xiaohongshu.com/explore/acc","note":"验收"}' > link_body.json
-R=$(curl -s -X POST "$BASE/api/trips/$TRIP/links" -H "Authorization: Bearer $TA" -H "Content-Type: application/json" --data-binary @link_body.json)
-check "收藏攻略链接" "$R" '"type":"xhs"'
-LNK=$(echo "$R" | python -c "import sys,json; print(json.load(sys.stdin)['id'])")
-R=$(curl -s -o /dev/null -w "%{http_code}" -X DELETE "$BASE/api/links/$LNK" -H "Authorization: Bearer $TA")
-check "删除攻略链接(200)" "$R" '^200$'
-R=$(curl -s -o /dev/null -w "%{http_code}" -X POST "$BASE/api/trips/$TRIP/links" -H "Authorization: Bearer $TA" -H "Content-Type: application/json" --data-binary '{"type":"web","title":"x","url":"notaurl"}')
-check "非法链接被拒(400)" "$R" '^400$'
-rm -f link_body.json up_body.json
-
-echo "== 越权与清理 =="
-R=$(req DELETE /api/trips/$TRIP/members/$MEM_A "$TB")
-check "B(编辑)移除成员被拒" "$R" '权限不足'
-R=$(req DELETE /api/trips/$TRIP/members/$PH_ID "$TA")
-check "A移除占位成员" "$R" '"ok":true'
-R=$(req DELETE /api/trips/$TRIP "$TB")
-check "非发起人删行程被拒" "$R" '权限不足'
-R=$(req DELETE /api/trips/$TRIP/members/$MEM_B "$TA")
-check "A移除成员B" "$R" '"ok":true'
-R=$(req POST /api/trips/$TRIP/transfer "$TA" "{\"memberId\":$MEM_B}")
-check "转让给非成员被拒" "$R" '不存在'
-R=$(req DELETE /api/trips/$TRIP "$TA")
-check "发起人删除旅程" "$R" '"ok":true'
-R=$(req POST /api/auth/logout "$TB" '')
-check "登出B" "$R" '"ok":true'
-R=$(req GET /api/me "$TB")
-check "登出后token失效" "$R" '请先登录'
-
-echo "== 使用助手 =="
-R=$(req POST /api/assistant "$TA" '{"messages":[{"role":"user","content":"怎么邀请朋友加入旅程？"}]}')
-check "使用助手应答非空" "$(jget "$R" "(d.get('reply') or '')[:1] != ''")" 'True'
-check "使用助手source合法" "$(jget "$R" "d.get('source')")" '^(ai|fallback)$'
-R=$(req POST /api/assistant "$TA" '{"messages":[]}')
-check "空历史也有应答" "$(jget "$R" "(d.get('reply') or '')[:1] != ''")" 'True'
-R=$(req POST /api/assistant "" '{"messages":[{"role":"user","content":"hi"}]}')
-check "未登录使用助手被拒" "$R" '请先登录'
-PYTHONIOENCODING=utf-8 python -c "
-import json
-print(json.dumps({'messages':[
-  {'role':'user','content':'怎么邀请朋友？'},
-  {'role':'assistant','content':'在成员页创建邀请码。'},
-  {'role':'user','content':'那邀请码能设置有效期吗？'}]}, ensure_ascii=False))
-" > "$BJ"
-R=$(curl -s -X POST "$BASE/api/assistant" -H "Authorization: Bearer $TA" -H "Content-Type: application/json" --data-binary @"$BJ" --max-time 90)
-check "助手多轮对话应答" "$(jget "$R" "(d.get('reply') or '')[:1] != ''")" 'True'
-check "多轮对话source合法" "$(jget "$R" "d.get('source')")" '^(ai|fallback)$'
-
-echo "== 飞哪里接线（不依赖上游网络） =="
-R=$(curl -s -o /dev/null -w "%{http_code}" -X POST "$BASE/api/flywhere/search" -H "Content-Type: application/json" --data-binary '{"origin":"广州","depDate":"2026-10-01"}')
-check "飞哪里未登录拦截(401)" "$R" '^401$'
-R=$(curl -s -X POST "$BASE/api/flywhere/search" -H "Authorization: Bearer $TA" -H "Content-Type: application/json" --data-binary '{"origin":"广州"}')
-check "缺出发日期拦截(400)" "$R" '请选择有效的出发日期'
-
-echo "== 图文使用说明静态页 =="
-R=$(curl -s -o /dev/null -w "%{http_code}" "$BASE/guide/index.html")
-check "指南页可访问(200)" "$R" '^200$'
-R=$(curl -s "$BASE/guide/index.html")
-check "指南页含标题" "$R" '图文使用说明'
-R=$(curl -s -o /dev/null -w "%{http_code}" "$BASE/guide/01-itinerary.png")
-check "指南配图可访问(200)" "$R" '^200$'
-
-echo "== 超长入参截断（MySQL 列宽对齐回归） =="
-LONG600=$(printf 'a%.0s' $(seq 1 600))
-R=$(req POST /api/trips "$TA" "{\"title\":\"冒烟截断\",\"description\":\"$LONG600\"}")
-check "超长行程描述截断不500(200)" "$R" '"id"'
-LNICK=$(printf 'a%.0s' $(seq 1 100))
-R=$(req POST /api/auth/register "" "{\"username\":\"capprobe$SUF\",\"password\":\"smoke-pass-123\",\"nickname\":\"$LNICK\"}")
-check "超长昵称截断不500(200)" "$R" '"travelId"'
-R=$(req POST /api/trips "$TA" "{\"title\":\"冒烟截断色值\",\"coverColor\":\"$(printf 'c%.0s' $(seq 1 20))\"}")
-check "超长封面色值截断不500(200)" "$R" '"id"'
-
-echo "== 地点 / 现金 / 状态（旅行手册新板块数据） =="
-R=$(req POST /api/trips "$TA" '{"title":"冒烟手册","destination":"大理","startDate":"2026-11-01","endDate":"2026-11-03"}')
-check "新建手册行程" "$R" '"id"'
-HTRIP=$(jget "$R" "d['id']")
-R=$(req POST "/api/trips/$HTRIP/places" "$TA" '{"kind":"restaurant","name":"冒烟餐厅","city":"大理","address":"人民路 1 号","dishes":"砂锅鱼、乳扇","status":"已预订","candidate":true}')
-check "新增候选地点" "$R" '"id"'
-PLACE_ID=$(jget "$R" "d['id']")
-R=$(req POST "/api/trips/$HTRIP/places" "$TA" '{"kind":"attraction","name":"非法状态地点","candidate":true}')
-check "非法状态地点也建成功" "$R" '"id"'
-BAD_PLACE=$(jget "$R" "d['id']")
-R=$(req POST "/api/trips/$HTRIP/cash" "$TA" '{"title":"冒烟现金","amount":200,"currency":"CNY","perPerson":true,"people":3}')
-check "现金每人价×人数=合计600" "$R" '"total":600'
-CASH_ID=$(jget "$R" "d['id']")
-R=$(req PATCH "/api/cash/$CASH_ID" "$TA" '{"perPerson":false}')
-check "现金改总价后合计200" "$R" '"total":200'
-R=$(req GET "/api/trips/$HTRIP" "$TA")
-check "bundle 含 places" "$R" '冒烟餐厅'
-check "bundle 含 cash" "$R" '冒烟现金'
-R=$(req GET "/api/trips/$HTRIP/places" "$TA")
-check "地点列表返回" "$R" '冒烟餐厅'
-R=$(req DELETE "/api/places/$BAD_PLACE" "$TA")
-check "删除地点" "$R" '"ok":true'
-R=$(req DELETE "/api/places/$PLACE_ID" "$TA")
-check "删除候选地点" "$R" '"ok":true'
-R=$(req DELETE "/api/cash/$CASH_ID" "$TA")
-check "删除现金项" "$R" '"ok":true'
-R=$(req DELETE "/api/trips/$HTRIP" "$TA")
-check "清理手册行程" "$R" '"ok":true'
-
-echo "== 登录限速（同用户名 1 分钟 10 次上限） =="
-RL_USER="rl$SUF"
-RL_LAST=0
-for i in $(seq 1 11); do
-  RL_LAST=$(curl -s -o /dev/null -w "%{http_code}" -X POST "$BASE/api/auth/login" -H "Content-Type: application/json" --data-binary "{\"username\":\"$RL_USER\",\"password\":\"wrong-pass\"}")
-done
-check "登录限速生效(429)" "$RL_LAST" '^429$'
-
-echo "== WebSocket 实时广播 =="
-NODE_BIN=$(command -v node || echo /d/nodeJs/node.exe)
-WS_OUT=$("$NODE_BIN" scripts/ws-test.mjs 2>&1 || true)
-check "WS 变更广播" "$WS_OUT" 'WS_CHANGE_OK'
-echo "      ($WS_OUT)"
-
-echo ""
+echo
 echo "结果: PASS=$PASS FAIL=$FAIL"
-# 有失败就必须非零退出：否则 CI / 部署门禁会把失败当成通过
 [ "$FAIL" -eq 0 ] || exit 1
-exit 0

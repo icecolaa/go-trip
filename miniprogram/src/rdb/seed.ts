@@ -6,7 +6,10 @@ import { createRow, createRows, listRows } from './entities';
 
 const day = (offset: number): string => {
   const d = new Date(Date.now() + offset * 86400000);
-  return d.toISOString().slice(0, 10);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${dd}`;
 };
 
 export async function seedDemoTrip(ownerName: string): Promise<string> {

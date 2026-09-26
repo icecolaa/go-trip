@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { View, Text, Button, Input, Textarea } from '@tarojs/components'
 import Taro from '@tarojs/taro'
 import { api } from '../../api/request'
-import { createRows, deleteRow, deleteRows, listRows } from '../../rdb/entities'
+import { createRows, deleteRow, deleteRows, listRows, updateRow } from '../../rdb/entities'
 import { logActivity } from '../../rdb/trip'
 import type { ParsedActivity } from '../../types'
 import type { ParsedGuide } from '../../types'
@@ -94,6 +94,19 @@ export default function TripAI() {
           }
         }))
       }
+      // 回填坐标（高德代理，失败不影响行程）：刚写入的活动按标题/地点定位
+      try {
+        const freshActs = (await listRows('gt_activities', { trip_id: { $eq: tripId } })) as any[]
+        const items = freshActs
+          .filter(a => a.lat == null && a.title)
+          .map(a => ({ id: a.id, title: a.title, place: a.place || '' }))
+        if (items.length) {
+          const geo = await api.post<{ coords: Record<string, { lat: number; lng: number }> }>('/api/poi/geocode', { items })
+          for (const [id, c] of Object.entries(geo.coords || {})) {
+            await updateRow('gt_activities', id, { lat: c.lat, lng: c.lng })
+          }
+        }
+      } catch { /* 定位失败不影响行程 */ }
       await logActivity(tripId, '我', targeted ? 'AI 重写了部分行程' : 'AI 重写了全部行程')
       Taro.hideLoading()
       Taro.showToast({ title: targeted ? `已重写 ${touched.size} 天` : '已写入行程', icon: 'success' })
@@ -108,7 +121,10 @@ export default function TripAI() {
   const offsetDate = (base: string, days: number): string => {
     const d = new Date(base + 'T00:00:00')
     d.setDate(d.getDate() + days)
-    return d.toISOString().slice(0, 10)
+    const y = d.getFullYear()
+    const m = String(d.getMonth() + 1).padStart(2, '0')
+    const dd = String(d.getDate()).padStart(2, '0')
+    return `${y}-${m}-${dd}`
   }
 
   return (
