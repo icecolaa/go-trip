@@ -77,6 +77,7 @@
     **验证（localhost:5173 浏览器全链路）**：`/trip/undefined` → 🚫 错误卡+返回链接；仪表盘卡片 → `/trip/EBPVMHG6FS`（真实 id）；D1/D2/D3 各 3 项正确分组；「修改行程」弹窗带出真实数据且天下拉选中真实 day id；双端 tsc 0；冒烟 10/0。
     **⚠️ 波及**：**1.1.4（已上传未设体验版）带此 bug，修复后需重传 1.1.5 再设体验版**；Web 修复需随容器重新部署上线。
     **踩坑沉淀**：① **同一平台的 API 返回形状不对称必须逐一实测**（create≠list≠get，三个形状三种坑），「models API 两端同构」不等于「文档描述可信」；② 聚合读的行 id 在读路径入口处归一（entities 层单点），别指望每个调用点自己记得取 `_id`；③ 探针技巧：Vite dev 页面内 `new Function('u','return import(u)')('/@id/@cloudbase/js-sdk')` 可直驱 SDK 实测返回形状（playwright.evaluate 会改写裸 import 语句，必须用 Function 构造器绕过）；④ IAB evaluate 里不能写 TypeScript 标注。
+    **条目 46 附记（2026-09-27 凌晨，部署与重传执行）**：gotrip-018 已上线（45/46 Web 修复生效，bundle index-CPmExgbn.js 线上实测）；1.1.5 经 miniprogram-ci 通道上传成功（发布者=ci机器人1，代码与工具通道完全一致）。**开发者工具上传通道踩坑三连（工具当日自动升级所致）**：① `/v2/upload` 从同步 200 改成**异步任务 303 → /v2/taskresult/N**；② taskresult 是**自跳转轮询**——每次 GET 回 303 指向带新时间戳的自己（约 20s 一跳），任务完成才回 200 终态；③ Node 20+ keep-alive 复用连接会被工具服务端掐（socket hang up），必须 `agent:false + Connection:close` 且断连后凭记账的 taskUrl 重挂。upload.js 已全部适配并提交；但工具侧任务本身仍内部 Timeout（队列被试探任务堵死或有弹窗，重启工具可解）——要发布者显示「冰可乐」就重启工具后重跑 upload，不在意就直接设 ci 版 1.1.5 体验版。
 6. **内容收藏**：旅行日志支持多图上传（前端 canvas 压缩 1600/400 双尺寸，JPEG 0.85）+ 缩略图；新增「攻略」Tab 收藏小红书/公众号链接。
 7. **质量**：多轮代码 review 修复；`scripts/smoke.sh` 冒烟 91 项；验收报告归档。
 

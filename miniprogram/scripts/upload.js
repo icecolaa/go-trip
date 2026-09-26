@@ -51,14 +51,15 @@ function devtoolsPort() {
 
 function devtoolsRequest(port, apiPath, timeoutMs) {
   return new Promise((resolve) => {
-    const req = http.get({ host: '127.0.0.1', port, path: apiPath, timeout: timeoutMs }, (res) => {
+    // agent:false + Connection:close——工具服务端会掐 keep-alive 复用连接（socket hang up 实测）
+    const req = http.get({ host: '127.0.0.1', port, path: apiPath, timeout: timeoutMs, agent: false, headers: { Connection: 'close' } }, (res) => {
       let body = ''
       res.setEncoding('utf8')
       res.on('data', (c) => { body += c })
-      res.on('end', () => resolve({ ok: res.statusCode === 200, body }))
+      res.on('end', () => resolve({ status: res.statusCode, location: res.headers.location || '', ok: res.statusCode === 200, body }))
     })
-    req.on('timeout', () => { req.destroy(); resolve({ ok: false, body: 'timeout' }) })
-    req.on('error', (e) => resolve({ ok: false, body: e.message }))
+    req.on('timeout', () => { req.destroy(); resolve({ status: 0, location: '', ok: false, body: 'timeout' }) })
+    req.on('error', (e) => resolve({ status: 0, location: '', ok: false, body: e.message }))
   })
 }
 
@@ -71,8 +72,26 @@ async function uploadViaDevtools() {
     return { ok: false, reason: '开发者工具未登录（打开工具扫码登录后重试）' }
   }
   const qs = `project=${encodeURIComponent(root)}&version=${encodeURIComponent(version)}&desc=${encodeURIComponent(desc)}`
-  const up = await devtoolsRequest(port, `/v2/upload?${qs}`, 300000) // 上传含编译，放宽到 5 分钟
-  if (!up.ok) return { ok: false, reason: `工具接口返回异常：${up.body.slice(0, 120)}` }
+  // 2026-09-27 实测：工具新版 /v2/upload 是异步任务——303 → /v2/taskresult/N，且 taskresult
+  // 「自跳转轮询」：每次 GET 回 303 指向带新时间戳的自己（约 20s 一跳），任务完成后才回 200 终态 JSON
+  let up = await devtoolsRequest(port, `/v2/upload?${qs}`, 60000)
+  const deadline = Date.now() + 300000 // 含编译，总预算 5 分钟
+  let taskUrl = '' // 最近一次 taskresult 地址（单独记账：断连响应的 location 是空的，不能靠 up 自带）
+  const transient = (r) => r.status === 0 && /hang up|ECONNRESET|timeout|EPIPE/i.test(r.body)
+  while (Date.now() < deadline) {
+    if ((up.status === 301 || up.status === 302 || up.status === 303 || up.status === 307) && up.location) {
+      taskUrl = up.location
+      up = await devtoolsRequest(port, taskUrl, 40000)
+    } else if (transient(up) && taskUrl) {
+      // 轮询长连接被服务端掐断：任务仍在跑，等 3 秒重挂同一 taskresult
+      await new Promise((r) => setTimeout(r, 3000))
+      up = await devtoolsRequest(port, taskUrl, 40000)
+    } else break
+  }
+  if (!up.ok) {
+    const stillPolling = (up.status === 301 || up.status === 302 || up.status === 303 || up.status === 307)
+    return { ok: false, reason: stillPolling ? '工具上传轮询超时（任务未在 5 分钟内完成）' : `工具接口返回异常：${up.status} ${up.body.slice(0, 120)}` }
+  }
   let parsed
   try { parsed = JSON.parse(up.body) } catch { parsed = null }
   // 成功响应形如 {"info":{...},"success":true}（无 code 字段）；失败才是 {"code":N,"message":...}
