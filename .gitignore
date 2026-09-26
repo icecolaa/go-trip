@@ -22,3 +22,8 @@ work/migration/
 
 # 架构图会话产物（archify 输出，不入库）
 docs/gotrip-architecture.visual-check.*
+
+# 编辑器工作区配置与本地 skill（不入库）
+.zcode/
+.zcodeignore
+skills-lock.json
