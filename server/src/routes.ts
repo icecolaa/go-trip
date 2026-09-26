@@ -11,6 +11,7 @@
  * （2026-09-25 实测），缺失即 403——公网白嫖 AI/高德 key 的路被堵死。
  * 价格记忆已移到客户端（gt_flywhere_watch 按用户私有），分享读暂缓（待 API Key）。
  */
+import crypto from 'node:crypto';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { ApiError, json, readBody } from './util.ts';
 import { searchPois, geocodePlaces, cleanActivityQuery, type GeocodeItem } from './poi.ts';
@@ -136,8 +137,30 @@ route('GET', '/api/ai/status', async (_req, res) => {
 });
 
 /* ==================== 飞哪儿 ==================== */
+// callContainer 有 15s 硬超时（2026-09-26 日志实测 timeCost=15007 499 REQUEST_CANCELED），
+// 而搜索链路要 10-40s → 异步任务模式：POST 提交立即回 jobId，GET 轮询取结果。
+// 任务存单实例内存（服务锁定 MaxNum=1），TTL 5 分钟。
+const FLY_JOBS = new Map<string, { status: 'running' | 'done' | 'error'; result?: any; error?: string; at: number }>();
+const FLY_JOB_TTL = 5 * 60 * 1000;
+
+function flyJobGC(): void {
+  const now = Date.now();
+  for (const [k, v] of FLY_JOBS) if (now - v.at > FLY_JOB_TTL) FLY_JOBS.delete(k);
+}
+
+route('GET', '/api/flywhere/search', async (req, res) => {
+  const jobId = queryOf(req).get('jobId') || '';
+  const job = FLY_JOBS.get(jobId);
+  if (!job) throw new ApiError(404, '任务不存在或已过期，请重新搜索');
+  json(res, 200, job.status === 'done'
+    ? { status: 'done', ...job.result }
+    : job.status === 'error'
+      ? { status: 'error', error: job.error }
+      : { status: 'running' });
+});
 
 route('POST', '/api/flywhere/search', async (_req, res, _p, body) => {
+  flyJobGC();
   const query = {
     origin: String(body.origin || '北京').slice(0, 20),
     destination: body.destination ? String(body.destination).slice(0, 20) : '',
@@ -149,27 +172,34 @@ route('POST', '/api/flywhere/search', async (_req, res, _p, body) => {
   };
   if (!/^\d{4}-\d{2}-\d{2}$/.test(query.depDate)) throw new ApiError(400, '请选择有效的出发日期');
   if (!flyaiConfigured()) throw new ApiError(400, '未配置飞猪 API Key（环境变量 FLYAI_API_KEY），无法查询真实航班');
-  let results: any[];
-  try {
-    results = await flywhereSearch(query);
-  } catch (e: any) {
-    if (e instanceof ApiError) throw e;
-    console.error('[flywhere] 航班查询未知异常:', e);
-    throw new ApiError(502, '航班查询暂时不可用，请稍后重试');
-  }
-  // 为前 6 个目的城市附带天气，失败不阻塞；价格记忆已移到客户端（gt_flywhere_watch）
-  const citySeen = new Set<string>();
-  for (const item of results) {
-    if (citySeen.size >= 6) break;
-    const city = item.city;
-    if (!city || citySeen.has(city)) continue;
-    citySeen.add(city);
+  const jobId = crypto.randomUUID().slice(0, 8) + Date.now().toString(36);
+  FLY_JOBS.set(jobId, { status: 'running', at: Date.now() });
+  // 后台执行；callContainer 的 15s 客户端超时不再影响它（响应已先行返回）
+  void (async () => {
     try {
-      item.weather = await getWeather(city, [item.date, item.backDate || item.date].filter(Boolean));
-    } catch { /* 天气失败不阻塞 */ }
-  }
-  json(res, 200, { results, count: results.length, minPrice: results[0]?.totalPrice ?? null, trend: null });
+      const results: any[] = await flywhereSearch(query);
+      const citySeen = new Set<string>();
+      for (const item of results) {
+        if (citySeen.size >= 6) break;
+        const city = item.city;
+        if (!city || citySeen.has(city)) continue;
+        citySeen.add(city);
+        try {
+          item.weather = await getWeather(city, [item.date, item.backDate || item.date].filter(Boolean));
+        } catch { /* 天气失败不阻塞 */ }
+      }
+      FLY_JOBS.set(jobId, {
+        status: 'done', at: Date.now(),
+        result: { results, count: results.length, minPrice: results[0]?.totalPrice ?? null, trend: null },
+      });
+    } catch (e: any) {
+      const msg = e instanceof ApiError ? e.message : '航班查询暂时不可用，请稍后重试';
+      FLY_JOBS.set(jobId, { status: 'error', error: msg, at: Date.now() });
+    }
+  })();
+  json(res, 200, { jobId });
 });
+
 
 route('GET', '/api/flywhere/fee-policy', async (_req, res) => {
   json(res, 200, flywhereFeePolicy);

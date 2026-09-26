@@ -34,18 +34,26 @@ export default function FlyWhere() {
     if (!origin.trim()) { Taro.showToast({ title: '请填写出发城市', icon: 'none' }); return }
     setBusy(true); setElapsed(0); setError(''); setResults(null)
     const timer = setInterval(() => setElapsed(s => s + 1), 1000)
+    // callContainer 有 15s 硬超时，搜索要 10-40s → 提交拿 jobId 后轮询（最多 120s）
     try {
-      const r = await api.post<{ results: FlightResult[]; count: number; minPrice: number | null }>(
-        '/api/flywhere/search',
-        {
-          origin: origin.trim(), destination: destination.trim(), trip: round ? 'round' : 'oneway',
-          depDate, backDate: round ? backDate : '', passengers: 1,
-        },
-      )
+      const { jobId } = await api.post<{ jobId: string }>('/api/flywhere/search', {
+        origin: origin.trim(), destination: destination.trim(), trip: round ? 'round' : 'oneway',
+        depDate, backDate: round ? backDate : '', passengers: 1,
+      })
+      const deadline = Date.now() + 120000
+      let final: { status: string; error?: string } | null = null
+      while (Date.now() < deadline) {
+        await new Promise(r => setTimeout(r, 2500))
+        const st = await api.get<{ status: string; error?: string }>(`/api/flywhere/search?jobId=${jobId}`)
+        if (st.status !== 'running') { final = st; break }
+      }
+      if (!final) throw new Error('搜索超时，请重试')
+      if (final.status === 'error') throw new Error(final.error || '搜索失败')
+      const r = final as unknown as { results: FlightResult[] }
       setResults(r.results)
       if (!r.results.length) Taro.showToast({ title: '没有找到组合，试试调整日期', icon: 'none' })
     } catch (e) {
-      setError(e instanceof ApiFail ? e.message : '搜索失败')
+      setError(e instanceof ApiFail ? e.message : (e instanceof Error ? e.message : '搜索失败'))
     } finally {
       clearInterval(timer); setBusy(false)
     }
