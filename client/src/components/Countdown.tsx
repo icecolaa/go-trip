@@ -40,6 +40,9 @@ export default function Countdown({ startDate, endDate }: { startDate: string; e
     return () => { if (timer.current) window.clearInterval(timer.current); };
   }, []);
 
+  // 日期缺失（坏数据/异常路由）时不出块，别让整页崩掉
+  if (!startDate || !endDate) return null;
+
   const start = startOfDay(startDate);
   const end = endOfDay(endDate);
   const phase: Phase = now < start ? 'before' : now > end ? 'after' : 'during';

@@ -49,7 +49,9 @@
 - [x] 冒烟重写 10/0；UTC+8 日期偏移修复×4；写后读延迟修复（createMany idList，三处）
 - [x] gotrip-015~017 部署；小程序 1.1.0→1.1.4 上传；devtools 实测行程创建 ✓、飞哪儿 ✓
 - [x] **阶段二完成**：Web 切 js-sdk rdb + 身份认证（账密+匿名），client/src/rdb 移植，13 tabs 迁移，删 api.ts/JoinPage/SharePage；浏览器实测游客登录→建档→导入演示行程 9 项安排 ¥1736 全链路 ✓；gotrip-017 上线
-- [ ] 用户验收：小程序 1.1.4 设体验版（真机：日志图片上传/AI/锦囊）；Web 版自己开账号密码玩一遍
+- [x] **账密注册通道移除（条目 45）**：平台不支持纯用户名+密码自助注册（signup 501 实测）+ js-sdk auth 吞错修复；登录页=账密登录+游客；账号=控制台手动创建；localhost:5173 本地实测（错误提示/游客建档/会话保持/登出）✓
+- [x] **行 id 全链断裂修复（条目 46）**：SDK create 回 id、list/get 只回 _id 不对称实测实锤，双端 entities 读路径 withId 归一 + get 空对象判 null；1.1.4 带 bug 待重传 1.1.5
+- [ ] 用户验收：小程序重传 1.1.5 设体验版（真机：日志图片上传/AI/锦囊）；Web 控制台建号后自测账密登录；重新部署容器让 45/46 修复上线
 - [ ] 待清：浏览器验证的匿名身份数据（不影响正式用户）
 
 ## 六、风险备忘
@@ -61,8 +63,6 @@
 - 云托管公网域名必须加入「安全域名」（身份认证），漏配报 Unknown error
 - callContainer 15s 硬超时：长任务一律异步 job（飞哪儿模式：POST 秒回 jobId + GET 轮询，MaxNum 锁 1）
 - Windows 用户级环境变量残留 MYSQL 死端点——本地起 server 必须显式清空 MYSQL_*
-## 六、风险备忘
-
-- models.* 对 MYSQL 模型的权限隔离/`_openid` 注入**未真机验证**——第一件事是开发者工具跑通一条 create→list 回读。
-- `pageSize` 上限未知（feed 需要 60）；`$in` 操作符支持未知（trips 聚合用），不行就退化为逐 trip 查询。
-- 环境级 API Key 尚未创建（容器 REST 用）——控制台「环境设置」或工单路径待定。
+- **js-sdk v3 auth 方法失败不抛异常**（signInWithPassword 返回 {error}，signUp/signInAnonymously resolve 错误 body）——调用点必须检查返回值（auth.ts 的 throwOnAuthError），否则吞错假成功
+- **平台不支持纯用户名+密码自助注册**（/auth/v1/signup 501），账号=控制台「身份认证→用户管理」手动创建；Web 登录页已移除注册入口
+- **模型三接口返回形状不对称（实测）**：create 回 `{data:{id}}`，list/get 的行只有 `_id`；**get 未命中回 `{data:{}}` 空对象非 null**——读路径必须在 entities 层归一（withId + `_id` 判空），调用点一律读 `.id`
