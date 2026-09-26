@@ -1,21 +1,18 @@
 import { useRef, useState } from 'react'
 import { View, Text, Button } from '@tarojs/components'
-import Taro, { usePullDownRefresh, useUnload } from '@tarojs/taro'
-import { api, getToken, setToken, ApiFail } from '../../api/request'
-import { connectWS, closeWS } from '../../api/ws'
-import type { TripBundle, TripDay, Activity } from '../../types'
+import Taro, { usePullDownRefresh } from '@tarojs/taro'
+import { loadTripBundle } from '../../rdb/trip'
+import type { TripBundle, Activity } from '../../types'
 
 const KIND_EMOJI: Record<string, string> = {
   sight: '🏞️', food: '🍜', hotel: '🏨', transport: '🚄',
   shopping: '🛍️', show: '🎭', other: '📌',
 }
 
-let reloadTimer: ReturnType<typeof setTimeout> | null = null
-
 export default function Trip() {
   const [bundle, setBundle] = useState<TripBundle | null>(null)
   const [error, setError] = useState('')
-  const tripId = Number(Taro.getCurrentInstance().router?.params.id || 0)
+  const tripId = String(Taro.getCurrentInstance().router?.params.id || '')
   const reloading = useRef(false)
 
   const load = async () => {
@@ -23,15 +20,9 @@ export default function Trip() {
     reloading.current = true
     try {
       setError('')
-      const b = await api.get<TripBundle>(`/api/trips/${tripId}`)
-      setBundle(b)
+      setBundle(await loadTripBundle(tripId))
     } catch (e) {
-      if (e instanceof ApiFail && e.status === 401) {
-        setToken('')
-        Taro.redirectTo({ url: '/pages/login/index' })
-        return
-      }
-      setError(e instanceof ApiFail ? e.message : '加载失败，请下拉重试')
+      setError(e instanceof Error ? e.message : '加载失败，请下拉重试')
     } finally {
       reloading.current = false
     }
@@ -41,31 +32,14 @@ export default function Trip() {
     load().finally(() => Taro.stopPullDownRefresh())
   })
 
-  // 首次加载 + 实时订阅
+  // 首次加载（单主人架构，无实时订阅）
   useState(() => {
-    if (!getToken()) {
-      Taro.redirectTo({ url: '/pages/login/index' })
-      return
-    }
     load()
-    if (tripId) {
-      connectWS(tripId, (msg) => {
-        if (msg.type === 'change' || msg.type === 'location') {
-          if (reloadTimer) clearTimeout(reloadTimer)
-          reloadTimer = setTimeout(() => load(), 600)
-        }
-      })
-    }
-  })
-
-  // 离开页面断开 WS
-  useUnload(() => {
-    closeWS()
   })
 
   const goBudget = () => Taro.navigateTo({ url: `/pages/budget/index?tripId=${tripId}` })
   const goPacking = () => Taro.navigateTo({ url: `/pages/packing/index?tripId=${tripId}` })
-  const goAddActivity = (dayId: number) => Taro.navigateTo({ url: `/pages/activity/index?tripId=${tripId}&dayId=${dayId}` })
+  const goAddActivity = (dayId: string) => Taro.navigateTo({ url: `/pages/activity/index?tripId=${tripId}&dayId=${dayId}` })
   const goEditActivity = (a: Activity) => Taro.navigateTo({ url: `/pages/activity/index?tripId=${tripId}&dayId=${a.dayId}&activityId=${a.id}` })
 
   const daysByGroup = bundle
