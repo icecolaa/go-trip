@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { restoreSession, loginWithPassword, registerWithPassword, loginAnonymous, logout as authLogout } from './rdb/auth';
+import { restoreSession, loginWithPassword, loginAnonymous, logout as authLogout } from './rdb/auth';
 import type { Profile } from './types';
 
 interface AppState {
@@ -8,7 +8,6 @@ interface AppState {
   toasts: { id: number; text: string; err?: boolean }[];
   loadMe: () => Promise<void>;
   login: (username: string, password: string) => Promise<void>;
-  register: (username: string, password: string, nickname: string) => Promise<void>;
   loginAnonymously: () => Promise<void>;
   logout: () => Promise<void>;
   toast: (text: string, err?: boolean) => void;
@@ -33,11 +32,6 @@ export const useApp = create<AppState>((set, get) => ({
 
   login: async (username, password) => {
     const me = await loginWithPassword(username, password);
-    set({ me });
-  },
-
-  register: async (username, password, nickname) => {
-    const me = await registerWithPassword(username, password, nickname);
     set({ me });
   },
 

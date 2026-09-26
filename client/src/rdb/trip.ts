@@ -29,7 +29,7 @@ export async function ensureProfile(): Promise<Profile> {
   const rows = await listRows('gt_users');
   if (rows.length) return rows[0] as unknown as Profile;
   return createRow('gt_users', {
-    nickname: '微信用户',
+    nickname: '旅行者',
     avatarColor: '#2f6e4f',
     bio: '',
     avatarUrl: null,

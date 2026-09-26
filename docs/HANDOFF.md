@@ -1,8 +1,8 @@
 # 交接文档（HANDOFF）
 
 > 面向下一个接手的开发者或 AI 会话。先读根目录 `CLAUDE.md`（规则手册），再读本文（现状、过程与经验）。
-> 更新：2026-09-26（条目 44：阶段二 Web 版完成——全栈 rdb 直连收官；upload 双通道；写后读延迟等四项 review 修复，小程序 1.1.4）。
-> 上一条：2026-09-26（条目 43：原生化重构去协作 + 数据模型直连 + 容器无状态代理）。
+> 更新：2026-09-26（条目 45：Web 账密注册通道证实不可用并移除——平台 501 + SDK 吞错双实锤；登录页改登录+游客双通道）。
+> 上一条：2026-09-26（条目 44：阶段二 Web 版完成——全栈 rdb 直连收官；upload 双通道；写后读延迟等四项 review 修复，小程序 1.1.4）。
 > 上一条：2026-09-25（条目 42：第三个环境 + SQL 库接通 + H5 双端）。
 
 ## 当前状态一览（2026-09-26，阶段二收官）
@@ -12,13 +12,13 @@
 | **生产环境** | CloudBase `gotrip-d1gb187o991f5260a`（个人版，付费至 2027-03-25）。云托管 gotrip 容器 = **gotrip-017 无状态代理**（AI/飞哪儿/POI/天气，双通道身份门，不连任何数据库），`/health` 探针 `{"ok":true,"db":"none","mode":"proxy"}`。公网开着（Web 直连需要）。**已合入 master**（Gitee/GitHub 同步，master=5198351 含 GitHub PR#1 合并记录；feat 领先 master 一个 gitignore 提交 fa350f7，下次合并即齐） |
 | **架构（原生化完成）** | 全栈数据模型直连：小程序 `@cloudbase/wx-cloud-client-sdk` models.*（openid 身份）；Web `@cloudbase/js-sdk` 3.10.1（其 `./model` 子路径 **re-export wx-cloud-client-sdk**，两端 API 同构）+ 身份认证（账密+匿名已开启）。14 个 gt_* 模型 `_openid` 行级隔离。设计/映射/进度全在 `docs/native-migration.md`（接手先读它和条目 43/44） |
 | 小程序 | **1.1.4 已上传**（开发者工具通道，发布者=冰可乐），待设体验版；12 页 rdb 直连 tsc 0；飞哪儿异步 job（15s 超时已绕开，用户实测 ✓） |
-| Web/H5 | **已恢复可用（阶段二完成，浏览器实测 ✓）**：游客/账密登录 → 建档 → 建行程/导入演示（9 项安排 ✓）→ 13 板块。域名=云托管公网 + 风险提示页（绑自定义域名可去掉）。**Web 与小程序身份不互通**（CloudBase uid vs openid，各一套数据，既定设计） |
+| Web/H5 | **已恢复可用（阶段二完成，浏览器实测 ✓）**：游客/账密登录 → 建档 → 建行程/导入演示（9 项安排 ✓）→ 13 板块。域名=云托管公网 + 风险提示页（绑自定义域名可去掉）。**Web 与小程序身份不互通**（CloudBase uid vs openid，各一套数据，既定设计）。**条目 45 后：注册入口已移除**（平台不支持纯账密自助注册），正式账号=云控制台「身份认证→用户管理」手动创建；登录页=账密登录+游客模式 |
 | 容器身份门（双通道） | x-wx-source（小程序 callContainer，公网剥离实测）OR x-gotrip-key=WEB_PROXY_KEY（Web/H5 共享密钥，随 bundle 可见属可接受风险）。环境变量已配在 gotrip-017 |
 | 数据库 | 云开发自带 TDSQL-C MySQL 8.0（端点已由用户经「数据库连接配置」建成公网 43.179.225.7:24735，容器不再需要）；**行程相关 12 表已清空重来**（旧测试数据含丢失活动的行程），当前库内仅浏览器验证产生的 1 匿名用户+1 演示行程（可清） |
 | 仓库 | Gitee+GitHub 双端已同步（feat=fa350f7 含 gitignore 修正，master=5198351）；GitHub push 需本机代理（时好时坏） |
 | 冒烟 | `scripts/smoke.sh` **10/0**（容器代理 9 断言 + shared 纯函数）；旧 111 项 CRUD 冒烟已退役 |
 | 本地 skill | ip-as-logo 已装 `.zcode/skills/`（`.zcode*/skills-lock.json` 已 gitignore 不入库，用户拍板） |
-| 待办 Top3 | ① 小程序 1.1.4 设体验版 + 真机验收（日志图片上传=云存储首验、AI 解析、锦囊）② Web 账密注册/登录自测（目前只验了游客通道）③ 清理浏览器验证的匿名身份数据（可选） |
+| 待办 Top3 | ① 小程序 1.1.4 设体验版 + 真机验收（日志图片上传=云存储首验、AI 解析、锦囊）② 控制台建 Web 账号后自测账密登录（登录页已改登录+游客双通道，见条目 45）③ 清理浏览器验证的匿名身份数据（可选，含条目 45 自测新增的 2~3 条 gt_users 行） |
 
 ## 2026-08~09 主要交付（按主题）
 
@@ -63,6 +63,13 @@
 44. **阶段二完成：Web 切 rdb + 身份认证 + upload 双通道 + review 四修（2026-09-26，提交 5f4db4d/126b27e/d83d2eb/767b1bf/fa350f7，小程序 1.1.4，gotrip-017）**：承接条目 43。Web 用 `@cloudbase/js-sdk` 3.10.1（**其 `./model` 子路径 re-export `@cloudbase/wx-cloud-client-sdk`**——两端 API 同构是阶段二最大的省力发现，client/src/rdb 七件套近乎原样移植）；身份认证开启账密+匿名（MCP patchLoginStrategy）；13 个 tabs 子代理迁移；删 api.ts/JoinPage/SharePage/WS/token；封面/日志图改云存储 fileID+tempUrls 换链；新增 rdb/apply-guide（AI 落库共享助手，trip-ai/CreateTripModal 复用）。**浏览器实测全链路 ✓**：游客登录→建档→导入演示行程→9 项安排 ¥1736。
     **本条目核心踩坑（全部实测实锤）**：① **「写后立即 list」有平台可见性延迟**——seed 的 createMany(days) 后回读得空 → 活动 day_id 全空被过滤 → **gt_activities 0 行静默丢失**（expenses 用同步返回的 id 才幸免）。铁律：**新行 id 必须取 createMany 返回的 idList**（与传入顺序对应），已全仓库执行（seed/trip-ai/apply-guide）。② **models list 平台缺省每页 10 条**——listRows 不传 pageSize 超 10 行静默截断，已显式 100（SDK 纯透传无默认值）。③ **guide_cards items 双重 JSON 编码**：页面 payload 已 stringify，写入层再 stringify 一次 → 读回仍字符串渲染崩；改 ops 层 encodeItems 幂等，items 解析收敛到 listGuideCards。④ **UTC+8 日期偏移**：`toISOString().slice(0,10)` 东八区整体偏一天×4 处，一律本地格式化。⑤ **容器身份门双通道**：Web 无 callContainer，x-wx-source 拿不到 → 加 x-gotrip-key=WEB_PROXY_KEY（环境变量已配 gotrip-017；密钥随 bundle 可见属可接受风险）；本地四态探针全过。⑥ **身份认证安全域名漏配云托管公网域名** → 匿名登录报 Unknown error（envDomainManagement create 后 ~2 分钟生效）。⑦ **upload 双通道**：优先开发者工具 HTTP 服务（发布者=工具登录账号冰可乐）/v2/upload，踩坑三连——服务端口在 `User Data/<hash>/Default/.ide`（不是 User Data/Default）、`/v2/islogin` 字段是 `login` 非 islogin、`/v2/upload` 参数名是 **project**（非 projectpath）且成功响应无 code 只有 `success:true`；失败自动降级 miniprogram-ci（后台显示 ci机器人1，**官方不可改名**）。⑧ **mp IP 白名单只收 IPv4**（IPv6 被控制台拒「格式不正确」），Node 可能走 v6 出口——upload.js 已 `dns.setDefaultResultOrder('ipv4first')`。⑨ **miniprogram/.git 嵌套仓库**（旧实验残留）会吞掉 miniprogram 目录内执行的 git 命令（IPv4 提交曾被吞进其 master 305fc71），已拆除并全仓扫描。⑩ GitHub master 上多出 PR#1 合并提交（用户网页操作）致 push 被拒非快进——fetch 后 merge 该提交（无内容差异）再推即可；**曾误把远端合并进 feat 分支，`git reset --hard` 干净回退**（未外泄）。⑪ 本地装第三方 skill：`npx skills add s1dashu/ip-as-logo-skill --agent zcode -y`（交互式选 agent 在非 TTY 下需 --agent 显式指定），装到 `.zcode/skills/`，用户拍板不入库（gitignore）。
     **▶ 给用户的验收单**：① 小程序 1.1.4 设体验版 → 真机：日志图片上传（云存储首验）、AI 解析、锦囊、飞哪儿；② Web：注册自己的账密（目前只验了游客通道）→ 建行程 → 全板块；③ 可选：清理浏览器验证的匿名身份数据（gt_users 1 条+演示行程 1 个，不影响正式用户）。
+
+45. **Web 账密注册通道证实不可用并移除（2026-09-26，浏览器实测+抓包+裸调三重实锤）**：执行条目 44 验收单第 ② 项（Web 账密注册/登录自测）时发现——注册走完全流程却「假成功」：填表提交后 toast「注册成功」进了仪表盘，但**账号从未被创建**（仪表盘是匿名身份的），登出后用同一账密登录报 4043「用户名或密码不正确」，toast 却显示 models 层兜底文案「Unknown error occurred」。
+    **根因两层，逐层实锤**：① **平台层**：CloudBase 身份认证不支持纯用户名+密码自助注册——裸调 `/auth/v1/signup` 返回 501 `UNIMPLEMENTED "you can not signup just by username and password"`（官方文档同款：signup 必须带手机号/邮箱验证码或第三方 provider_token；「用户名密码创建用户，请前往云后台创建」）。裸调 `/auth/v1/signin` 对不存在用户两次均 4043，**不会自动注册**。② **SDK 层**：js-sdk v3 的 auth 方法**失败时不抛异常**——`signInWithPassword` 源码 catch 所有错误后返回 `{data:{user:null,session:null}, error}`（只 console.warn）；`signUp`/`signInAnonymously` 把错误 body 原样 resolve。而 `client/src/rdb/auth.ts` 按「Promise 会 reject」写，错误全被静默吞掉：注册流程 signUp 501 被吞 → signInWithPassword 4043 被吞 → `ensureProfile()` 照跑，在页面已有的（或兜底新建的）匿名会话下建档成功 → 假「注册成功」。首次加载的 restoreSession 兜底还会让**输错账密的登录悄悄登进匿名身份**（数据「消失」假象）。
+    **修复（client 侧四文件，tsc 0、冒烟 10/0、localhost:5173 浏览器实测四项全过）**：① `rdb/auth.ts` 加 `throwOnAuthError`（识别 {data,error} 与裸错误 body 两种形态，错误码映射中文：4043→「用户名或密码不正确」等）；删 `registerWithPassword`。② 登录页移除「注册」标签与昵称字段，文案改「没有账号？游客模式先玩起来（正式账号由管理员在后台开通）」。③ `store.ts` 删 register。④ `ensureProfile` 默认昵称 微信用户→旅行者（Web 侧专属，小程序端不影响）。顺带修 UsageGuideModal 过期文案（注册/demo 账号/邀请码/角色/对外分享/解散旅程/PocketBay 休眠 QA → 现实：占位成员/控制台建号）。
+    **账号开通的新正道**：CloudBase 控制台 → 身份认证 → 用户管理 → 新建用户（用户名+密码）→ 用户在 Web 登录页直接登录（首次登录自动建档）。账密登录 API 本身工作正常（4043 校验实测正常），已验至错误路径；成功路径待用户建号后自测一条即闭环。
+    **本轮踩坑沉淀**：① **「MCP hint 写着 SDK/provider dependent; verify before use」的警告不是废话**——signUp 正是没先验证的那一环，阶段二验收漏网；② js-sdk v3 auth 返回值形态必须逐一核对（有的 throw、有的 {error}、有的裸 body），照搬 v2/小程序经验会静默吞错；③ IAB 浏览器注入对本页按钮 click 三路全挂（locator/dom_cua/cua 均 timeout）但 fill 正常——fallback 是 `evaluate(() => el.click())`（React 合成事件正常响应）；toast 数秒即逝，抓 toast 要提交后立刻轮询 `.toast-wrap`；④ 抓 SDK 真实错误先 monkey-patch `window.fetch` 再复现，别信 UI toast 的文案（models 层兜底文案会掩盖 auth 层真实 4043）；⑤ 数据模型物理表在 `<envId>` schema 下（`gotrip-d1gb187o991f5260a`.gt_users），不在 gotrip schema（那是旧容器时代的遗留表，仍在但已无人读写）；⑥ 身份认证安全域名加 localhost:5173/127.0.0.1:5173 后本地 dev 可直连测试（本次提交即生效，未等 10 分钟）。
+    **▶ 给用户的操作单**：① 控制台建号：CloudBase 控制台 → 身份认证 → 用户管理 → 新建用户（填用户名+密码，如 bingkele/你的密码）→ Web 登录页登录自测（应见「欢迎回来」+昵称「旅行者」，可在「我的」页改昵称）；② 本次修复需**重新部署容器**才上线（Web bundle 在镜像里），确认后跑部署；③ 可选：清理 gt_users 里 2026-09-26 的测试行（本机 IAB 指纹 identifiable：昵称「微信用户」的 21:03 行 + 昵称「旅行者」的最新行）。
 6. **内容收藏**：旅行日志支持多图上传（前端 canvas 压缩 1600/400 双尺寸，JPEG 0.85）+ 缩略图；新增「攻略」Tab 收藏小红书/公众号链接。
 7. **质量**：多轮代码 review 修复；`scripts/smoke.sh` 冒烟 91 项；验收报告归档。
 
