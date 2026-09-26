@@ -8,13 +8,17 @@ export type Row = Record<string, any>;
 
 const MASTER = { $master: true };
 
+/** 平台 list 缺省每页只回 10 条（不传 pageSize 时），必须显式给大页。
+ * 100 覆盖本项目所有单表读取（活动/清单 ≤80、feed 60）；超出时上层自行分页。 */
+const PAGE_SIZE = 100;
+
 /** 按条件列行；orderBy 形如 [{ created_at: 'desc' }]（模型字段名）。 */
 export async function listRows(name: string, where: Row = {}, orderBy?: Row[], pageSize?: number): Promise<Row[]> {
   const res = await model(name).list({
     filter: { where },
     select: MASTER,
+    pageSize: pageSize || PAGE_SIZE,
     ...(orderBy ? { orderBy } : {}),
-    ...(pageSize ? { pageSize } : {}),
   });
   return toCamel(res?.data?.records || []);
 }

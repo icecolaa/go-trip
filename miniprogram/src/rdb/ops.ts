@@ -4,7 +4,7 @@ import type {
   Activity, Expense, GuideCard, JournalImage, JournalNote, PackingItem, TripCashItem,
   TripMember, TripPlace, TravelLink, TripDay,
 } from '../types'
-import { createRow, createRows, deleteRow, deleteRows, getRowById, listRows, updateRow } from './entities'
+import { createRow, createRows, deleteRow, listRows, updateRow } from './entities'
 import { logActivity } from './trip'
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -144,16 +144,29 @@ export const deleteJournal = async (tripId: string, id: string) => {
 
 /* ---------------- 锦囊 ---------------- */
 
-export const listGuideCards = (tripId: string) =>
-  listRows('gt_guide_cards', { trip_id: { $eq: tripId } }, [{ sort: 'asc' }]) as Promise<GuideCard[]>;
+/** items 库内统一存 JSON 字符串；此函数幂等（已是字符串则原样，避免双重编码）。 */
+function encodeItems(items: unknown): string {
+  return typeof items === 'string' ? items : JSON.stringify(items ?? []);
+}
+
+function decodeItems(v: unknown): GuideCard['items'] {
+  if (v == null || v === '') return [];
+  if (typeof v !== 'string') return v as GuideCard['items'];
+  try { return JSON.parse(v) as GuideCard['items']; } catch { return []; }
+}
+
+export const listGuideCards = async (tripId: string): Promise<GuideCard[]> => {
+  const rows = await listRows('gt_guide_cards', { trip_id: { $eq: tripId } }, [{ sort: 'asc' }]) as unknown as GuideCard[];
+  return rows.map(c => ({ ...c, items: decodeItems(c.items) }));
+};
 
 export const createGuideCards = async (tripId: string, cards: Omit<GuideCard, 'id'>[], memberName: string) => {
-  await createRows('gt_guide_cards', cards.map(c => ({ ...c, items: JSON.stringify((c as any).items) })));
+  await createRows('gt_guide_cards', cards.map(c => ({ ...c, items: encodeItems((c as any).items) })));
   await logActivity(tripId, memberName, '生成了锦囊');
 };
 
 export const createGuideCard = async (tripId: string, card: Omit<GuideCard, 'id'>, memberName: string) => {
-  await createRow('gt_guide_cards', { ...card, items: JSON.stringify((card as any).items) });
+  await createRow('gt_guide_cards', { ...card, items: encodeItems((card as any).items) });
   await logActivity(tripId, memberName, '添加了锦囊卡片', card.title);
 };
 

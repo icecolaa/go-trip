@@ -5,7 +5,6 @@ import { api } from '../../api/request'
 import { createGuideCards, deleteGuideCard, listGuideCards } from '../../rdb/ops'
 import type { GuideCard } from '../../types'
 
-const safeParse = (v: any, fb: { label?: string; text: string }[] = []) => { if (v == null || v === '') return fb; if (typeof v !== 'string') return v; try { return JSON.parse(v) } catch { return fb } }
 
 const INTERESTS = ['美食', '自然', '人文', '亲子', '购物', '夜生活']
 
@@ -20,7 +19,7 @@ export default function Handbook() {
   const load = async () => {
     try {
       const c = await listGuideCards(tripId)
-      setCards((c as any).map((x: any) => ({ ...x, items: safeParse(x.items) }))); setError('')
+      setCards(c); setError('')
     } catch (e) {
       setError(e instanceof Error ? e.message : '加载失败')
     }
@@ -44,12 +43,12 @@ export default function Handbook() {
       const payload = fresh.map((c, i) => ({
         trip_id: tripId, category: c.category || 'tip', icon: c.icon || '📌',
         title: c.title || '', summary: c.summary || '',
-        items: typeof c.items === 'string' ? c.items : JSON.stringify(c.items || []),
+        items: c.items || [],
         source: c.source === 'custom' ? 'custom' : 'ai', sort: i,
       }))
       await createGuideCards(tripId, payload as any, '我')
       const rows = await listGuideCards(tripId)
-      setCards(rows.map(c => ({ ...c, items: safeParse((c as any).items) })))
+      setCards(rows)
       Taro.hideLoading()
       Taro.showToast({ title: `已生成 ${fresh.length} 张卡片`, icon: 'success' })
     } catch (e) {
