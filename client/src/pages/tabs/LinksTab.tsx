@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react';
-import { api } from '../../api';
 import { useApp } from '../../store';
-import type { LinkType, TravelLink } from '@shared/types';
+import { listLinks, createLink, deleteLink } from '../../rdb/ops';
+import type { TravelLink } from '../../types';
 import type { TabCtx } from './tabCtx';
+
+type LinkType = TravelLink['type'];
 
 /* ============ 攻略收藏：小红书 / 公众号 / 网页链接快速查阅 ============ */
 
@@ -18,12 +20,13 @@ export default function LinksTab({ bundle, canEdit }: TabCtx) {
   const [links, setLinks] = useState<TravelLink[] | null>(null);
   const [adding, setAdding] = useState(false);
   const [filter, setFilter] = useState<LinkType | 'all'>('all');
+  const memberName = bundle.members[0]?.displayName || '我';
 
   const load = async () => {
     try {
-      setLinks(await api.get<TravelLink[]>(`/api/trips/${bundle.trip.id}/links`));
-    } catch (e: any) {
-      toast(e.message || '加载失败', true);
+      setLinks(await listLinks(bundle.trip.id));
+    } catch (e) {
+      toast(e instanceof Error ? e.message : '加载失败', true);
       setLinks([]);
     }
   };
@@ -32,10 +35,10 @@ export default function LinksTab({ bundle, canEdit }: TabCtx) {
   const remove = async (l: TravelLink) => {
     if (!confirm(`删除「${l.title}」？`)) return;
     try {
-      await api.del(`/api/links/${l.id}`);
+      await deleteLink(bundle.trip.id, l.id);
       setLinks(prev => (prev || []).filter(x => x.id !== l.id));
-    } catch (e: any) {
-      toast(e.message, true);
+    } catch (e) {
+      toast(e instanceof Error ? e.message : '删除失败', true);
     }
   };
 
@@ -93,12 +96,12 @@ export default function LinksTab({ bundle, canEdit }: TabCtx) {
         </div>
       )}
 
-      {adding && <AddLinkModal tripId={bundle.trip.id} onClose={() => setAdding(false)} onAdded={l => { setLinks(prev => [l, ...(prev || [])]); setAdding(false); }} />}
+      {adding && <AddLinkModal tripId={bundle.trip.id} memberName={memberName} onClose={() => setAdding(false)} onAdded={l => { setLinks(prev => [l, ...(prev || [])]); setAdding(false); }} />}
     </div>
   );
 }
 
-function AddLinkModal({ tripId, onClose, onAdded }: { tripId: number; onClose: () => void; onAdded: (l: TravelLink) => void }) {
+function AddLinkModal({ tripId, memberName, onClose, onAdded }: { tripId: string; memberName: string; onClose: () => void; onAdded: (l: TravelLink) => void }) {
   const { toast } = useApp();
   const [type, setType] = useState<LinkType>('xhs');
   const [title, setTitle] = useState('');
@@ -111,11 +114,12 @@ function AddLinkModal({ tripId, onClose, onAdded }: { tripId: number; onClose: (
     if (!url.trim()) { toast('请填写链接', true); return; }
     setBusy(true);
     try {
-      const l = await api.post<TravelLink>(`/api/trips/${tripId}/links`, { type, title, url, note });
+      await createLink(tripId, { type, title, url, note, tripId }, memberName);
       toast('已收藏');
-      onAdded(l);
-    } catch (e: any) {
-      toast(e.message, true);
+      // 落库后本地追加（新写行有平台可见性延迟，避免「写后立即 list」查不到）
+      onAdded({ id: `pending-${Date.now()}`, tripId, type, title, url, note });
+    } catch (e) {
+      toast(e instanceof Error ? e.message : '收藏失败', true);
     } finally {
       setBusy(false);
     }

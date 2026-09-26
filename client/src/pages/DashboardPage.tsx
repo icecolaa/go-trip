@@ -1,6 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { api, type TripCardInfo } from '../api';
+import { listTrips } from '../rdb/trip';
+import { tempUrls } from '../rdb/storage';
+import { seedDemoTrip } from '../rdb/seed';
+import type { TripCardInfo } from '../types';
 import { useApp } from '../store';
 import { Avatar, Modal, countdownText, yuan } from '../components/ui';
 import CreateTripModal from '../components/CreateTripModal';
@@ -16,11 +19,23 @@ export default function DashboardPage() {
   const [filter, setFilter] = useState<Filter>('all');
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState<TripCardInfo | null>(null);
+  const [importing, setImporting] = useState(false);
+
+  const importDemo = async () => {
+    if (importing) return;
+    setImporting(true);
+    try {
+      await seedDemoTrip(me?.nickname || '我');
+      load();
+    } finally {
+      setImporting(false);
+    }
+  };
   const [guideOpen, setGuideOpen] = useState(false);
 
   const load = () => {
     setLoading(true);
-    api.get<TripCardInfo[]>('/api/trips')
+    listTrips()
       .then(setTrips)
       .catch(() => {})
       .finally(() => setLoading(false));
@@ -28,7 +43,7 @@ export default function DashboardPage() {
   useEffect(load, []);
 
   const shown = useMemo(() => {
-    if (filter === 'mine') return trips.filter(t => t.myRole === 'owner');
+    if (filter === 'mine') return trips; // 单主人架构：列表即自己发起的
     if (filter === 'upcoming') return trips.filter(t => countdownText(t) !== '已结束');
     return trips;
   }, [trips, filter]);
@@ -69,7 +84,10 @@ export default function DashboardPage() {
       ) : shown.length === 0 ? (
         <div className="card empty">
           <span className="big">🗺️</span>
-          还没有旅程<br />点击右上角「创建旅程」，或用邀请码加入朋友的行程
+          还没有旅程<br />点击右上角「创建旅程」开始规划
+          <div style={{ marginTop: 14 }}>
+            <button className="btn" onClick={importDemo} disabled={importing}>{importing ? '导入中…' : '或导入演示行程看看'}</button>
+          </div>
         </div>
       ) : (
         <div className="trip-grid">
@@ -97,16 +115,22 @@ export default function DashboardPage() {
 
 function TripCard({ t, onClick, onEdit }: { t: TripCardInfo; onClick: () => void; onEdit: () => void }) {
   const cd = countdownText(t);
-  const canEdit = t.myRole === 'owner' || t.myRole === 'admin';
   const [imgFailed, setImgFailed] = useState(false);
-  const showImg = !!t.coverImage && !imgFailed;
+  const [imgSrc, setImgSrc] = useState('');
+  useEffect(() => {
+    setImgSrc('');
+    if (t.coverImage && !t.coverImage.startsWith('data:')) {
+      tempUrls([t.coverImage]).then(m => setImgSrc(m[t.coverImage!] || '')).catch(() => undefined);
+    } else if (t.coverImage) setImgSrc(t.coverImage);
+  }, [t.coverImage]);
+  const showImg = !!imgSrc && !imgFailed;
   return (
     <div className="card trip-card" onClick={onClick}>
       {/* 有封面图时用图片底，否则退回封面色+图标（DESIGN.md：不做彩色整块底） */}
       <div className="trip-cover" style={{ ['--cover-accent' as string]: t.coverColor }}>
-        {showImg && <img className="trip-cover-img" src={t.coverImage} alt="" onError={() => setImgFailed(true)} loading="lazy" />}
+        {showImg && <img className="trip-cover-img" src={imgSrc} alt="" onError={() => setImgFailed(true)} loading="lazy" />}
         {!showImg && <span className="emoji">{t.coverEmoji}</span>}
-        {canEdit && (
+        {(
           <button
             className="trip-edit-btn"
             title="编辑旅程"

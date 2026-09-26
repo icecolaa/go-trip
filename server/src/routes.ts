@@ -29,6 +29,13 @@ function route(method: string, pattern: string, handler: Handler): void {
   ROUTES.push({ method, pattern, handler });
 }
 
+/** 身份门（双通道）：
+ *  - 小程序：callContainer 网关注入 x-wx-source（公网直连会被剥离，2026-09-25 实测）
+ *  - Web/H5：无 callContainer，走公网直连 + 共享密钥 x-gotrip-key（= 环境变量 WEB_PROXY_KEY；
+ *    密钥随前端 bundle 可见属可接受风险——作用是提高白嫖门槛，非机密边界）
+ *  价格记忆已移到客户端（gt_flywhere_watch 按用户私有），分享读暂缓。 */
+const WEB_PROXY_KEY = process.env.WEB_PROXY_KEY || '';
+
 export async function handleApi(req: IncomingMessage, res: ServerResponse): Promise<boolean> {
   const url = (req.url || '/').split('?')[0];
   const method = (req.method || 'GET').toUpperCase();
@@ -36,8 +43,10 @@ export async function handleApi(req: IncomingMessage, res: ServerResponse): Prom
     if (r.method !== method) continue;
     const params = matchPath(r.pattern, url);
     if (!params) continue;
-    if (!String(req.headers['x-wx-source'] || '')) {
-      json(res, 403, { error: '非微信通道调用已拒绝' });
+    const wxChannel = Boolean(String(req.headers['x-wx-source'] || ''));
+    const webChannel = Boolean(WEB_PROXY_KEY) && req.headers['x-gotrip-key'] === WEB_PROXY_KEY;
+    if (!wxChannel && !webChannel) {
+      json(res, 403, { error: '非可信通道调用已拒绝' });
       return true;
     }
     const body = method === 'GET' ? undefined : await readBody(req);

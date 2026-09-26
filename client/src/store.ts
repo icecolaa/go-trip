@@ -1,13 +1,15 @@
 import { create } from 'zustand';
-import { api, getToken, setToken, type Me } from './api';
+import { restoreSession, loginWithPassword, registerWithPassword, loginAnonymous, logout as authLogout } from './rdb/auth';
+import type { Profile } from './types';
 
 interface AppState {
-  me: Me | null;
+  me: Profile | null;
   ready: boolean;
   toasts: { id: number; text: string; err?: boolean }[];
   loadMe: () => Promise<void>;
   login: (username: string, password: string) => Promise<void>;
   register: (username: string, password: string, nickname: string) => Promise<void>;
+  loginAnonymously: () => Promise<void>;
   logout: () => Promise<void>;
   toast: (text: string, err?: boolean) => void;
   dismiss: (id: number) => void;
@@ -21,34 +23,31 @@ export const useApp = create<AppState>((set, get) => ({
   toasts: [],
 
   loadMe: async () => {
-    if (!getToken()) {
-      set({ me: null, ready: true });
-      return;
-    }
     try {
-      const me = await api.get<Me>('/api/me');
+      const me = await restoreSession();
       set({ me, ready: true });
     } catch {
-      setToken('');
       set({ me: null, ready: true });
     }
   },
 
   login: async (username, password) => {
-    const r = await api.post<{ token: string; user: Me }>('/api/auth/login', { username, password });
-    setToken(r.token);
-    set({ me: r.user });
+    const me = await loginWithPassword(username, password);
+    set({ me });
   },
 
   register: async (username, password, nickname) => {
-    const r = await api.post<{ token: string; user: Me }>('/api/auth/register', { username, password, nickname });
-    setToken(r.token);
-    set({ me: r.user });
+    const me = await registerWithPassword(username, password, nickname);
+    set({ me });
+  },
+
+  loginAnonymously: async () => {
+    const me = await loginAnonymous();
+    set({ me });
   },
 
   logout: async () => {
-    try { await api.post('/api/auth/logout'); } catch { /* ignore */ }
-    setToken('');
+    await authLogout();
     set({ me: null });
   },
 

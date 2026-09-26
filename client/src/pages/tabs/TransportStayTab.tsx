@@ -1,11 +1,10 @@
 import { useMemo, useState } from 'react';
-import type { TripBundle } from '../../api';
 import type { TabCtx } from './tabCtx';
 import { Modal, fmtDate, weekOf, yuan } from '../../components/ui';
 import StatusPicker, { StatusBadge } from '../../components/StatusPicker';
 import SensitiveText from '../../components/SensitiveText';
 import { amapPlaceUrl } from '../../components/TripMode';
-import { api } from '../../api';
+import { updateActivity } from '../../rdb/ops';
 import { cashMoney } from './CashTab';
 
 /**
@@ -29,7 +28,7 @@ function isNextDay(title: string, notes: string): boolean {
 export default function TransportStayTab({ bundle, canEdit, reload }: TabCtx) {
   const { trip } = bundle;
   const [sub, setSub] = useState<'transport' | 'stay'>('transport');
-  const [editing, setEditing] = useState<number | null>(null);
+  const [editing, setEditing] = useState<string | null>(null);
   const [draftStatus, setDraftStatus] = useState<string | null>(null);
 
   const dayById = useMemo(() => new Map(bundle.days.map(d => [d.id, d])), [bundle.days]);
@@ -53,13 +52,13 @@ export default function TransportStayTab({ bundle, canEdit, reload }: TabCtx) {
   const transports = sorted.filter(a => a.kind === 'transport');
   const stays = sorted.filter(a => a.kind === 'hotel');
 
-  async function saveStatus(activityId: number, status: string | null) {
+  async function saveStatus(activityId: string, status: string | null) {
     setEditing(null);
     try {
-      await api.patch(`/api/activities/${activityId}`, { status });
+      await updateActivity(bundle.trip.id, activityId, { status }, bundle.members[0]?.displayName || '我');
       await reload();
-    } catch (e: any) {
-      alert(e.message || '保存失败');
+    } catch (e) {
+      alert(e instanceof Error ? e.message : '保存失败');
     }
   }
 
@@ -87,7 +86,7 @@ export default function TransportStayTab({ bundle, canEdit, reload }: TabCtx) {
                   <span className="ticket-kind">交通</span>
                   <span className="ticket-date">{day ? `${fmtDate(day.date)} ${weekOf(day.date)}` : ''}</span>
                   {code && <span className="ticket-code">{code}</span>}
-                  <StatusBadge status={a.status} />
+                  <StatusBadge status={a.status as any} />
                   {nextDay && <span className="ticket-nextday">次日抵达</span>}
                 </div>
                 <div className="ticket-route">
@@ -136,7 +135,7 @@ export default function TransportStayTab({ bundle, canEdit, reload }: TabCtx) {
                 <div className="ticket-head">
                   <span className="ticket-kind">住宿</span>
                   <span className="ticket-date">{day ? `入住 ${fmtDate(day.date)} ${weekOf(day.date)}` : '入住日期待定'}</span>
-                  <StatusBadge status={a.status} />
+                  <StatusBadge status={a.status as any} />
                 </div>
                 <div className="stay-name">{a.title}</div>
                 <div className="stay-rows">

@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { api } from '../api';
+import { proxy } from '../rdb/proxy';
 import { useApp } from '../store';
 
 /* ============ 使用助手：全站悬浮 AI 问答（可拖动 / 可隐藏） ============ */
@@ -160,7 +160,7 @@ export default function UsageAssistant() {
     setInput('');
     setBusy(true);
     try {
-      const r = await api.post<{ reply: string; source: string }>('/api/assistant', {
+      const r = await proxy.post<{ reply: string; source: string }>('/api/assistant', {
         messages: history.filter(t => t !== GREETING).slice(-10),
       });
       setTurns(prev => [...prev, { role: 'assistant', content: r.reply }]);

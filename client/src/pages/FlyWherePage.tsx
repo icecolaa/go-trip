@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { api } from '../api';
+import { proxy } from '../rdb/proxy';
 import { useApp } from '../store';
 import { Modal, fmtDate } from '../components/ui';
 import MapView, { type MapPoint } from '../components/MapView';
@@ -122,9 +122,19 @@ export default function FlyWherePage() {
     setRestoredTs(null);
     resetFilters();
     try {
-      const r = await api.post<{ results: FlightResult[]; count: number; minPrice: number | null; trend?: { deltaPerPerson: number; checkedAt: string } | null }>('/api/flywhere/search', queryOf());
+      // callContainer/公网网关都有超时约束，飞哪儿改异步任务：提交 jobId 后轮询
+      const { jobId } = await proxy.post<{ jobId: string }>('/api/flywhere/search', queryOf());
+      const deadline = Date.now() + 120000;
+      let final: any = null;
+      while (Date.now() < deadline) {
+        await new Promise(r => setTimeout(r, 2500));
+        const st = await proxy.get<any>(`/api/flywhere/search?jobId=${jobId}`);
+        if (st.status !== 'running') { final = st; break; }
+      }
+      if (!final) throw new Error('搜索超时，请重试');
+      if (final.status === 'error') throw new Error(final.error || '搜索失败');
+      const r = final as { results: FlightResult[]; count: number; minPrice: number | null };
       setResults(r.results);
-      setTrend(r.trend || null);
       const entry: HistoryEntry = { id: Date.now(), ts: Date.now(), query: queryOf(), results: r.results };
       setHistory(prev => {
         const next = [entry, ...prev.filter(h => h.id !== entry.id)].slice(0, 12);
@@ -144,7 +154,7 @@ export default function FlyWherePage() {
     setAdviceBusy(true);
     setAdviceOpen(true);
     try {
-      setAdvice(await api.post<Advice>('/api/flywhere/ai-advice', { results: results.slice(0, 12) }));
+      setAdvice(await proxy.post<Advice>('/api/flywhere/ai-advice', { results: results.slice(0, 12) }));
     } catch (e: any) {
       toast(e.message || 'AI 建议失败', true);
     } finally {
@@ -183,7 +193,7 @@ export default function FlyWherePage() {
 
   const openFee = async () => {
     setFeeOpen(true);
-    if (!fee) { try { setFee(await api.get<FeePolicy>('/api/flywhere/fee-policy')); } catch { /* 用兜底文案 */ } }
+    if (!fee) { try { setFee(await proxy.get<FeePolicy>('/api/flywhere/fee-policy')); } catch { /* 用兜底文案 */ } }
   };
 
   /* ---------------- 结果的客户端筛选 / 排序 / 分组 ---------------- */

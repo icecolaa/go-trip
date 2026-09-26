@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
-import { api } from '../../api';
 import { useApp } from '../../store';
 import { Modal, Avatar, timeAgo, fmtDate } from '../../components/ui';
+import { createJournal, updateJournal, deleteJournal } from '../../rdb/ops';
+import { uploadImage, tempUrls } from '../../rdb/storage';
 import type { TabCtx } from './tabCtx';
-import type { JournalImage } from '@shared/types';
+import type { JournalImage } from '../../types';
 
 /** 前端压缩：原图最长边 1600 / 缩略图 400，JPEG 0.85 */
 async function fileToImages(file: File): Promise<{ full: string; thumb: string }> {
@@ -21,12 +22,29 @@ async function fileToImages(file: File): Promise<{ full: string; thumb: string }
   return result;
 }
 
+/** dataURL → File（云存储上传通道只收 File/Blob） */
+function dataUrlToFile(dataUrl: string, name = 'journal.jpg'): File {
+  const [head, b64] = dataUrl.split(',');
+  const mime = /:(.*?);/.exec(head)?.[1] || 'image/jpeg';
+  const bin = atob(b64 || '');
+  const arr = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+  return new File([arr], name, { type: mime });
+}
+
+/** createdAt（数据模型毫秒时间戳）→ 相对时间 */
+function ago(t?: number): string {
+  if (!t) return '';
+  try { return timeAgo(new Date(t).toISOString()); } catch { return ''; }
+}
+
 const MOODS = ['🎉', '🥰', '😎', '😴', '🤯', '🌧️', '🍜', '📝'];
 
 export default function JournalTab({ bundle, reload, canEdit }: TabCtx) {
   const { toast } = useApp();
   const { journal, days, members } = bundle;
-  const me = members.find(m => m.id === bundle.myMemberId);
+  const me = members[0];
+  const memberName = me?.displayName || '我';
   const [content, setContent] = useState('');
   const [mood, setMood] = useState('📝');
   const [dayId, setDayId] = useState('');
@@ -34,7 +52,20 @@ export default function JournalTab({ bundle, reload, canEdit }: TabCtx) {
   const [images, setImages] = useState<JournalImage[]>([]);
   const [uploading, setUploading] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
-  const [editing, setEditing] = useState<{ id: number; content: string; mood: string; images: JournalImage[] } | null>(null);
+  const [editing, setEditing] = useState<{ id: string; content: string; mood: string; images: JournalImage[] } | null>(null);
+
+  /** fileID → 临时访问链（日志配图与待发布配图共用一份映射） */
+  const [imgUrls, setImgUrls] = useState<Record<string, string>>({});
+  useEffect(() => {
+    const ids = [
+      ...journal.flatMap(j => (j.images || []).flatMap(im => [im.full, im.thumb])),
+      ...images.flatMap(im => [im.full, im.thumb]),
+    ].filter(Boolean);
+    if (!ids.length) { setImgUrls({}); return; }
+    let alive = true;
+    tempUrls([...new Set(ids)]).then(m => { if (alive) setImgUrls(m); }).catch(() => undefined);
+    return () => { alive = false; };
+  }, [journal, images]);
 
   const pickImages = async (files: FileList | null) => {
     if (!files?.length) return;
@@ -42,14 +73,17 @@ export default function JournalTab({ bundle, reload, canEdit }: TabCtx) {
     try {
       const picked = [...files].slice(0, 9 - images.length);
       if (!picked.length) { toast('一篇日志最多 9 张图片', true); return; }
-      const pairs = await Promise.all(picked.map(fileToImages));
-      const r = await api.post<{ images: JournalImage[] }>(`/api/trips/${bundle.trip.id}/uploads`, {
-        images: pairs,
-      });
-      setImages(prev => [...prev, ...r.images]);
-      toast(`已添加 ${r.images.length} 张图片`);
-    } catch (e: any) {
-      toast(e.message || '图片上传失败', true);
+      // 压缩后逐张上传云存储，图片只存 fileID
+      const added: JournalImage[] = [];
+      for (const file of picked) {
+        const pair = await fileToImages(file);
+        const fid = await uploadImage(dataUrlToFile(pair.full), 'journal');
+        added.push({ full: fid, thumb: fid });
+      }
+      setImages(prev => [...prev, ...added]);
+      toast(`已添加 ${added.length} 张图片`);
+    } catch (e) {
+      toast(e instanceof Error ? e.message : '图片上传失败', true);
     } finally {
       setUploading(false);
       if (fileRef.current) fileRef.current.value = '';
@@ -62,38 +96,40 @@ export default function JournalTab({ bundle, reload, canEdit }: TabCtx) {
     if (!content.trim() || busy) { toast('写点什么再发布吧', true); return; }
     setBusy(true);
     try {
-      await api.post(`/api/trips/${bundle.trip.id}/journal`, {
-        content: content.trim(), mood, dayId: dayId ? Number(dayId) : null, images,
-      });
+      await createJournal(bundle.trip.id, {
+        dayId: dayId || null,
+        authorMemberId: me?.id || '',
+        content: content.trim(), mood, images,
+      }, memberName);
       setContent('');
       setImages([]);
       toast('日志已发布');
       reload();
-    } catch (e: any) {
-      toast(e.message, true);
+    } catch (e) {
+      toast(e instanceof Error ? e.message : '发布失败', true);
     } finally {
       setBusy(false);
     }
   };
 
-  const del = async (id: number) => {
+  const del = async (id: string) => {
     if (!confirm('删除这条日志？')) return;
     try {
-      await api.del(`/api/journal/${id}`);
+      await deleteJournal(bundle.trip.id, id);
       reload();
-    } catch (e: any) { toast(e.message, true); }
+    } catch (e) { toast(e instanceof Error ? e.message : '删除失败', true); }
   };
 
   const saveEdit = async () => {
     if (!editing) return;
     try {
-      await api.patch(`/api/journal/${editing.id}`, { content: editing.content, mood: editing.mood, images: editing.images });
+      await updateJournal(bundle.trip.id, editing.id, { content: editing.content, mood: editing.mood, images: editing.images });
       setEditing(null);
       reload();
-    } catch (e: any) { toast(e.message, true); }
+    } catch (e) { toast(e instanceof Error ? e.message : '保存失败', true); }
   };
 
-  /** 点击缩略图查看大图 */
+  /** 点击缩略图查看大图（存 fileID，渲染时换临时链） */
   const [lightbox, setLightbox] = useState<string | null>(null);
   useEffect(() => {
     if (!lightbox) return;
@@ -136,7 +172,7 @@ export default function JournalTab({ bundle, reload, canEdit }: TabCtx) {
                 <div className="journal-thumbs">
                   {images.map((im, i) => (
                     <div className="journal-thumb" key={im.full + i}>
-                      <img src={im.thumb} alt={`待发布的日志配图 ${i + 1}`} onClick={() => setLightbox(im.full)} />
+                      <img src={imgUrls[im.thumb] || ''} alt={`待发布的日志配图 ${i + 1}`} onClick={() => setLightbox(im.full)} />
                       <span className="journal-thumb-x" role="button" aria-label="移除图片" onClick={() => removeImage(i)}>×</span>
                     </div>
                   ))}
@@ -153,12 +189,12 @@ export default function JournalTab({ bundle, reload, canEdit }: TabCtx) {
         journal.map(j => {
           const author = members.find(m => m.id === j.authorMemberId);
           const day = days.find(d => d.id === j.dayId);
-          const mine = j.authorMemberId === bundle.myMemberId;
+          const mine = j.authorMemberId === me?.id;
           return (
             <div className="card journal-card" key={j.id}>
               <div className="journal-head">
-                <Avatar name={j.author?.nickname || '旅'} color={j.author?.avatarColor || '#2f6e4f'} size="sm" />
-                <b style={{ fontSize: 14 }}>{j.author?.nickname || '旅伴'}</b>
+                <Avatar name={author?.displayName || '旅'} color={author?.avatarColor || '#2f6e4f'} size="sm" />
+                <b style={{ fontSize: 14 }}>{author?.displayName || '旅伴'}</b>
                 <span className="journal-mood">{j.mood}</span>
                 <div style={{ flex: 1 }} />
                 {mine && canEdit && (
@@ -173,13 +209,13 @@ export default function JournalTab({ bundle, reload, canEdit }: TabCtx) {
                 <div className="journal-thumbs">
                   {j.images.map((im, i) => (
                     <div className="journal-thumb" key={i}>
-                      <img src={im.thumb} alt="" loading="lazy" onClick={() => setLightbox(im.full)} />
+                      <img src={imgUrls[im.thumb] || ''} alt="" loading="lazy" onClick={() => setLightbox(im.full)} />
                     </div>
                   ))}
                 </div>
               )}
               <div className="journal-foot">
-                <span>{timeAgo(j.createdAt)}</span>
+                <span>{ago(j.createdAt)}</span>
                 {day && <span>· 第 {day.dayNumber} 天</span>}
               </div>
             </div>
@@ -199,7 +235,7 @@ export default function JournalTab({ bundle, reload, canEdit }: TabCtx) {
             <div className="journal-thumbs">
               {editing.images.map((im, i) => (
                 <div className="journal-thumb" key={i}>
-                  <img src={im.thumb} alt="" />
+                  <img src={imgUrls[im.thumb] || ''} alt="" />
                   <span className="journal-thumb-x" role="button" onClick={() => setEditing({ ...editing, images: editing.images.filter((_, x) => x !== i) })}>×</span>
                 </div>
               ))}
@@ -214,7 +250,7 @@ export default function JournalTab({ bundle, reload, canEdit }: TabCtx) {
 
       {lightbox && (
         <div className="journal-lightbox" onClick={() => setLightbox(null)} role="dialog" aria-label="查看大图">
-          <img src={lightbox} alt="" />
+          <img src={imgUrls[lightbox] || ''} alt="" />
         </div>
       )}
     </div>

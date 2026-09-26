@@ -1,11 +1,19 @@
 import { useMemo, useState } from 'react';
-import { api, type Poi } from '../../api';
 import { useApp } from '../../store';
 import MapView, { type MapPoint, dayColor } from '../../components/MapView';
 import { KIND_META, yuan } from '../../components/ui';
 import { maskSensitive } from '../../components/SensitiveText';
 import { amapPlaceUrl } from '../../components/TripMode';
+import { createActivity } from '../../rdb/ops';
+import { proxy } from '../../rdb/proxy';
 import type { TabCtx } from './tabCtx';
+import type { Poi } from '../../types';
+
+/** 代理返回的 POI 还带 kind/desc/source 等展示字段（新 Poi 类型只收坐标字段，这里补充声明） */
+type PoiHit = Poi & { kind?: string; desc?: string; source?: 'amap' | 'builtin' };
+
+/** 地图点（id 为数据模型 _id 字符串；MapView 组件尚未迁移仍按 number 建模，传参处收窄） */
+type MapPt = { id: string; lat: number; lng: number; title: string; subtitle?: string; dayNumber?: number };
 
 /** 地点分类（地图收录口径）：酒店/机场/车站/景点/餐厅/活动地点/集合点 */
 const PLACE_GROUPS = [
@@ -25,20 +33,20 @@ function groupOfActivity(kind: string): string {
   return 'activity';
 }
 
-export default function MapTab({ bundle, reload, canEdit }: TabCtx) {
+export default function MapTab({ bundle, reload, weather, canEdit }: TabCtx) {
   const { toast } = useApp();
   const [panelOpen, setPanelOpen] = useState(true);
   const [q, setQ] = useState('');
-  const [results, setResults] = useState<Poi[]>([]);
+  const [results, setResults] = useState<PoiHit[]>([]);
   const [queriedAt, setQueriedAt] = useState<string>('');
   const [busy, setBusy] = useState(false);
-  const [attachAct, setAttachAct] = useState<Poi | null>(null);
+  const [attachAct, setAttachAct] = useState<PoiHit | null>(null);
   const [dayFilter, setDayFilter] = useState<number | null>(null);
   const [copyState, setCopyState] = useState<'idle' | 'ok' | 'fallback'>('idle');
   const [copyText, setCopyText] = useState('');
   const [openGroups, setOpenGroups] = useState<string[]>(['attraction']);
 
-  const points = useMemo<MapPoint[]>(() => {
+  const points = useMemo<MapPt[]>(() => {
     const list = bundle.activities
       .filter(a => a.lat != null && a.lng != null)
       .map(a => ({
@@ -92,7 +100,7 @@ export default function MapTab({ bundle, reload, canEdit }: TabCtx) {
       return;
     }
     // 途经点过多时只取首尾与若干中间点，避免 URI 过长
-    const fmt = (p: MapPoint) => `${p.lng},${p.lat},${p.title}`;
+    const fmt = (p: MapPt) => `${p.lng},${p.lat},${p.title}`;
     const first = allLocated[0], last = allLocated[allLocated.length - 1];
     const mid = allLocated.slice(1, -1);
     const via = (mid.length > 8 ? mid.filter((_, i) => i % Math.ceil(mid.length / 8) === 0).slice(0, 8) : mid).map(fmt).join(';');
@@ -106,10 +114,10 @@ export default function MapTab({ bundle, reload, canEdit }: TabCtx) {
   const copyAllItinerary = async () => {
     const days = bundle.days;
     if (!days.length) { toast('还没有行程内容', true); return; }
-    const byDay = new Map<number, typeof bundle.activities>();
+    const byDay = new Map<string, typeof bundle.activities>();
     for (const d of days) byDay.set(d.id, []);
     for (const a of bundle.activities) byDay.get(a.dayId)?.push(a);
-    for (const list of byDay.values()) list.sort((x, y) => x.sort - y.sort || x.id - y.id);
+    for (const list of byDay.values()) list.sort((x, y) => x.sort - y.sort || x.id.localeCompare(y.id));
 
     const lines: string[] = [
       `【${bundle.trip.title}】${bundle.trip.destination || ''}`.trim(),
@@ -156,27 +164,30 @@ export default function MapTab({ bundle, reload, canEdit }: TabCtx) {
     if (!q.trim() || busy) return;
     setBusy(true);
     try {
-      const r = await api.get<Poi[]>(`/api/poi/search?q=${encodeURIComponent(q)}&city=${encodeURIComponent(bundle.trip.destination)}`);
+      const r = await proxy.get<PoiHit[]>(`/api/poi/search?q=${encodeURIComponent(q)}&city=${encodeURIComponent(bundle.trip.destination)}`);
       setResults(r);
       setQueriedAt(new Date().toISOString().slice(0, 10));
+    } catch (e) {
+      toast(e instanceof Error ? e.message : '搜索失败', true);
+      setResults([]);
     } finally {
       setBusy(false);
     }
   };
 
-  const addToTrip = async (poi: Poi) => {
+  const addToTrip = async (poi: PoiHit) => {
     // 添加到第一天（或最后一天）的行程里
     const day = bundle.days[0];
     if (!day) { toast('旅程还没有行程日', true); return; }
     try {
-      await api.post(`/api/days/${day.id}/activities`, {
+      await createActivity(bundle.trip.id, day.id, {
         title: poi.name, place: poi.name, kind: 'sight', lat: poi.lat, lng: poi.lng,
         notes: poi.desc || '', time: null,
-      });
+      }, bundle.members[0]?.displayName || '我');
       toast(`已把「${poi.name}」加到第 ${day.dayNumber} 天，可在行程里调整`);
       reload();
-    } catch (e: any) {
-      toast(e.message, true);
+    } catch (e) {
+      toast(e instanceof Error ? e.message : '添加失败', true);
     }
   };
 
@@ -209,11 +220,11 @@ export default function MapTab({ bundle, reload, canEdit }: TabCtx) {
       )}
       <div className="muted" style={{ marginBottom: 10, marginTop: -4 }}>
         {points.length} 个已定位地点{hasNoGeo ? '（部分行程未定位，编辑行程时搜索地点即可定位）' : ''}
-        {bundle.weather?.length ? ` · 天气来源 open-meteo，查询于 ${new Date().toISOString().slice(0, 10)}` : ''}
+        {weather.length ? ` · 天气来源 open-meteo，查询于 ${new Date().toISOString().slice(0, 10)}` : ''}
       </div>
 
       <div className="map-wrap">
-        <MapView points={points} initialCenter={firstCenter(bundle)} initialZoom={10} />
+        <MapView points={points as unknown as MapPoint[]} initialCenter={firstCenter(bundle)} initialZoom={10} />
         {canEdit && panelOpen && (
           <div className="map-poi-panel">
             <h4>🔍 地点搜索 <button className="btn sm ghost" style={{ float: 'right' }} onClick={() => setPanelOpen(false)}>收起</button></h4>
@@ -300,16 +311,16 @@ export default function MapTab({ bundle, reload, canEdit }: TabCtx) {
             <div className="modal-ops">
               <button className="btn" onClick={() => setAttachAct(null)}>取消</button>
               <button className="btn primary" onClick={async () => {
-                const dayId = Number((document.getElementById('map-poi-day') as HTMLSelectElement).value);
+                const dayId = (document.getElementById('map-poi-day') as HTMLSelectElement).value;
                 try {
-                  await api.post(`/api/days/${dayId}/activities`, {
+                  await createActivity(bundle.trip.id, dayId, {
                     title: attachAct.name, place: attachAct.name, kind: 'sight',
                     lat: attachAct.lat, lng: attachAct.lng, notes: attachAct.desc || '', time: null,
-                  });
+                  }, bundle.members[0]?.displayName || '我');
                   toast('已添加到行程');
                   setAttachAct(null);
                   reload();
-                } catch (e: any) { toast(e.message, true); }
+                } catch (e) { toast(e instanceof Error ? e.message : '添加失败', true); }
               }}>添加</button>
             </div>
           </div>

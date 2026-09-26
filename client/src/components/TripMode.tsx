@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { api } from '../api';
+import { proxy } from '../rdb/proxy';
 import { useApp } from '../store';
 import type { Activity, TripBundle, TripDay, WeatherDay } from '@shared/types';
 import { KIND_META, weekOf, fmtDate, yuan } from './ui';
@@ -214,7 +214,7 @@ export default function TripMode({ bundle, weather, onClose }: Props) {
       // 依次尝试候选词，命中第一个带坐标的 POI 就打开精确标记
       for (const cand of candidates) {
         try {
-          const pois = await api.get<{ lat: number; lng: number; name: string }[]>(`/api/poi/search?q=${encodeURIComponent(cand)}`);
+          const pois = await proxy.get<{ lat: number; lng: number; name: string }[]>(`/api/poi/search?q=${encodeURIComponent(cand)}`);
           const hit = pois.find(p => isFinite(p.lat) && isFinite(p.lng));
           if (hit) {
             window.open(`https://uri.amap.com/marker?position=${hit.lng},${hit.lat}&name=${encodeURIComponent(hit.name)}&src=gotrip&coordinate=gaode&callnative=0`, '_blank', 'noopener');

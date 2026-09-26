@@ -1,4 +1,4 @@
-import type { TripBundle, WeatherDay } from '@shared/types';
+import type { TripBundle, WeatherDay } from '../../types';
 
 export interface TabCtx {
   bundle: TripBundle;

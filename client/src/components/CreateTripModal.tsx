@@ -1,5 +1,9 @@
-import { useState } from 'react';
-import { api, type TripCardInfo } from '../api';
+import { useEffect, useState } from 'react';
+import { createTrip, updateTrip, ensureProfile } from '../rdb/trip';
+import type { TripCardInfo } from '../types';
+import { applyGuideToTrip } from '../rdb/apply-guide';
+import { uploadImage, tempUrls } from '../rdb/storage';
+import { proxy } from '../rdb/proxy';
 import { useApp } from '../store';
 import { Modal } from './ui';
 
@@ -52,11 +56,21 @@ async function fileToCoverDataUrl(file: File): Promise<string> {
   return cv.toDataURL('image/jpeg', 0.82);
 }
 
-/** 创建旅程；传入 trip 时进入编辑模式（预填并调用 PATCH，无粘贴攻略区） */
+/** dataURL → File（封面上传云存储用） */
+function dataUrlToFile(dataUrl: string, name: string): File {
+  const [meta, b64] = dataUrl.split(',');
+  const mime = /:(.*?);/.exec(meta)?.[1] || 'image/jpeg';
+  const bin = atob(b64);
+  const arr = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+  return new File([arr], name, { type: mime });
+}
+
+/** 创建旅程；传入 trip 时进入编辑模式（预填并调用 updateTrip，无粘贴攻略区） */
 export default function CreateTripModal({ trip, onClose, onCreated, onSaved }: {
   trip?: TripCardInfo;
   onClose: () => void;
-  onCreated?: (id: number) => void;
+  onCreated?: (id: string) => void;
   onSaved?: () => void;
 }) {
   const editing = Boolean(trip);
@@ -70,7 +84,15 @@ export default function CreateTripModal({ trip, onClose, onCreated, onSaved }: {
   const [color, setColor] = useState(trip?.coverColor || COLORS[0]);
   const [guideText, setGuideText] = useState('');
   const [coverImage, setCoverImage] = useState<string>(trip?.coverImage || '');
+  const [coverUrl, setCoverUrl] = useState<string>('');
   const [coverBusy, setCoverBusy] = useState(false);
+
+  // 已有封面是云存储 fileID，换临时链展示
+  useEffect(() => {
+    if (trip?.coverImage && !trip.coverImage.startsWith('data:')) {
+      tempUrls([trip.coverImage]).then(m => setCoverUrl(m[trip.coverImage!] || '')).catch(() => undefined);
+    }
+  }, [trip?.coverImage]);
   const [busy, setBusy] = useState<'' | 'creating' | 'parsing' | 'saving'>('');
 
   const onPickCover = async (file: File | undefined) => {
@@ -95,29 +117,36 @@ export default function CreateTripModal({ trip, onClose, onCreated, onSaved }: {
     if (endDate < startDate) { toast('结束日期不能早于开始日期', true); return; }
     setBusy('creating');
     try {
-      const r = await api.post<{ id: number }>('/api/trips', {
+      const me = await ensureProfile();
+      let coverFileId: string | null = null;
+      if (coverImage) {
+        setBusy('parsing');
+        coverFileId = await uploadImage(dataUrlToFile(coverImage, 'cover.jpg'), 'cover');
+      }
+      const id = await createTrip({
         title: title.trim(),
         destination: destination.trim(),
+        description: '',
         startDate,
         endDate,
         budget: Number(budget) || 0,
         coverEmoji: emoji,
         coverColor: color,
-        coverImage,
-      });
+        coverImage: coverFileId,
+      }, me.nickname);
       if (guideText.trim()) {
         setBusy('parsing');
         try {
-          const guide = await api.post<any>(`/api/trips/${r.id}/ai/parse-guide`, { text: guideText });
-          await api.post(`/api/trips/${r.id}/ai/apply`, { guide, replaceDays: true });
-          toast(`创建成功，AI 识别出 ${guide.days.length} 天行程（${guide.source === 'ai' ? 'AI 解析' : '智能模板解析'}）`);
+          const guide = await proxy.post<any>(`/api/trips/${id}/ai/parse-guide`, { text: guideText });
+          const r = await applyGuideToTrip(id, guide, { tripStartDate: startDate }, me.nickname);
+          toast(`创建成功，${r.activityCount} 项安排已写入（${guide.source === 'ai' ? 'AI 解析' : '智能模板解析'}）`);
         } catch {
           toast('创建成功，但攻略解析失败，可稍后在行程页重试', true);
         }
       } else {
         toast('旅程已创建');
       }
-      onCreated?.(r.id);
+      onCreated?.(id);
     } catch (e: any) {
       toast(e.message || '创建失败', true);
       setBusy('');
@@ -130,7 +159,11 @@ export default function CreateTripModal({ trip, onClose, onCreated, onSaved }: {
     if (endDate < startDate) { toast('结束日期不能早于开始日期', true); return; }
     setBusy('saving');
     try {
-      await api.patch(`/api/trips/${trip.id}`, {
+      let coverFileId: string | null | undefined = trip.coverImage ?? null;
+      if (coverImage !== (trip.coverImage || '') && coverImage) {
+        coverFileId = await uploadImage(dataUrlToFile(coverImage, 'cover.jpg'), 'cover');
+      }
+      await updateTrip(trip.id, {
         title: title.trim(),
         destination: destination.trim(),
         startDate,
@@ -138,7 +171,7 @@ export default function CreateTripModal({ trip, onClose, onCreated, onSaved }: {
         budget: Number(budget) || 0,
         coverEmoji: emoji,
         coverColor: color,
-        coverImage,
+        coverImage: coverFileId,
       });
       toast('旅程已更新');
       onSaved?.();
@@ -178,7 +211,7 @@ export default function CreateTripModal({ trip, onClose, onCreated, onSaved }: {
         <div className="cover-pick">
           <div className="cover-preview" style={{ background: color }}>
             {coverImage
-              ? <img src={coverImage} alt="封面预览" />
+              ? <img src={coverImage.startsWith('data:') ? coverImage : coverUrl} alt="封面预览" />
               : <span className="cover-preview-emoji">{emoji}</span>}
           </div>
           <div className="cover-pick-ops">

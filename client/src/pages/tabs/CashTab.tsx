@@ -1,14 +1,16 @@
 import { useMemo, useState } from 'react';
-import { api } from '../../api';
 import { useApp } from '../../store';
 import { Modal } from '../../components/ui';
+import { createCash, deleteCash } from '../../rdb/ops';
 import type { TabCtx } from './tabCtx';
-import type { CashRefKind, TripCashItem } from '@shared/types';
+import type { TripCashItem } from '../../types';
+
+type CashRefKind = NonNullable<TripCashItem['refKind']>;
 
 const CURRENCIES = ['CNY', 'USD', 'EUR', 'JPY', 'HKD', 'THB', 'SGD'];
 const CUR_SYMBOL: Record<string, string> = { CNY: '¥', USD: '$', EUR: '€', JPY: '¥', HKD: 'HK$', THB: '฿', SGD: 'S$' };
 
-/** 现金项金额展示：读后端算好的 total，避免前端各处口径不一 */
+/** 现金项金额展示：读算好的 total，避免前端各处口径不一 */
 export function cashMoney(c: TripCashItem): string {
   return `${CUR_SYMBOL[c.currency] || (c.currency + ' ')}${c.total}`;
 }
@@ -23,6 +25,7 @@ export function CashSection({ bundle, reload, canEdit }: TabCtx) {
   const { toast } = useApp();
   const [adding, setAdding] = useState(false);
   const items = bundle.cash || [];
+  const memberName = bundle.members[0]?.displayName || '我';
 
   const totalByCurrency = useMemo(() => {
     const m = new Map<string, number>();
@@ -33,7 +36,7 @@ export function CashSection({ bundle, reload, canEdit }: TabCtx) {
   /** 可关联的行程/交通/住宿条目（用于把现金项挂到具体卡片上） */
   const refOptions = useMemo(() => {
     const dayById = new Map(bundle.days.map(d => [d.id, d]));
-    const out: { refKind: CashRefKind; refId: number; label: string }[] = [];
+    const out: { refKind: CashRefKind; refId: string; label: string }[] = [];
     for (const a of bundle.activities) {
       if (a.kind !== 'transport' && a.kind !== 'hotel') continue;
       const day = dayById.get(a.dayId);
@@ -46,9 +49,9 @@ export function CashSection({ bundle, reload, canEdit }: TabCtx) {
     return out;
   }, [bundle.activities, bundle.days]);
 
-  const remove = async (id: number) => {
+  const remove = async (id: string) => {
     if (!confirm('删除这条现金项？')) return;
-    try { await api.del(`/api/cash/${id}`); reload(); } catch (e: any) { toast(e.message, true); }
+    try { await deleteCash(bundle.trip.id, id, memberName); reload(); } catch (e) { toast(e instanceof Error ? e.message : '删除失败', true); }
   };
 
   return (
@@ -104,6 +107,7 @@ export function CashSection({ bundle, reload, canEdit }: TabCtx) {
       {adding && (
         <AddCashModal
           tripId={bundle.trip.id}
+          memberName={memberName}
           refOptions={refOptions}
           onClose={() => setAdding(false)}
           onSaved={async () => { setAdding(false); await reload(); }}
@@ -125,9 +129,10 @@ export default function CashTab(props: TabCtx) {
   );
 }
 
-function AddCashModal({ tripId, refOptions, onClose, onSaved }: {
-  tripId: number;
-  refOptions: { refKind: CashRefKind; refId: number; label: string }[];
+function AddCashModal({ tripId, memberName, refOptions, onClose, onSaved }: {
+  tripId: string;
+  memberName: string;
+  refOptions: { refKind: CashRefKind; refId: string; label: string }[];
   onClose: () => void;
   onSaved: () => Promise<void> | void;
 }) {
@@ -147,14 +152,17 @@ function AddCashModal({ tripId, refOptions, onClose, onSaved }: {
     setBusy(true);
     const picked = refOptions.find(r => `${r.refKind}:${r.refId}` === refKey);
     try {
-      await api.post(`/api/trips/${tripId}/cash`, {
+      await createCash(tripId, {
+        tripId,
         title: title.trim(), amount: amt, currency,
         perPerson, people: Math.max(1, Math.floor(Number(people) || 1)),
-        refKind: picked?.refKind, refId: picked?.refId,
-      });
+        total: 0, // 合计由 ops 层写入时计算，这里仅满足类型
+        dayId: null,
+        refKind: picked?.refKind ?? null, refId: picked?.refId ?? null,
+      }, memberName);
       toast('已添加现金项');
       await onSaved();
-    } catch (e: any) { toast(e.message, true); } finally { setBusy(false); }
+    } catch (e) { toast(e instanceof Error ? e.message : '添加失败', true); } finally { setBusy(false); }
   };
 
   const preview = (Number(amount) || 0) * (perPerson ? Math.max(1, Math.floor(Number(people) || 1)) : 1);
@@ -185,7 +193,7 @@ function AddCashModal({ tripId, refOptions, onClose, onSaved }: {
         </select>
       </div>
       <p className="muted" style={{ fontSize: 12.5 }}>
-        合计预览：{CUR_SYMBOL[currency] || ''}{preview.toFixed(2)}（保存后以服务端计算为准）
+        合计预览：{CUR_SYMBOL[currency] || ''}{preview.toFixed(2)}（保存时自动折算合计）
       </p>
       <div className="modal-ops">
         <button className="btn ghost" onClick={onClose}>取消</button>

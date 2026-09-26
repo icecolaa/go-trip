@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { api, type Poi } from '../api';
+import { proxy } from '../rdb/proxy';
+import type { Poi } from '../types';
 
 /** POI 搜索：从内置景点库或高德（已配置 Key 时）搜索地点 */
 export default function PoiSearch({ defaultCity, onPick }: { defaultCity: string; onPick: (name: string, lat: number, lng: number) => void }) {
@@ -12,7 +13,7 @@ export default function PoiSearch({ defaultCity, onPick }: { defaultCity: string
     if (!q.trim() || busy) return;
     setBusy(true);
     try {
-      const r = await api.get<Poi[]>(`/api/poi/search?q=${encodeURIComponent(q.trim())}&city=${encodeURIComponent(city.trim())}`);
+      const r = await proxy.get<Poi[]>(`/api/poi/search?q=${encodeURIComponent(q.trim())}&city=${encodeURIComponent(city.trim())}`);
       setResults(r);
     } catch {
       setResults([]);
@@ -34,7 +35,7 @@ export default function PoiSearch({ defaultCity, onPick }: { defaultCity: string
         <div style={{ maxHeight: 150, overflow: 'auto', marginTop: 6, border: '1px solid var(--line)', borderRadius: 10, background: '#fffef9' }}>
           {results.length === 0 && <div className="muted" style={{ padding: 10 }}>没找到，试试换个关键词或城市</div>}
           {results.map((p, i) => (
-            <div key={i} className="poi-item" onClick={() => onPick(p.name, p.lat, p.lng)}>
+            <div key={i} className="poi-item" onClick={() => onPick(p.name, p.lat ?? 0, p.lng ?? 0)}>
               <span className="k">{p.kind}</span>
               <span style={{ flex: 1, minWidth: 0 }}>
                 <b>{p.name}</b>

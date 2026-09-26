@@ -1,13 +1,17 @@
 import { useEffect, useMemo, useState } from 'react';
-import { api } from '../../api';
 import { useApp } from '../../store';
 import { Modal, KIND_META, fmtDate, weekOf, yuan } from '../../components/ui';
 import { StatusBadge, default as StatusPicker } from '../../components/StatusPicker';
 import { cashMoney } from './CashTab';
 import SensitiveText from '../../components/SensitiveText';
 import TripMode from '../../components/TripMode';
+import { createActivity, updateActivity, deleteActivity, reorderActivities } from '../../rdb/ops';
+import { proxy } from '../../rdb/proxy';
+import { applyGuideToTrip } from '../../rdb/apply-guide';
+import { checkupTrip } from '@shared/checkup';
+import type { CheckupFinding } from '@shared/checkup';
 import type { TabCtx } from './tabCtx';
-import type { Activity, TripDay } from '@shared/types';
+import type { Activity, ActivityKind, TripDay } from '../../types';
 import PoiSearch from '../../components/PoiSearch';
 
 /** 今天（本地时区 YYYY-MM-DD） */
@@ -22,14 +26,19 @@ function isNextDayArrival(a: Activity): boolean {
   return /次日|\+1\s*天|第二天/.test(`${a.title} ${a.notes || ''}`);
 }
 
-/* 行程体检结果（与服务端 checkup.ts 的 CheckupFinding 对应） */
-interface CheckupFinding {
-  level: 'warn' | 'info';
-  dayId: number;
-  dayNumber: number;
-  date: string;
-  code: 'overlap' | 'tight-transfer' | 'late-night' | 'early-morning' | 'untimed' | 'packed-day' | 'no-activities';
-  message: string;
+/** WMO 天气代码 → 图标（与 open-meteo code 对应） */
+function weatherIcon(code: number | null): string {
+  if (code == null) return '🌤️';
+  if (code === 0) return '☀️';
+  if (code <= 2) return '⛅';
+  if (code === 3) return '☁️';
+  if (code <= 48) return '🌫️';
+  if (code <= 57) return '🌦️';
+  if (code <= 67) return '🌧️';
+  if (code <= 77) return '🌨️';
+  if (code <= 82) return '🌧️';
+  if (code <= 86) return '🌨️';
+  return '⛈️';
 }
 
 export default function ItineraryTab({ bundle, reload, weather, canEdit, goTab }: TabCtx) {
@@ -38,16 +47,23 @@ export default function ItineraryTab({ bundle, reload, weather, canEdit, goTab }
   const [addingToDay, setAddingToDay] = useState<TripDay | null>(null);
   const [aiOpen, setAiOpen] = useState(false);
   const [tripMode, setTripMode] = useState(false);
-  const [dragId, setDragId] = useState<number | null>(null);
+  const [dragId, setDragId] = useState<string | null>(null);
   const [checkup, setCheckup] = useState<{ findings: CheckupFinding[]; warnCount: number; infoCount: number; checkedActivities: number } | null>(null);
   const [checkupBusy, setCheckupBusy] = useState(false);
 
-  const runCheckup = async () => {
+  /** 行程体检：客户端纯函数计算（checkupTrip(days, activities)） */
+  const runCheckup = () => {
     setCheckupBusy(true);
     try {
-      setCheckup(await api.get(`/api/trips/${bundle.trip.id}/checkup`));
-    } catch (e: any) {
-      toast(e.message || '行程体检失败', true);
+      const findings = checkupTrip(bundle.days, bundle.activities);
+      setCheckup({
+        findings,
+        warnCount: findings.filter(f => f.level === 'warn').length,
+        infoCount: findings.filter(f => f.level === 'info').length,
+        checkedActivities: bundle.activities.length,
+      });
+    } catch (e) {
+      toast(e instanceof Error ? e.message : '行程体检失败', true);
     } finally {
       setCheckupBusy(false);
     }
@@ -55,13 +71,13 @@ export default function ItineraryTab({ bundle, reload, weather, canEdit, goTab }
 
   const { days, activities, members } = bundle;
   const actsByDay = useMemo(() => {
-    const map = new Map<number, Activity[]>();
+    const map = new Map<string, Activity[]>();
     for (const d of days) map.set(d.id, []);
     for (const a of activities) {
       if (!map.has(a.dayId)) map.set(a.dayId, []);
       map.get(a.dayId)!.push(a);
     }
-    for (const list of map.values()) list.sort((x, y) => x.sort - y.sort || x.id - y.id);
+    for (const list of map.values()) list.sort((x, y) => x.sort - y.sort || x.id.localeCompare(y.id));
     return map;
   }, [days, activities]);
 
@@ -105,32 +121,33 @@ export default function ItineraryTab({ bundle, reload, weather, canEdit, goTab }
   });
 
   /* 拖拽排序：放下后按新顺序提交 */
-  const onDrop = async (targetDayId: number, beforeIndex: number) => {
+  const onDrop = async (targetDayId: string, beforeIndex: number) => {
     if (dragId == null) return;
     const dragged = activities.find(a => a.id === dragId);
     setDragId(null);
     if (!dragged) return;
+    const me = members[0]?.displayName || '我';
     // 构造新序列
     const targetList = [...(actsByDay.get(targetDayId) || [])].filter(a => a.id !== dragId);
-    const item = { id: dragged.id, dayId: targetDayId };
-    targetList.splice(beforeIndex, 0, item as Activity);
+    targetList.splice(beforeIndex, 0, dragged);
     const items = targetList.map((a, i) => ({ id: a.id, dayId: targetDayId, sort: i }));
     try {
-      await api.post(`/api/trips/${bundle.trip.id}/activities/reorder`, { items });
+      await reorderActivities(bundle.trip.id, items, me);
       reload();
-    } catch (e: any) {
-      toast(e.message || '排序失败', true);
+    } catch (e) {
+      toast(e instanceof Error ? e.message : '排序失败', true);
     }
   };
 
   const removeAct = async (a: Activity) => {
     if (!confirm(`删除「${a.title}」？`)) return;
+    const me = members[0]?.displayName || '我';
     try {
-      await api.del(`/api/activities/${a.id}`);
+      await deleteActivity(bundle.trip.id, a.id, a.title, me);
       toast('已删除');
       reload();
-    } catch (e: any) {
-      toast(e.message, true);
+    } catch (e) {
+      toast(e instanceof Error ? e.message : '删除失败', true);
     }
   };
 
@@ -222,9 +239,9 @@ export default function ItineraryTab({ bundle, reload, weather, canEdit, goTab }
                 )}
               </div>
               {w && w.tempMax != null && (
-                <div className="day-weather" title={w.label}>
-                  <span style={{ fontSize: 16 }}>{w.icon}</span>
-                  <span>{w.label}</span>
+                <div className="day-weather" title={w.description}>
+                  <span style={{ fontSize: 16 }}>{weatherIcon(w.code)}</span>
+                  <span>{w.description}</span>
                   <b>{w.tempMax}° / {w.tempMin}°</b>
                 </div>
               )}
@@ -248,13 +265,13 @@ export default function ItineraryTab({ bundle, reload, weather, canEdit, goTab }
                     <div className="act-title">
                       {a.title}
                       {isNextDayArrival(a) && <span className="ticket-nextday" style={{ marginLeft: 6 }}>次日抵达</span>}
-                      {a.assigneeId != null && (() => {
-                        const m = members.find(m => m.id === a.assigneeId);
+                      {a.assigneeMemberId != null && (() => {
+                        const m = members.find(m => m.id === a.assigneeMemberId);
                         return m ? <span className="tag gray">{m.displayName}负责</span> : null;
                       })()}
                     </div>
                     <div className="act-title-row2">
-                      <StatusBadge status={a.status} />
+                      <StatusBadge status={a.status as any} />
                       {cashByRef.get(`transport:${a.id}`)?.concat(cashByRef.get(`stay:${a.id}`) || []).map(c => (
                         <span key={c.id} className="cash-inline" title={c.perPerson ? `每人 ${c.amount} × ${c.people} 人` : '总价'}>
                           💴 {c.title}：{cashMoney(c)}
@@ -288,6 +305,7 @@ export default function ItineraryTab({ bundle, reload, weather, canEdit, goTab }
 
       {addingToDay && (
         <ActivityModal
+          tripId={bundle.trip.id}
           day={addingToDay}
           days={days}
           members={members}
@@ -297,6 +315,7 @@ export default function ItineraryTab({ bundle, reload, weather, canEdit, goTab }
       )}
       {editing && (
         <ActivityModal
+          tripId={bundle.trip.id}
           activity={editing}
           days={days}
           members={members}
@@ -305,32 +324,34 @@ export default function ItineraryTab({ bundle, reload, weather, canEdit, goTab }
         />
       )}
       {aiOpen && <AiPanel bundle={bundle} reload={reload} onClose={() => setAiOpen(false)} />}
-      {tripMode && <TripMode bundle={bundle} weather={weather} onClose={() => setTripMode(false)} />}
+      {/* TripMode 组件尚未迁移到新类型（仍按旧 TripBundle 建模），运行时字段兼容，先收窄传参 */}
+      {tripMode && <TripMode bundle={bundle as any} weather={weather as any} onClose={() => setTripMode(false)} />}
     </div>
   );
 }
 
 /* ---------------- 添加/编辑行程 ---------------- */
 
-function ActivityModal({ day, days, members, activity, onClose, onSaved }: {
+function ActivityModal({ tripId, day, days, members, activity, onClose, onSaved }: {
+  tripId: string;
   day?: TripDay;
   days: TripDay[];
-  members: { id: number; displayName: string }[];
+  members: { id: string; displayName: string }[];
   activity?: Activity | null;
   onClose: () => void;
   onSaved: () => void;
 }) {
   const { toast } = useApp();
-  const [dayId, setDayId] = useState(activity?.dayId ?? day?.id ?? days[0]?.id ?? 0);
+  const [dayId, setDayId] = useState<string>(activity?.dayId ?? day?.id ?? days[0]?.id ?? '');
   const [time, setTime] = useState(activity?.time || '');
   const [endTime, setEndTime] = useState(activity?.endTime || '');
-  const [kind, setKind] = useState<string>(activity?.kind || 'sight');
+  const [kind, setKind] = useState<ActivityKind>(activity?.kind || 'sight');
   const [title, setTitle] = useState(activity?.title || '');
   const [place, setPlace] = useState(activity?.place || '');
   const [cost, setCost] = useState(activity?.cost ? String(activity.cost) : '');
   const [notes, setNotes] = useState(activity?.notes || '');
   const [status, setStatus] = useState<any>(activity?.status || null);
-  const [assigneeId, setAssigneeId] = useState(activity?.assigneeId?.toString() || '');
+  const [assigneeId, setAssigneeId] = useState(activity?.assigneeMemberId || '');
   const [busy, setBusy] = useState(false);
 
   const pickPoi = (name: string, lat: number, lng: number) => {
@@ -345,9 +366,9 @@ function ActivityModal({ day, days, members, activity, onClose, onSaved }: {
     if (!title.trim()) { toast('写一下要做什么吧', true); return; }
     if (time && endTime && endTime < time) { toast('结束时间不能早于开始时间', true); return; }
     setBusy(true);
+    const me = members[0]?.displayName || '我';
     const poi = (window as any).__pickedPoi;
-    const payload = {
-      dayId: Number(dayId),
+    const body = {
       time: time || null,
       endTime: endTime || null,
       kind,
@@ -356,22 +377,22 @@ function ActivityModal({ day, days, members, activity, onClose, onSaved }: {
       cost: Number(cost) || 0,
       notes: notes.trim(),
       status,
-      assigneeId: assigneeId ? Number(assigneeId) : null,
+      assigneeMemberId: assigneeId || null,
       lat: activity?.lat ?? poi?.lat ?? null,
       lng: activity?.lng ?? poi?.lng ?? null,
     };
     try {
       if (activity) {
-        await api.patch(`/api/activities/${activity.id}`, payload);
+        await updateActivity(tripId, activity.id, { ...body, dayId }, me);
         toast('行程已更新');
       } else {
-        await api.post(`/api/days/${dayId}/activities`, payload);
+        await createActivity(tripId, dayId, body, me);
         toast('已添加行程');
       }
       (window as any).__pickedPoi = null;
       onSaved();
-    } catch (e: any) {
-      toast(e.message, true);
+    } catch (e) {
+      toast(e instanceof Error ? e.message : '保存失败', true);
     } finally {
       setBusy(false);
     }
@@ -381,7 +402,7 @@ function ActivityModal({ day, days, members, activity, onClose, onSaved }: {
     <Modal title={activity ? '修改行程' : `添加行程 · ${day ? fmtDate(day.date) : ''}`} onClose={onClose} width={520}>
       <div className="field">
         <label>哪一天</label>
-        <select className="input" value={dayId} onChange={e => setDayId(Number(e.target.value))}>
+        <select className="input" value={dayId} onChange={e => setDayId(e.target.value)}>
           {days.map(d => <option key={d.id} value={d.id}>第 {d.dayNumber} 天 · {d.date}{d.title ? ` · ${d.title}` : ''}</option>)}
         </select>
       </div>
@@ -399,7 +420,7 @@ function ActivityModal({ day, days, members, activity, onClose, onSaved }: {
         <label>类型</label>
         <div className="row-ops">
           {Object.entries(KIND_META).map(([k, m]) => (
-            <button key={k} type="button" className={`btn sm ${kind === k ? 'primary' : 'ghost'}`} onClick={() => setKind(k)}>{m.icon} {m.label}</button>
+            <button key={k} type="button" className={`btn sm ${kind === k ? 'primary' : 'ghost'}`} onClick={() => setKind(k as ActivityKind)}>{m.icon} {m.label}</button>
           ))}
         </div>
       </div>
@@ -410,7 +431,7 @@ function ActivityModal({ day, days, members, activity, onClose, onSaved }: {
       <div className="field">
         <label>地点（可搜索定位）</label>
         <input className="input" value={place} onChange={e => setPlace(e.target.value)} placeholder="地点名称，保存后显示在地图上" maxLength={60} />
-        <PoiSearch defaultCity={days.find(d => d.id === Number(dayId))?.place || ''} onPick={pickPoi} />
+        <PoiSearch defaultCity={days.find(d => d.id === dayId)?.place || ''} onPick={pickPoi} />
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
         <div className="field">
@@ -470,16 +491,16 @@ function AiPanel({ bundle, reload, onClose }: { bundle: TabCtx['bundle']; reload
       let guide: any;
       if (mode === 'generate') {
         if (!city.trim()) { toast('请填写目的地', true); setBusy(false); return; }
-        guide = await api.post(`/api/trips/${bundle.trip.id}/ai/generate`, {
+        guide = await proxy.post('/api/ai/generate', {
           city: city.trim(), days: Number(dayCount) || 3, pace, interests,
         });
       } else {
         if (!guideText.trim()) { toast('请粘贴攻略文本', true); setBusy(false); return; }
-        guide = await api.post(`/api/trips/${bundle.trip.id}/ai/parse-guide`, { text: guideText });
+        guide = await proxy.post('/api/ai/parse-guide', { text: guideText });
       }
       setPreview(guide);
-    } catch (e: any) {
-      toast(e.message, true);
+    } catch (e) {
+      toast(e instanceof Error ? e.message : '生成失败', true);
     } finally {
       setBusy(false);
     }
@@ -488,19 +509,22 @@ function AiPanel({ bundle, reload, onClose }: { bundle: TabCtx['bundle']; reload
   const apply = async (mode: 'append' | 'replaceAll' | 'targeted') => {
     if (!preview || busy) return;
     setBusy(true);
+    const me = bundle.members[0]?.displayName || '我';
     try {
-      const r = await api.post<{ ok: boolean; located: number; replacedDays?: number[] }>(
-        `/api/trips/${bundle.trip.id}/ai/apply`,
-        mode === 'targeted' ? { guide: preview, targeted: true } : { guide: preview, replaceDays: mode === 'replaceAll' },
+      const r = await applyGuideToTrip(
+        bundle.trip.id,
+        preview,
+        { targeted: mode === 'targeted', tripStartDate: bundle.trip.startDate },
+        me,
       );
-      const dayLabel = mode === 'targeted' && r.replacedDays?.length
+      const dayLabel = mode === 'targeted' && r.replacedDays.length
         ? `已重新生成第 ${r.replacedDays.join('、')} 天行程`
         : `已写入 ${preview.days.length} 天行程`;
-      toast(`${dayLabel}${r.located ? `，已自动定位 ${r.located} 个地点` : ''}${mode === 'replaceAll' ? '（已覆盖原行程）' : mode === 'append' ? '（追加在行程后面）' : '（其余天保持不变）'}`);
+      toast(`${dayLabel}${r.activityCount ? `，共 ${r.activityCount} 项安排` : ''}${mode === 'replaceAll' ? '（已覆盖原行程）' : mode === 'append' ? '（行程已按天重建）' : '（其余天保持不变）'}`);
       reload();
       onClose();
-    } catch (e: any) {
-      toast(e.message, true);
+    } catch (e) {
+      toast(e instanceof Error ? e.message : '写入失败', true);
     } finally {
       setBusy(false);
     }

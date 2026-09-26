@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useApp } from '../store';
 
 export default function LoginPage() {
-  const { login, register, toast } = useApp();
+  const { login, register, loginAnonymously, toast } = useApp();
   const nav = useNavigate();
   const [params] = useSearchParams();
   const redirect = params.get('redirect') || '/';
@@ -33,12 +33,26 @@ export default function LoginPage() {
     }
   };
 
+  const guest = async () => {
+    if (busy) return;
+    setBusy(true);
+    try {
+      await loginAnonymously();
+      toast('已进入游客模式，数据保存在本设备身份下');
+      nav(redirect, { replace: true });
+    } catch (err: any) {
+      toast(err.message || '游客登录失败', true);
+    } finally {
+      setBusy(false);
+    }
+  };
+
   return (
     <div className="auth-wrap">
       <div className="card auth-card">
         <div style={{ textAlign: 'center', fontSize: 40 }}>🧭</div>
         <h1 className="auth-title">出发吧 GoTrip</h1>
-        <p className="auth-sub">和朋友一起，规划每一次出发</p>
+        <p className="auth-sub">规划每一次出发</p>
         <div className="auth-tabs">
           <button className={mode === 'login' ? 'on' : ''} onClick={() => setMode('login')}>登录</button>
           <button className={mode === 'register' ? 'on' : ''} onClick={() => setMode('register')}>注册</button>
@@ -52,7 +66,7 @@ export default function LoginPage() {
           )}
           <div className="field">
             <label>用户名</label>
-            <input className="input" value={username} onChange={e => setUsername(e.target.value)} placeholder="3-24 位字母、数字或下划线" autoComplete="username" />
+            <input className="input" value={username} onChange={e => setUsername(e.target.value)} placeholder="用户名" autoComplete="username" />
           </div>
           <div className="field">
             <label>密码</label>
@@ -63,7 +77,7 @@ export default function LoginPage() {
           </button>
         </form>
         <div className="demo-hint">
-          演示账号：demo　密码：demo1234
+          只想先看看？<button className="link" onClick={guest} disabled={busy}>游客模式试用</button>
         </div>
       </div>
     </div>

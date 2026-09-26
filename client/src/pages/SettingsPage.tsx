@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { api } from '../api';
+import { proxy } from '../rdb/proxy';
+import { ensureProfile, updateProfile } from '../rdb/trip';
 import { useApp } from '../store';
 import { Avatar, AVATAR_COLORS } from '../components/ui';
 
@@ -8,14 +9,18 @@ export default function SettingsPage() {
   const [nickname, setNickname] = useState(me?.nickname || '');
   const [bio, setBio] = useState(me?.bio || '');
   const [color, setColor] = useState(me?.avatarColor || '#2f6e4f');
-  const [oldPwd, setOldPwd] = useState('');
-  const [newPwd, setNewPwd] = useState('');
   const [busy, setBusy] = useState(false);
   const [aiEnabled, setAiEnabled] = useState<boolean | null>(null);
 
   useEffect(() => {
-    api.get<{ enabled: boolean }>('/api/ai/status').then(r => setAiEnabled(r.enabled)).catch(() => setAiEnabled(false));
+    proxy.get<{ configured: boolean }>('/api/ai/status').then(r => setAiEnabled(r.configured)).catch(() => setAiEnabled(false));
   }, []);
+
+  useEffect(() => {
+    setNickname(me?.nickname || '');
+    setBio(me?.bio || '');
+    setColor(me?.avatarColor || '#2f6e4f');
+  }, [me]);
 
   if (!me) return null;
 
@@ -23,24 +28,9 @@ export default function SettingsPage() {
     if (busy) return;
     setBusy(true);
     try {
-      await api.patch('/api/me', { nickname: nickname.trim(), bio: bio.trim(), avatarColor: color });
+      await updateProfile(me.id, { nickname: nickname.trim(), bio: bio.trim(), avatarColor: color });
       await loadMe();
       toast('资料已保存');
-    } catch (e: any) {
-      toast(e.message, true);
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const savePwd = async () => {
-    if (busy) return;
-    if (newPwd.length < 6) { toast('新密码至少 6 位', true); return; }
-    setBusy(true);
-    try {
-      await api.patch('/api/me', { oldPassword: oldPwd, newPassword: newPwd });
-      setOldPwd(''); setNewPwd('');
-      toast('密码已修改');
     } catch (e: any) {
       toast(e.message, true);
     } finally {
@@ -57,7 +47,7 @@ export default function SettingsPage() {
           <div>
             <b style={{ fontSize: 17 }}>{nickname || me.nickname}</b>
             <div className="muted" style={{ fontFamily: 'var(--mono)' }}>
-              旅行ID {me.travelId} · 把这个号码告诉朋友，TA 就能直接把你加进旅程
+              云端身份已登录，数据与小程序端相互独立
             </div>
           </div>
         </div>
@@ -79,19 +69,6 @@ export default function SettingsPage() {
           </div>
         </div>
         <button className="btn primary" onClick={saveProfile} disabled={busy}>保存资料</button>
-      </div>
-
-      <div className="card" style={{ padding: '20px 22px', marginBottom: 16 }}>
-        <h3 style={{ marginTop: 0 }}>修改密码</h3>
-        <div className="field">
-          <label>原密码</label>
-          <input className="input" type="password" value={oldPwd} onChange={e => setOldPwd(e.target.value)} autoComplete="current-password" />
-        </div>
-        <div className="field">
-          <label>新密码（至少 6 位）</label>
-          <input className="input" type="password" value={newPwd} onChange={e => setNewPwd(e.target.value)} autoComplete="new-password" />
-        </div>
-        <button className="btn" onClick={savePwd} disabled={busy || !oldPwd || !newPwd}>修改密码</button>
       </div>
 
       <div className="card" style={{ padding: '20px 22px' }}>

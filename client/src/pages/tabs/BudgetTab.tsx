@@ -1,18 +1,19 @@
 import { useMemo, useState } from 'react';
-import { api } from '../../api';
 import { useApp } from '../../store';
-import { Modal, yuan, EXPENSE_CATS, EXPENSE_CAT_ICON, timeAgo } from '../../components/ui';
+import { Modal, yuan, EXPENSE_CATS, EXPENSE_CAT_ICON } from '../../components/ui';
+import { createExpense, updateExpense, deleteExpense } from '../../rdb/ops';
 import type { TabCtx } from './tabCtx';
-import type { Expense } from '@shared/types';
+import type { Expense } from '../../types';
 
 export default function BudgetTab({ bundle, reload, canEdit }: TabCtx) {
   const { toast } = useApp();
   const [adding, setAdding] = useState(false);
   const [editing, setEditing] = useState<Expense | null>(null);
   const { expenses, members, budget, trip } = bundle;
+  const memberName = members[0]?.displayName || '我';
 
   const byMember = useMemo(() => new Map(members.map(m => [m.id, m])), [members]);
-  const myMemberId = bundle.myMemberId;
+  const myMemberId = members[0]?.id || '';
   const mine = budget.perMember.find(p => p.memberId === myMemberId);
   const myPaid = mine?.paid || 0;
   const myShare = mine?.share || 0;
@@ -23,10 +24,10 @@ export default function BudgetTab({ bundle, reload, canEdit }: TabCtx) {
   const del = async (e: Expense) => {
     if (!confirm(`删除账目「${e.title}」？`)) return;
     try {
-      await api.del(`/api/expenses/${e.id}`);
+      await deleteExpense(trip.id, e.id, e.title, memberName);
       toast('已删除');
       reload();
-    } catch (err: any) { toast(err.message, true); }
+    } catch (err) { toast(err instanceof Error ? err.message : '删除失败', true); }
   };
 
   return (
@@ -137,6 +138,7 @@ export default function BudgetTab({ bundle, reload, canEdit }: TabCtx) {
         <ExpenseModal
           expense={editing}
           tripId={trip.id}
+          memberName={memberName}
           members={members.map(m => ({ id: m.id, displayName: m.displayName }))}
           defaultDate={trip.startDate}
           onClose={() => { setAdding(false); setEditing(null); }}
@@ -147,10 +149,11 @@ export default function BudgetTab({ bundle, reload, canEdit }: TabCtx) {
   );
 }
 
-function ExpenseModal({ expense, tripId, members, defaultDate, onClose, onSaved }: {
+function ExpenseModal({ expense, tripId, memberName, members, defaultDate, onClose, onSaved }: {
   expense?: Expense | null;
-  tripId: number;
-  members: { id: number; displayName: string }[];
+  tripId: string;
+  memberName: string;
+  members: { id: string; displayName: string }[];
   defaultDate: string;
   onClose: () => void;
   onSaved: () => void;
@@ -160,12 +163,12 @@ function ExpenseModal({ expense, tripId, members, defaultDate, onClose, onSaved 
   const [amount, setAmount] = useState(expense ? String(expense.amount) : '');
   const [category, setCategory] = useState(expense?.category || '餐饮');
   const [date, setDate] = useState(expense?.date || defaultDate);
-  const [payer, setPayer] = useState(String(expense?.payerMemberId || members[0]?.id || ''));
+  const [payer, setPayer] = useState(expense?.payerMemberId || members[0]?.id || '');
   const [splitMode, setSplitMode] = useState(expense?.splitMode || 'equal');
-  const [parts, setParts] = useState<number[]>(expense?.participants || []);
+  const [parts, setParts] = useState<string[]>(expense?.participants || []);
   const [busy, setBusy] = useState(false);
 
-  const togglePart = (id: number) => {
+  const togglePart = (id: string) => {
     setParts(s => s.includes(id) ? s.filter(x => x !== id) : [...s, id]);
   };
 
@@ -175,22 +178,23 @@ function ExpenseModal({ expense, tripId, members, defaultDate, onClose, onSaved 
     if (!title.trim()) { toast('记一下花了什么', true); return; }
     if (!isFinite(amt) || amt <= 0) { toast('金额要大于 0', true); return; }
     setBusy(true);
-    const payload = {
+    const data = {
+      tripId,
       title: title.trim(), amount: amt, category, date,
-      payerMemberId: Number(payer), splitMode,
+      payerMemberId: payer, splitMode,
       participants: splitMode === 'equal' ? parts : [],
     };
     try {
       if (expense) {
-        await api.patch(`/api/expenses/${expense.id}`, payload);
+        await updateExpense(tripId, expense.id, data, memberName);
         toast('账目已更新');
       } else {
-        await api.post(`/api/trips/${tripId}/expenses`, payload);
+        await createExpense(tripId, data, memberName);
         toast('已记账');
       }
       onSaved();
-    } catch (e: any) {
-      toast(e.message, true);
+    } catch (e) {
+      toast(e instanceof Error ? e.message : '保存失败', true);
     } finally {
       setBusy(false);
     }

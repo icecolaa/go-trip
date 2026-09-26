@@ -4,8 +4,8 @@ import { Modal } from '../../components/ui';
 import StatusPicker, { StatusBadge } from '../../components/StatusPicker';
 import SensitiveText from '../../components/SensitiveText';
 import { amapPlaceUrl } from '../../components/TripMode';
-import { api } from '../../api';
-import type { TripPlace, TripPlaceKind } from '@shared/types';
+import { createPlace, updatePlace } from '../../rdb/ops';
+import type { TripPlace } from '../../types';
 
 /**
  * 景点餐厅：候选景点与可选餐厅各自折叠、默认收起、互不混排。
@@ -13,15 +13,18 @@ import type { TripPlace, TripPlaceKind } from '@shared/types';
  * 点击名称 → 跳到地图板块对应卡片并短暂高亮。
  */
 
-const KIND_LABEL: Record<TripPlaceKind, string> = {
+type PlaceKind = 'attraction' | 'restaurant' | 'hotel' | 'transport' | 'station' | 'airport' | 'meeting' | 'other';
+
+const KIND_LABEL: Record<PlaceKind, string> = {
   attraction: '景点', restaurant: '餐厅', hotel: '住宿', transport: '交通',
   station: '车站', airport: '机场', meeting: '集合点', other: '其他',
 };
 
-const NEW_KINDS: TripPlaceKind[] = ['attraction', 'restaurant', 'meeting', 'station', 'airport', 'other'];
+const NEW_KINDS: PlaceKind[] = ['attraction', 'restaurant', 'meeting', 'station', 'airport', 'other'];
 
 export default function PlacesTab({ bundle, canEdit, reload }: TabCtx) {
   const places = bundle.places || [];
+  const memberName = bundle.members[0]?.displayName || '我';
   const [adding, setAdding] = useState(false);
   const [flashName, setFlashName] = useState<string | null>(null);
 
@@ -74,7 +77,7 @@ export default function PlacesTab({ bundle, canEdit, reload }: TabCtx) {
         <div className="place-list">
           {attractions.length === 0 && <div className="card empty">还没有候选景点</div>}
           {attractions.map(p => (
-            <PlaceCard key={p.id} place={p} canEdit={canEdit} onJump={() => jumpToMap(p.name)} onSaved={reload} />
+            <PlaceCard key={p.id} place={p} canEdit={canEdit} memberName={memberName} onJump={() => jumpToMap(p.name)} onSaved={reload} />
           ))}
         </div>
       </details>
@@ -87,7 +90,7 @@ export default function PlacesTab({ bundle, canEdit, reload }: TabCtx) {
             <div key={city} className="place-city">
               <div className="place-city-name">{city}</div>
               {list.map(p => (
-                <PlaceCard key={p.id} place={p} canEdit={canEdit} onJump={() => jumpToMap(p.name)} onSaved={reload} />
+                <PlaceCard key={p.id} place={p} canEdit={canEdit} memberName={memberName} onJump={() => jumpToMap(p.name)} onSaved={reload} />
               ))}
             </div>
           ))}
@@ -99,7 +102,7 @@ export default function PlacesTab({ bundle, canEdit, reload }: TabCtx) {
           <summary>📍 其他地点 <span className="cnt">{others.length}</span></summary>
           <div className="place-list">
             {others.map(p => (
-              <PlaceCard key={p.id} place={p} canEdit={canEdit} onJump={() => jumpToMap(p.name)} onSaved={reload} />
+              <PlaceCard key={p.id} place={p} canEdit={canEdit} memberName={memberName} onJump={() => jumpToMap(p.name)} onSaved={reload} />
             ))}
           </div>
         </details>
@@ -108,6 +111,7 @@ export default function PlacesTab({ bundle, canEdit, reload }: TabCtx) {
       {adding && (
         <AddPlaceModal
           tripId={bundle.trip.id}
+          memberName={memberName}
           onClose={() => setAdding(false)}
           onSaved={async () => { setAdding(false); await reload(); }}
         />
@@ -117,8 +121,8 @@ export default function PlacesTab({ bundle, canEdit, reload }: TabCtx) {
   );
 }
 
-function PlaceCard({ place, canEdit, onJump, onSaved }: {
-  place: TripPlace; canEdit: boolean; onJump: () => void; onSaved: () => Promise<void> | void;
+function PlaceCard({ place, canEdit, memberName, onJump, onSaved }: {
+  place: TripPlace; canEdit: boolean; memberName: string; onJump: () => void; onSaved: () => Promise<void> | void;
 }) {
   const [editing, setEditing] = useState(false);
   const [status, setStatus] = useState(place.status);
@@ -127,10 +131,10 @@ function PlaceCard({ place, canEdit, onJump, onSaved }: {
 
   async function save() {
     try {
-      await api.patch(`/api/places/${place.id}`, { status, note, dishes });
+      await updatePlace(place.tripId, place.id, { status, note, dishes }, memberName);
       setEditing(false);
       await onSaved();
-    } catch (e: any) { alert(e.message || '保存失败'); }
+    } catch (e) { alert(e instanceof Error ? e.message : '保存失败'); }
   }
 
   return (
@@ -139,11 +143,11 @@ function PlaceCard({ place, canEdit, onJump, onSaved }: {
         <button type="button" className="place-jump nm" onClick={onJump} title="在地图中定位">
           {place.name}
         </button>
-        <StatusBadge status={place.status} />
+        <StatusBadge status={place.status as any} />
       </div>
       <div className="sub">
         {[place.city, place.address].filter(Boolean).join(' · ') || '地址待补充'}
-        {place.kind !== 'attraction' && place.kind !== 'restaurant' ? ` · ${KIND_LABEL[place.kind]}` : ''}
+        {place.kind !== 'attraction' && place.kind !== 'restaurant' ? ` · ${KIND_LABEL[place.kind as PlaceKind] || '其他'}` : ''}
       </div>
       {place.dishes && <div className="note">推荐菜：{place.dishes}</div>}
       {place.note && <div className="note"><SensitiveText text={place.note} /></div>}
@@ -180,8 +184,8 @@ function PlaceCard({ place, canEdit, onJump, onSaved }: {
   );
 }
 
-function AddPlaceModal({ tripId, onClose, onSaved }: { tripId: number; onClose: () => void; onSaved: () => Promise<void> | void }) {
-  const [kind, setKind] = useState<TripPlaceKind>('attraction');
+function AddPlaceModal({ tripId, memberName, onClose, onSaved }: { tripId: string; memberName: string; onClose: () => void; onSaved: () => Promise<void> | void }) {
+  const [kind, setKind] = useState<PlaceKind>('attraction');
   const [name, setName] = useState('');
   const [city, setCity] = useState('');
   const [address, setAddress] = useState('');
@@ -195,9 +199,9 @@ function AddPlaceModal({ tripId, onClose, onSaved }: { tripId: number; onClose: 
     if (!name.trim()) { alert('请填写地点名称'); return; }
     setBusy(true);
     try {
-      await api.post(`/api/trips/${tripId}/places`, { kind, name, city, address, dishes, note, status, candidate });
+      await createPlace(tripId, { kind, name, city, address, dishes, note, status, candidate }, memberName);
       await onSaved();
-    } catch (e: any) { alert(e.message || '保存失败'); }
+    } catch (e) { alert(e instanceof Error ? e.message : '保存失败'); }
     finally { setBusy(false); }
   }
 

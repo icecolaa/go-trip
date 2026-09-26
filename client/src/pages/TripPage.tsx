@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useParams, Link, useSearchParams } from 'react-router-dom';
-import { api, getToken, type TripBundle } from '../api';
+import { loadTripBundle } from '../rdb/trip';
+import { proxy } from '../rdb/proxy';
+import type { TripBundle, WeatherDay } from '../types';
 import { useApp } from '../store';
 import { Avatar, tripProgress, yuan, fmtDate, weekOf } from '../components/ui';
 import Countdown from '../components/Countdown';
@@ -46,14 +48,14 @@ function todayStr(): string {
 
 export default function TripPage() {
   const { id } = useParams();
-  const tripId = Number(id);
+  const tripId = String(id || '');
   const { toast } = useApp();
   const [bundle, setBundle] = useState<TripBundle | null>(null);
   const [loadErr, setLoadErr] = useState('');
   const [searchParams, setSearchParams] = useSearchParams();
   const rawTab = searchParams.get('tab') || 'itinerary';
   const tab = TABS.some(t => t.key === rawTab) ? rawTab : 'itinerary';
-  const [weather, setWeather] = useState<TripBundle['weather']>([]);
+  const [weather, setWeather] = useState<WeatherDay[]>([]);
   const [guideOpen, setGuideOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
   const reloadTimer = useRef<number | null>(null);
@@ -62,15 +64,23 @@ export default function TripPage() {
   const load = useCallback(async () => {
     setLoadErr('');
     try {
-      const b = await api.get<TripBundle>(`/api/trips/${tripId}`);
-      setBundle(b);
+      setBundle(await loadTripBundle(tripId));
     } catch (e: any) {
       setLoadErr(e.message || '加载失败');
     }
   }, [tripId]);
 
+  // 天气：客户端把目的地名+日期区间传给容器代理（容器不再读库）
   const loadWeather = useCallback(() => {
-    api.get<TripBundle['weather']>(`/api/trips/${tripId}/weather`).then(setWeather).catch(() => {});
+    loadTripBundle(tripId).then((b) => {
+      const counts = new Map<string, number>();
+      for (const d of b.days) counts.set(d.place || '', (counts.get(d.place || '') || 0) + 1);
+      const main = [...counts.entries()].sort((a, b2) => b2[1] - a[1])[0]?.[0] || b.trip.destination || '';
+      const dates = b.days.map(d => d.date);
+      if (!main || !dates.length) return;
+      proxy.get<WeatherDay[]>(`/api/weather?place=${encodeURIComponent(main)}&dates=${dates.map(encodeURIComponent).join(',')}`)
+        .then(setWeather).catch(() => {});
+    }).catch(() => {});
   }, [tripId]);
 
   useEffect(() => {
@@ -82,43 +92,6 @@ export default function TripPage() {
   useEffect(() => {
     paneTop.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }, [tab]);
-
-  // 实时协作：订阅房间 + 变更自动刷新
-  useEffect(() => {
-    if (!tripId) return;
-    const proto = location.protocol === 'https:' ? 'wss' : 'ws';
-    const ws = new WebSocket(`${proto}://${location.host}/ws?token=${getToken()}`);
-    let presence: number[] = [];
-    const applyPresence = () => {
-      setBundle(b => (b ? { ...b, onlineMemberIds: presence } : b));
-    };
-    ws.onopen = () => ws.send(JSON.stringify({ type: 'subscribe', tripId }));
-    ws.onmessage = e => {
-      try {
-        const msg = JSON.parse(e.data);
-        if (msg.type === 'presence' && msg.tripId === tripId) {
-          presence = msg.onlineMemberIds;
-          applyPresence();
-        } else if (msg.type === 'change' && msg.tripId === tripId) {
-          scheduleReload();
-        } else if (msg.type === 'location' && msg.tripId === tripId) {
-          scheduleReload();
-        }
-      } catch { /* ignore */ }
-    };
-    const hb = setInterval(() => {
-      if (ws.readyState === WebSocket.OPEN) ws.send('{"type":"heartbeat"}');
-    }, 15000);
-    const scheduleReload = () => {
-      if (reloadTimer.current) window.clearTimeout(reloadTimer.current);
-      reloadTimer.current = window.setTimeout(() => load(), 500);
-    };
-    return () => {
-      clearInterval(hb);
-      if (reloadTimer.current) window.clearTimeout(reloadTimer.current);
-      ws.close();
-    };
-  }, [tripId, load]);
 
   if (!bundle) {
     if (loadErr) {
@@ -137,8 +110,7 @@ export default function TripPage() {
   }
 
   const { trip, members } = bundle;
-  const onlineCount = bundle.onlineMemberIds.length;
-  const canEdit = bundle.myRole === 'owner' || bundle.myRole === 'admin' || bundle.myRole === 'editor';
+  const canEdit = true; // 单主人架构：当前登录身份即主人
   const ctx = { bundle, reload: load, reloadWeather: loadWeather, weather, canEdit, goTab: (t: string) => setSearchParams({ tab: t }) };
 
   // 主要路线与逐日地点（供路线总览图使用）
@@ -165,25 +137,19 @@ export default function TripPage() {
         destination={trip.destination}
         startDate={trip.startDate}
         endDate={trip.endDate}
-        coverImage={trip.coverImage}
+        coverImage={trip.coverImage ?? undefined}
       >
         <div className="cover-hero-foot">
           <Countdown startDate={trip.startDate} endDate={trip.endDate} />
           <div className="cover-hero-side">
             {trip.budget > 0 && <span className="cover-chip">预算 {yuan(trip.budget)} · 已花 {yuan(bundle.budget.total)}</span>}
-            {onlineCount > 0 && (
-              <span className="cover-chip"><span className="dot-online" aria-hidden="true" /> {onlineCount} 人在线</span>
-            )}
-            <button className="btn sm" onClick={() => setSearchParams({ tab: 'members' })}>管理成员</button>
+            <button className="btn sm" onClick={() => setSearchParams({ tab: 'members' })}>同行伙伴</button>
           </div>
         </div>
         <div className="avatar-stack cover-avatars">
           {members.slice(0, 6).map(m => (
             <span key={m.id} style={{ position: 'relative' }}>
               <Avatar name={m.displayName} color={m.avatarColor} />
-              {m.userId && bundle.onlineMemberIds.includes(m.userId) && (
-                <span className="avatar-online-dot" />
-              )}
             </span>
           ))}
         </div>

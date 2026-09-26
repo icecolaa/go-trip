@@ -9,8 +9,6 @@ import UsageAssistant from './components/UsageAssistant';
 import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
 import TripPage from './pages/TripPage';
-import JoinPage from './pages/JoinPage';
-import SharePage from './pages/SharePage';
 import SettingsPage from './pages/SettingsPage';
 import FlyWherePage from './pages/FlyWherePage';
 
@@ -23,7 +21,7 @@ function Shell() {
 
   if (!ready) return <div className="spin" style={{ marginTop: 120 }} />;
 
-  const bare = loc.pathname.startsWith('/join/') || loc.pathname.startsWith('/s/') || loc.pathname === '/login';
+  const bare = loc.pathname === '/login';
   return (
     <>
       <Toasts />
@@ -46,8 +44,6 @@ const router = createHashRouter([
     element: <Shell />,
     children: [
       { path: '/login', element: <LoginPage /> },
-      { path: '/join/:code', element: <JoinPage /> },
-      { path: '/s/:token', element: <SharePage /> },
       {
         element: <Protected />,
         children: [

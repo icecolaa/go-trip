@@ -58,7 +58,7 @@ export function ThemeToggle() {
 }
 
 /* ---------- 顶栏 ---------- */
-export function TopBar({ me }: { me: { nickname: string; avatarColor: string; travelId: number } | null }) {
+export function TopBar({ me }: { me: { nickname: string; avatarColor: string } | null }) {
   const { logout } = useApp();
   return (
     <header className="topbar">
@@ -71,7 +71,6 @@ export function TopBar({ me }: { me: { nickname: string; avatarColor: string; tr
         <Link to="/flywhere" className="btn sm ghost" title="按票价探索目的地">飞哪儿</Link>
         {me && (
           <>
-            <span className="muted" style={{ fontFamily: 'var(--mono)' }}>旅行ID {me.travelId}</span>
             <Link className="btn sm" to="/settings">我的</Link>
             <button className="btn sm ghost" onClick={() => logout()}>退出</button>
           </>

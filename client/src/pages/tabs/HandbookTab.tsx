@@ -1,9 +1,12 @@
 import { useEffect, useState } from 'react';
-import { api } from '../../api';
 import { useApp } from '../../store';
 import { Modal } from '../../components/ui';
+import { listGuideCards, createGuideCards, createGuideCard, deleteGuideCard } from '../../rdb/ops';
+import { proxy } from '../../rdb/proxy';
 import type { TabCtx } from './tabCtx';
-import type { GuideCard, GuideCategory } from '@shared/types';
+import type { GuideCard, GuideItem } from '../../types';
+
+type GuideCategory = GuideCard['category'];
 
 /* ============ 锦囊 Tab：美食 / 贴士 / 语言 / 拍摄 手册卡片 ============ */
 
@@ -15,17 +18,24 @@ const CAT_META: Record<GuideCategory, { label: string; en: string; desc: string 
 };
 const CAT_ORDER: GuideCategory[] = ['food', 'tip', 'phrase', 'photo'];
 
+/** 代理返回的卡片 items 可能是数组或字符串，统一成 GuideItem[] */
+function toGuideItems(items: unknown): GuideItem[] {
+  if (!Array.isArray(items)) return [];
+  return items.map((it: any) => (typeof it === 'string' ? { text: it } : { label: it?.label, text: it?.text || '' }));
+}
+
 export default function HandbookTab({ bundle, canEdit }: TabCtx) {
   const { toast } = useApp();
   const [cards, setCards] = useState<GuideCard[] | null>(null);
   const [busy, setBusy] = useState(false);
   const [adding, setAdding] = useState(false);
+  const memberName = bundle.members[0]?.displayName || '我';
 
   const load = async () => {
     try {
-      setCards(await api.get<GuideCard[]>(`/api/trips/${bundle.trip.id}/handbook`));
-    } catch (e: any) {
-      toast(e.message || '锦囊加载失败', true);
+      setCards(await listGuideCards(bundle.trip.id));
+    } catch (e) {
+      toast(e instanceof Error ? e.message : '锦囊加载失败', true);
       setCards([]);
     }
   };
@@ -34,10 +44,27 @@ export default function HandbookTab({ bundle, canEdit }: TabCtx) {
   const generate = async () => {
     setBusy(true);
     try {
-      setCards(await api.post<GuideCard[]>(`/api/trips/${bundle.trip.id}/handbook/generate`, {}));
+      const raw = await proxy.post<any[]>('/api/trips/' + bundle.trip.id + '/handbook/generate', {
+        city: bundle.trip.destination,
+        days: bundle.days.length || 3,
+        interests: '',
+      });
+      const fresh: Omit<GuideCard, 'id'>[] = (raw || []).map((c: any, i: number) => ({
+        tripId: bundle.trip.id,
+        category: (c.category || 'tip') as GuideCategory,
+        icon: c.icon || '📌',
+        title: c.title || '',
+        summary: c.summary || '',
+        items: toGuideItems(c.items),
+        source: (c.source || 'ai') as GuideCard['source'],
+        sort: c.sort ?? i,
+      }));
+      await createGuideCards(bundle.trip.id, fresh, memberName);
+      // 落库后本地追加（新写行有平台可见性延迟，避免「写后立即 list」查不到）
+      setCards(prev => [...(prev || []), ...fresh.map((c, i) => ({ ...c, id: `pending-${Date.now()}-${i}` }))]);
       toast('锦囊已生成，欢迎补充专属卡片');
-    } catch (e: any) {
-      toast(e.message || '生成失败', true);
+    } catch (e) {
+      toast(e instanceof Error ? e.message : '生成失败', true);
     } finally {
       setBusy(false);
     }
@@ -46,10 +73,10 @@ export default function HandbookTab({ bundle, canEdit }: TabCtx) {
   const removeCard = async (c: GuideCard) => {
     if (!confirm(`删除锦囊「${c.title}」？`)) return;
     try {
-      await api.del(`/api/handbook/${c.id}`);
+      await deleteGuideCard(bundle.trip.id, c.id, memberName);
       setCards(prev => (prev || []).filter(x => x.id !== c.id));
-    } catch (e: any) {
-      toast(e.message, true);
+    } catch (e) {
+      toast(e instanceof Error ? e.message : '删除失败', true);
     }
   };
 
@@ -121,12 +148,12 @@ export default function HandbookTab({ bundle, canEdit }: TabCtx) {
         </section>
       ))}
 
-      {adding && <AddCardModal tripId={bundle.trip.id} onClose={() => setAdding(false)} onAdded={card => { setCards(prev => [...(prev || []), card]); setAdding(false); }} />}
+      {adding && <AddCardModal tripId={bundle.trip.id} memberName={memberName} onClose={() => setAdding(false)} onAdded={card => { setCards(prev => [...(prev || []), card]); setAdding(false); }} />}
     </div>
   );
 }
 
-function AddCardModal({ tripId, onClose, onAdded }: { tripId: number; onClose: () => void; onAdded: (c: GuideCard) => void }) {
+function AddCardModal({ tripId, memberName, onClose, onAdded }: { tripId: string; memberName: string; onClose: () => void; onAdded: (c: GuideCard) => void }) {
   const { toast } = useApp();
   const [category, setCategory] = useState<GuideCategory>('tip');
   const [icon, setIcon] = useState('📌');
@@ -145,11 +172,12 @@ function AddCardModal({ tripId, onClose, onAdded }: { tripId: number; onClose: (
     if (!items.length) { toast('每行写一条内容（可用「标签：内容」格式）', true); return; }
     setBusy(true);
     try {
-      const card = await api.post<GuideCard>(`/api/trips/${tripId}/handbook`, { category, icon, title, summary, items });
+      const card: Omit<GuideCard, 'id'> = { tripId, category, icon, title, summary, items, source: 'custom', sort: 0 };
+      await createGuideCard(tripId, card, memberName);
       toast('卡片已添加');
-      onAdded(card);
-    } catch (e: any) {
-      toast(e.message, true);
+      onAdded({ ...card, id: `pending-${Date.now()}` });
+    } catch (e) {
+      toast(e instanceof Error ? e.message : '添加失败', true);
     } finally {
       setBusy(false);
     }

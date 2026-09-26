@@ -1,8 +1,9 @@
 import { useMemo, useState } from 'react';
-import { api } from '../../api';
 import { useApp } from '../../store';
 import { Modal } from '../../components/ui';
 import { CashSection } from './CashTab';
+import { createPackingItems, updatePackingItem, deletePackingItem } from '../../rdb/ops';
+import { PACKING_TEMPLATES } from '@shared/packing-templates';
 import type { TabCtx } from './tabCtx';
 import SensitiveText from '../../components/SensitiveText';
 
@@ -19,7 +20,7 @@ const TEMPLATES = [
 ];
 
 /** 本机勾选状态（不随服务端 reload 覆盖；换设备不同步，属预期） */
-function localKey(tripId: number, itemId: number): string { return `gotrip_pack_${tripId}_${itemId}`; }
+function localKey(tripId: string, itemId: string): string { return `gotrip_pack_${tripId}_${itemId}`; }
 
 export default function PackingTab({ bundle, reload, reloadWeather, weather, canEdit, goTab }: TabCtx) {
   const { toast } = useApp();
@@ -27,34 +28,33 @@ export default function PackingTab({ bundle, reload, reloadWeather, weather, can
   const [templateOpen, setTemplateOpen] = useState(false);
   const [confirmClear, setConfirmClear] = useState<'' | 'trip' | 'list' | 'all'>('');
   const { packing, members, trip } = bundle;
+  const memberName = members[0]?.displayName || '我';
   const byMember = useMemo(() => new Map(members.map(m => [m.id, m])), [members]);
 
   /** 勾选态：服务端 done 与本机 localStorage 取或（本机勾过即视为已就绪） */
-  const isDone = (id: number, done: boolean) => done || localStorage.getItem(localKey(trip.id, id)) === '1';
+  const isDone = (id: string, done: boolean) => done || localStorage.getItem(localKey(trip.id, id)) === '1';
   const doneCount = packing.filter(p => isDone(p.id, p.done)).length;
   const pct = packing.length ? Math.round((doneCount / packing.length) * 100) : 0;
 
-  const toggle = async (id: number, done: boolean) => {
+  const toggle = async (id: string, done: boolean) => {
     // 本机勾选只写 localStorage，不打扰服务端（多人协作时各自记录自己的进度）
     try { localStorage.setItem(localKey(trip.id, id), done ? '1' : '0'); } catch { /* 隐私模式 */ }
-    if (done !== undefined) {
-      try { await api.patch(`/api/packing/${id}`, { done }); } catch (e: any) { toast(e.message, true); }
-    }
+    try { await updatePackingItem(trip.id, id, { done }, memberName); } catch (e) { toast(e instanceof Error ? e.message : '保存失败', true); }
     reload();
   };
 
-  const assign = async (id: number, memberId: number | null) => {
+  const assign = async (id: string, memberId: string | null) => {
     try {
-      await api.patch(`/api/packing/${id}`, { assigneeMemberId: memberId });
+      await updatePackingItem(trip.id, id, { assigneeMemberId: memberId }, memberName);
       reload();
-    } catch (e: any) { toast(e.message, true); }
+    } catch (e) { toast(e instanceof Error ? e.message : '保存失败', true); }
   };
 
-  const remove = async (id: number) => {
+  const remove = async (id: string) => {
     try {
-      await api.del(`/api/packing/${id}`);
+      await deletePackingItem(trip.id, id, memberName);
       reload();
-    } catch (e: any) { toast(e.message, true); }
+    } catch (e) { toast(e instanceof Error ? e.message : '删除失败', true); }
   };
 
   /** 三类清除：各自二次确认；主题设置（localStorage 的 gotrip_theme）一律保留不动 */
@@ -63,8 +63,8 @@ export default function PackingTab({ bundle, reload, reloadWeather, weather, can
     try {
       const prefix = `gotrip_pack_${trip.id}_`;
       if (which === 'trip' || which === 'all') {
-        // 清除行程进度：把服务端 done 全部置回未完成
-        packing.filter(p => p.done).forEach(p => api.patch(`/api/packing/${p.id}`, { done: false }).catch(() => undefined));
+        // 清除行程进度：把 done 全部置回未完成
+        packing.filter(p => p.done).forEach(p => updatePackingItem(trip.id, p.id, { done: false }, memberName).catch(() => undefined));
       }
       if (which === 'list' || which === 'all') {
         for (const k of Object.keys(localStorage)) if (k.startsWith(prefix)) localStorage.removeItem(k);
@@ -79,13 +79,18 @@ export default function PackingTab({ bundle, reload, reloadWeather, weather, can
     }
   };
 
-  const applyTemplate = async (tplId: string) => {
+  const applyTemplate = async (tplKey: string) => {
     try {
-      const r = await api.post<{ added: number }>(`/api/trips/${bundle.trip.id}/packing/template`, { template: tplId });
-      toast(`已导入 ${r.added} 件物品`);
+      // 模板在客户端展开：跳过已存在同名物品，只插入缺的
+      const tpl = PACKING_TEMPLATES.find(t => t.key === tplKey);
+      if (!tpl) { toast('模板不存在', true); return; }
+      const existing = new Set(bundle.packing.map(p => p.title));
+      const fresh = tpl.items.filter(([, title]) => !existing.has(title)).map(([category, title]) => ({ category, title, quantity: 1 }));
+      await createPackingItems(bundle.trip.id, fresh, memberName);
+      toast(`已导入 ${fresh.length} 件物品`);
       setTemplateOpen(false);
       reload();
-    } catch (e: any) { toast(e.message, true); }
+    } catch (e) { toast(e instanceof Error ? e.message : '导入失败', true); }
   };
 
   return (
@@ -134,7 +139,7 @@ export default function PackingTab({ bundle, reload, reloadWeather, weather, can
                         {it.note && <span className="muted" style={{ marginLeft: 6 }}>· <SensitiveText text={it.note} /></span>}
                       </span>
                       {canEdit ? (
-                        <select className="role-select assignee" value={it.assigneeMemberId || ''} onChange={e => assign(it.id, e.target.value ? Number(e.target.value) : null)}>
+                        <select className="role-select assignee" value={it.assigneeMemberId || ''} onChange={e => assign(it.id, e.target.value || null)}>
                           <option value="">待认领</option>
                           {members.map(m => <option key={m.id} value={m.id}>{m.displayName}</option>)}
                         </select>
@@ -170,6 +175,7 @@ export default function PackingTab({ bundle, reload, reloadWeather, weather, can
       {adding && (
         <AddPackingModal
           tripId={bundle.trip.id}
+          memberName={memberName}
           onClose={() => setAdding(false)}
           onSaved={() => { setAdding(false); reload(); }}
         />
@@ -205,7 +211,7 @@ export default function PackingTab({ bundle, reload, reloadWeather, weather, can
   );
 }
 
-function AddPackingModal({ tripId, onClose, onSaved }: { tripId: number; onClose: () => void; onSaved: () => void }) {
+function AddPackingModal({ tripId, memberName, onClose, onSaved }: { tripId: string; memberName: string; onClose: () => void; onSaved: () => void }) {
   const { toast } = useApp();
   const [title, setTitle] = useState('');
   const [category, setCategory] = useState('其他');
@@ -216,9 +222,9 @@ function AddPackingModal({ tripId, onClose, onSaved }: { tripId: number; onClose
     if (!title.trim() || busy) { toast('写一下物品名称', true); return; }
     setBusy(true);
     try {
-      await api.post(`/api/trips/${tripId}/packing`, { title: title.trim(), category, note: note.trim() });
+      await createPackingItems(tripId, [{ title: title.trim(), category, note: note.trim() }], memberName);
       onSaved();
-    } catch (e: any) { toast(e.message, true); } finally { setBusy(false); }
+    } catch (e) { toast(e instanceof Error ? e.message : '添加失败', true); } finally { setBusy(false); }
   };
 
   return (

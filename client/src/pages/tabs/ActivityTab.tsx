@@ -1,6 +1,12 @@
 import { Avatar, timeAgo } from '../../components/ui';
 import type { TabCtx } from './tabCtx';
 
+/** createdAt（数据模型毫秒时间戳）→ 相对时间 */
+function ago(t?: number): string {
+  if (!t) return '';
+  try { return timeAgo(new Date(t).toISOString()); } catch { return ''; }
+}
+
 export default function ActivityTab({ bundle }: TabCtx) {
   const { feed } = bundle;
   return (
@@ -17,7 +23,7 @@ export default function ActivityTab({ bundle }: TabCtx) {
                 <b>{f.memberName}</b> {f.action}
                 {f.detail && <span className="muted"> · {f.detail}</span>}
               </div>
-              <span className="when">{timeAgo(f.createdAt)}</span>
+              <span className="when">{ago(f.createdAt)}</span>
             </div>
           ))}
         </div>
