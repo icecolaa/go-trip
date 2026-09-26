@@ -88,7 +88,7 @@ export default function Handbook() {
             <Text key={i} className={`fw-chip ${interests.includes(i) ? 'on' : ''}`} onClick={() => setInterests(s => s.includes(i) ? s.filter(x => x !== i) : [...s, i])}>{i}</Text>
           ))}
         </View>
-        <Button className="submit" size="mini" loading={busy} onClick={generate}>生成锦囊</Button>
+        <Button className="submit yellow" size="mini" loading={busy} onClick={generate}>✨ 生成锦囊</Button>
       </View>
 
       {cards.length === 0 && <View className="empty"><Text>还没有锦囊卡片，点上方生成</Text></View>}

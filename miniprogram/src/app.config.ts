@@ -16,9 +16,10 @@ export default defineAppConfig({
   /** 按需注入（基础库 2.11.1+）：仅注入当前页面所需的代码，降低启动耗时与内存。 */
   lazyCodeLoading: 'requiredComponents',
   window: {
-    backgroundTextStyle: 'light',
-    navigationBarBackgroundColor: '#1e2421',
+    backgroundColor: '#F3F8FC',
+    backgroundTextStyle: 'dark',
+    navigationBarBackgroundColor: '#ffffff',
     navigationBarTitleText: '出发吧 GoTrip',
-    navigationBarTextStyle: 'white',
+    navigationBarTextStyle: 'black',
   },
 })

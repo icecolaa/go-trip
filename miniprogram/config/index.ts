@@ -20,7 +20,11 @@ export default defineConfig(async (merge) => {
     plugins: [],
     defineConstants: {},
     copy: {
-      patterns: [],
+      // 静态资产随包直出 dist/assets/（地图 marker 用 iconPath 绝对路径引用，不能走 webpack 哈希）。
+      // 注意：Taro 3.6 的 copy.to 是相对项目根（appPath），不是 outputRoot，所以要写 dist/ 前缀
+      patterns: [
+        { from: 'src/assets/', to: 'dist/assets/', ignore: ['.*'] },
+      ],
       options: {},
     },
     framework: 'react',

@@ -95,33 +95,35 @@ export default function ActivityPage() {
 
   return (
     <View className="page">
-      <View className="field">
-        <Text className="label">行程内容 *</Text>
-        <Input className="input" value={title} onInput={e => setTitle(e.detail.value)} placeholder="例如：古城内吃白族菜" maxlength={100} />
-      </View>
-      <View className="row2">
+      <View className="card">
         <View className="field">
-          <Text className="label">时间（HH:mm）</Text>
-          <Input className="input" value={time} onInput={e => setTime(e.detail.value)} placeholder="如 09:30" />
+          <Text className="label">行程内容 *</Text>
+          <Input className="input" value={title} onInput={e => setTitle(e.detail.value)} placeholder="例如：古城内吃白族菜" maxlength={100} />
+        </View>
+        <View className="row2">
+          <View className="field" style={{ flex: 1 }}>
+            <Text className="label">时间（HH:mm）</Text>
+            <Input className="input" value={time} onInput={e => setTime(e.detail.value)} placeholder="如 09:30" />
+          </View>
+          <View className="field" style={{ flex: 1 }}>
+            <Text className="label">预估费用（元）</Text>
+            <Input className="input" type="number" value={cost} onInput={e => setCost(e.detail.value)} placeholder="0" />
+          </View>
         </View>
         <View className="field">
-          <Text className="label">预估费用（元）</Text>
-          <Input className="input" type="number" value={cost} onInput={e => setCost(e.detail.value)} placeholder="0" />
+          <Text className="label">分类</Text>
+          <Picker mode="selector" range={KINDS.map(k => k.label)} onChange={e => setKind(KINDS[Number(e.detail.value)].value)}>
+            <View className="input picker">{KIND_LABEL[kind] || '🏞️ 景点'}</View>
+          </Picker>
         </View>
-      </View>
-      <View className="field">
-        <Text className="label">分类</Text>
-        <Picker mode="selector" range={KINDS.map(k => k.label)} onChange={e => setKind(KINDS[Number(e.detail.value)].value)}>
-          <View className="input picker">{KIND_LABEL[kind] || '🏞️ 景点'}</View>
-        </Picker>
-      </View>
-      <View className="field">
-        <Text className="label">地点</Text>
-        <Input className="input" value={place} onInput={e => setPlace(e.detail.value)} placeholder="例如：人民路" maxlength={60} />
-      </View>
-      <View className="field">
-        <Text className="label">备注</Text>
-        <Input className="input" value={notes} onInput={e => setNotes(e.detail.value)} placeholder="提示、预约截图时间等" maxlength={300} />
+        <View className="field">
+          <Text className="label">地点</Text>
+          <Input className="input" value={place} onInput={e => setPlace(e.detail.value)} placeholder="例如：人民路" maxlength={60} />
+        </View>
+        <View className="field" style={{ marginBottom: 0 }}>
+          <Text className="label">备注</Text>
+          <Input className="input" value={notes} onInput={e => setNotes(e.detail.value)} placeholder="提示、预约截图时间等" maxlength={300} />
+        </View>
       </View>
 
       <Button className="submit" loading={busy} onClick={save}>{editing ? '保存修改' : '添加安排'}</Button>

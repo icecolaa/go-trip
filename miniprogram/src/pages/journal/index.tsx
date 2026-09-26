@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { View, Text, Button, Input, Image } from '@tarojs/components'
+import { useEffect, useState } from 'react'
+import { View, Text, Button, Textarea, Image } from '@tarojs/components'
 import Taro, { usePullDownRefresh } from '@tarojs/taro'
 import { loadTripBundle } from '../../rdb/trip'
 import { createJournal } from '../../rdb/ops'
@@ -34,8 +34,12 @@ export default function Journal() {
   usePullDownRefresh(() => {
     load().finally(() => Taro.stopPullDownRefresh())
   })
-  if (!bundle && !error) {
+  // 首次挂载拉取。不能在 render 期调 load()：setError 同步执行会触发 React #301，整页白屏
+  useEffect(() => {
     load()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+  if (!bundle && !error) {
     return <View className="page"><Text className="muted">加载中…</Text></View>
   }
   if (error) return <View className="page"><View className="error">{error}</View></View>
@@ -94,7 +98,7 @@ export default function Journal() {
   return (
     <View className="page">
       <View className="panel">
-        <Input className="input" value={content} onInput={e => setContent(e.detail.value)} placeholder="记录这一刻：见闻、踩坑、高光时刻…" maxlength={3000} />
+        <Textarea className="textarea" value={content} onInput={e => setContent(e.detail.value)} placeholder="记录这一刻：见闻、踩坑、高光时刻…" maxlength={3000} autoHeight />
         <View className="mood-row">
           <Text className="label" style={{ marginBottom: 0 }}>心情</Text>
           {MOODS.map(m => (
@@ -104,7 +108,7 @@ export default function Journal() {
         <View className="row2" style={{ alignItems: 'center' }}>
           <Button className="chip" size="mini" onClick={pickImages} disabled={images.length >= MAX_IMAGES}>＋ 图片 {images.length ? `${images.length}/9` : ''}</Button>
           <View style={{ flex: 1 }} />
-          <Button className="submit-inline" size="mini" loading={busy} onClick={publish}>发布</Button>
+          <Button className="submit-inline yellow" size="mini" loading={busy} onClick={publish}>发布</Button>
         </View>
         {images.length > 0 && (
           <View className="thumbs">

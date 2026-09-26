@@ -50,53 +50,58 @@ export default function TripCreate() {
 
   return (
     <View className="page">
-      <View className="field">
-        <Text className="label">旅程名称</Text>
-        <Input className="input" value={title} onInput={e => setTitle(e.detail.value)} placeholder="例如：云南大理丽江 6 日慢游" maxlength={60} />
-      </View>
-      <View className="field">
-        <Text className="label">目的地</Text>
-        <Input className="input" value={destination} onInput={e => setDestination(e.detail.value)} placeholder="城市或地区，例如：大理 → 丽江" maxlength={60} />
-      </View>
-      <View className="row2">
+      <View className="card">
         <View className="field">
-          <Text className="label">出发日期</Text>
-          <Picker mode="date" value={startDate} onChange={(e: any) => { setStartDate(e.detail.value); if (e.detail.value > endDate) setEndDate(e.detail.value) }}>
-            <View className="input picker">{startDate}</View>
-          </Picker>
+          <Text className="label">旅程名称</Text>
+          <Input className="input" value={title} onInput={e => setTitle(e.detail.value)} placeholder="例如：云南大理丽江 6 日慢游" maxlength={60} />
         </View>
         <View className="field">
-          <Text className="label">结束日期</Text>
-          <Picker mode="date" value={endDate} start={startDate} onChange={(e: any) => setEndDate(e.detail.value)}>
-            <View className="input picker">{endDate}</View>
-          </Picker>
+          <Text className="label">目的地</Text>
+          <Input className="input" value={destination} onInput={e => setDestination(e.detail.value)} placeholder="城市或地区，例如：大理 → 丽江" maxlength={60} />
+        </View>
+        <View className="row2">
+          <View className="field" style={{ flex: 1 }}>
+            <Text className="label">出发日期</Text>
+            <Picker mode="date" value={startDate} onChange={(e: any) => { setStartDate(e.detail.value); if (e.detail.value > endDate) setEndDate(e.detail.value) }}>
+              <View className="input picker">{startDate}</View>
+            </Picker>
+          </View>
+          <View className="field" style={{ flex: 1 }}>
+            <Text className="label">结束日期</Text>
+            <Picker mode="date" value={endDate} start={startDate} onChange={(e: any) => setEndDate(e.detail.value)}>
+              <View className="input picker">{endDate}</View>
+            </Picker>
+          </View>
+        </View>
+        <View className="field" style={{ marginBottom: 0 }}>
+          <Text className="label">预算（元，选填）</Text>
+          <Input className="input" type="number" value={budget} onInput={e => setBudget(e.detail.value)} placeholder="选填" />
         </View>
       </View>
-      <View className="field">
-        <Text className="label">预算（元，选填）</Text>
-        <Input className="input" type="number" value={budget} onInput={e => setBudget(e.detail.value)} placeholder="选填" />
-      </View>
-      <View className="field">
-        <Text className="label">封面图标</Text>
-        <View className="emoji-grid">
-          {EMOJIS.map(e => (
-            <View key={e} className={`emoji-item ${emoji === e ? 'on' : ''}`} onClick={() => setEmoji(e)}>
-              <Text>{e}</Text>
-            </View>
-          ))}
+
+      <View className="card">
+        <View className="field">
+          <Text className="label">封面图标</Text>
+          <View className="emoji-grid">
+            {EMOJIS.map(e => (
+              <View key={e} className={`emoji-item ${emoji === e ? 'on' : ''}`} onClick={() => setEmoji(e)}>
+                <Text>{e}</Text>
+              </View>
+            ))}
+          </View>
         </View>
-      </View>
-      <View className="field">
-        <Text className="label">封面颜色（列表左缘竖条）</Text>
-        <View className="row">
-          {COLORS.map(c => (
-            <View key={c} className="color-dot" style={{ background: c, border: color === c ? '4rpx solid #1e2421' : '2rpx solid #dcded8' }} onClick={() => setColor(c)} />
-          ))}
+        <View className="field" style={{ marginBottom: 0 }}>
+          <Text className="label">封面颜色</Text>
+          <View className="row">
+            {COLORS.map(c => (
+              <View key={c} className="color-dot" style={{ background: c, border: color === c ? '6rpx solid #182A3D' : '2rpx solid #E6EEF6' }} onClick={() => setColor(c)} />
+            ))}
+          </View>
         </View>
       </View>
 
       <Button className="submit" loading={busy} onClick={create}>创建旅程</Button>
-      <View className="hint"><Text>创建后可在行程页逐天添加安排、粘贴攻略由 AI 解析（网页版）</Text></View>
+      <View className="hint"><Text>创建后可在行程页逐天添加安排，粘贴攻略文本由 AI 一键解析</Text></View>
     </View>
   )
 }
