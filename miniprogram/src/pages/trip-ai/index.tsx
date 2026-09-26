@@ -36,7 +36,8 @@ export default function TripAI() {
     }
   }
 
-  // 写入改客户端执行：容器只做 AI 解析，落库在这里做（保证 _openid 归属）
+  // 写入改客户端执行：容器只做 AI 解析，落库在这里做（保证 _openid 归属）。
+  // 新建行的 id 一律取 createRows 返回的 idList——「写后立即 list」平台有可见性延迟，禁止依赖。
   const apply = async (targeted: boolean) => {
     if (!guide || busy) return
     setBusy(true)
@@ -44,6 +45,7 @@ export default function TripAI() {
       Taro.showLoading({ title: '写入行程中…' })
       const dayRows = (await listRows('gt_days', { trip_id: { $eq: tripId } }, [{ day_number: 'asc' }])) as any[]
       const touched = new Set<string>()
+      const createdDays: Record<number, string> = {} // dayNumber → 新行 _id
       if (targeted) {
         for (const d of guide.days) {
           const n = Math.round(Number(d.dayNumber)) || 0
@@ -53,12 +55,11 @@ export default function TripAI() {
           await deleteRows('gt_activities', { day_id: { $eq: hit.id } })
           await deleteRow('gt_days', hit.id)
         }
-        let seq = dayRows.length
         for (const d of guide.days) {
           const n = Math.round(Number(d.dayNumber)) || 0
           if (!dayRows.some(r => r.dayNumber === n)) continue
-          seq += 1
-          await createRows('gt_days', [{ trip_id: tripId, day_number: n, date: d.date || dayRows[0]?.date || '', title: d.title || '', place: '' }])
+          const ids = await createRows('gt_days', [{ trip_id: tripId, day_number: n, date: d.date || dayRows[0]?.date || '', title: d.title || '', place: '' }])
+          if (ids[0]) createdDays[n] = ids[0]
         }
       } else {
         await deleteRows('gt_activities', { trip_id: { $eq: tripId } })
@@ -68,38 +69,38 @@ export default function TripAI() {
         for (const d of guide.days) {
           seq += 1
           const date = d.date || (startBase ? offsetDate(startBase, seq - 1) : '')
-          await createRows('gt_days', [{ trip_id: tripId, day_number: seq, date, title: d.title || '', place: '' }])
+          const ids = await createRows('gt_days', [{ trip_id: tripId, day_number: seq, date, title: d.title || '', place: '' }])
+          if (ids[0]) createdDays[seq] = ids[0]
         }
       }
-      const freshDays = (await listRows('gt_days', { trip_id: { $eq: tripId } }, [{ day_number: 'asc' }])) as any[]
       const acts: any[] = []
       for (const d of guide.days) {
         const n = Math.round(Number(d.dayNumber)) || 0
-        const hit = freshDays.find(r => r.dayNumber === n) || freshDays[0]
-        if (!hit) continue
+        const dayId = createdDays[n]
+        if (!dayId) continue
         for (const a of d.activities || []) {
-          acts.push({ dayId: hit.id, tripId, ...(a as any) })
+          acts.push({ trip_id: tripId, day_id: dayId, ...(a as any) })
         }
       }
+      let actIds: string[] = []
       if (acts.length) {
         const perDay: Record<string, number> = {}
-        await createRows('gt_activities', acts.map(a => {
-          perDay[a.dayId] = (perDay[a.dayId] || 0)
+        actIds = await createRows('gt_activities', acts.map(a => {
+          perDay[a.day_id] = (perDay[a.day_id] || 0)
           return {
-            trip_id: a.tripId, day_id: a.dayId, sort: perDay[a.dayId]++,
+            trip_id: a.trip_id, day_id: a.day_id, sort: perDay[a.day_id]++,
             time: a.time || null, end_time: a.endTime || null,
             kind: (a.kind || 'sight'), title: a.title || '', place: a.place || '',
-            lat: (a as any).lat ?? null, lng: (a as any).lng ?? null,
+            lat: a.lat ?? null, lng: a.lng ?? null,
             cost: a.cost || 0, notes: a.notes || '', status: '待确认', assignee_member_id: null,
           }
         }))
       }
-      // 回填坐标（高德代理，失败不影响行程）：刚写入的活动按标题/地点定位
+      // 回填坐标（高德代理，失败不影响行程）：idList 与 acts 顺序对应
       try {
-        const freshActs = (await listRows('gt_activities', { trip_id: { $eq: tripId } })) as any[]
-        const items = freshActs
-          .filter(a => a.lat == null && a.title)
-          .map(a => ({ id: a.id, title: a.title, place: a.place || '' }))
+        const items = actIds
+          .map((id, i) => ({ id, title: acts[i]?.title || '', place: acts[i]?.place || '' }))
+          .filter(x => x.id && x.title)
         if (items.length) {
           const geo = await api.post<{ coords: Record<string, { lat: number; lng: number }> }>('/api/poi/geocode', { items })
           for (const [id, c] of Object.entries(geo.coords || {})) {

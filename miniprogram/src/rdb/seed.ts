@@ -1,6 +1,6 @@
 /** 演示行程种子：客户端写入（保证 _openid 归属正确，管理端写的行用户看不到）。
  * 空态时由「我的旅程」页引导导入。 */
-import { createRow, createRows, listRows } from './entities';
+import { createRow, createRows } from './entities';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
@@ -39,8 +39,8 @@ export async function seedDemoTrip(ownerName: string): Promise<string> {
   const dayPlans = Array.from({ length: 3 }, (_, i) => ({
     trip_id: tripId, day_number: i + 1, date: day(10 + i), title: dayTitles[i + 1], place: dayPlaces[i + 1],
   }));
-  await createRows('gt_days', dayPlans);
-  const dayRows = (await listRows('gt_days', { trip_id: { $eq: tripId } }, [{ day_number: 'asc' }])) as any[];
+  // 拿 createMany 返回的 idList（与 dayPlans 顺序对应）——不能「写后立即 list」回读，平台有可见性延迟
+  const dayIds = await createRows('gt_days', dayPlans);
 
   const plan: [number, string, string, string, number][] = [
     [0, '09:00', 'sight', '古城漫步：复兴路-五华楼', 0],
@@ -55,7 +55,7 @@ export async function seedDemoTrip(ownerName: string): Promise<string> {
   ];
   const acts = plan.map(([di, time, kind, title, cost], i) => ({
     trip_id: tripId,
-    day_id: dayRows[di]?.id || '',
+    day_id: dayIds[di] || '',
     sort: plan.slice(0, i).filter(([d]) => d === di).length,
     time, end_time: null, kind, title, place: '', lat: null, lng: null, cost, notes: '', status: '已确认', assignee_member_id: null,
   }));

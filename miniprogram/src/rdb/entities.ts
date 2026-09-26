@@ -35,9 +35,12 @@ export async function createRow(name: string, data: Row): Promise<Row> {
   return { id: res?.data?.id, ...toCamel(data) };
 }
 
-export async function createRows(name: string, data: Row[]): Promise<void> {
-  if (!data.length) return;
-  await model(name).createMany({ data: toSnake(data) });
+/** 批量建行，返回按传入顺序对应的 _id 列表。
+ *  ⚠️ 调用方需要新行 id 时必须用返回值——「写后立即 list」在平台侧有可见性延迟，查不到刚写的行。 */
+export async function createRows(name: string, data: Row[]): Promise<string[]> {
+  if (!data.length) return [];
+  const res = await model(name).createMany({ data: toSnake(data) });
+  return (res?.data?.idList || []) as string[];
 }
 
 export async function updateRow(name: string, id: string, data: Row): Promise<void> {
