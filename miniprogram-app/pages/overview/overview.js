@@ -17,7 +17,6 @@ Page({
     themeClass: '',
     loading: true,
     hasTrip: false,
-    dbg: '',
     // 头图与标题区
     coverSrc: '/assets/yichun-lake.jpg',
     liveTxt: '',
@@ -50,12 +49,6 @@ Page({
     try {
       await store.ready()
       const t = store.trip
-      // TEMP-DEBUG
-      try {
-        const w = wx
-        const cur = w.getStorageSync('gotrip:current-trip') || '(none)'
-        this.setData({ dbg: 'cur=' + cur + ' trips=' + (store.trips || []).length + ' tripNull=' + (t == null) + ' readyFlag=' + store.ready })
-      } catch (e) { this.setData({ dbg: 'dbg-err ' + e.message }) }
       if (!t) {
         this.setData({ loading: false, hasTrip: false, weather: [] })
         return

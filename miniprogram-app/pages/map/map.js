@@ -6,7 +6,7 @@ const api = require('../../utils/api')
 
 // 按天分色（callout 背景），超过 4 天循环取色
 const DAY_BG = { 1: '#2BB8A8', 2: '#2E92ED', 3: '#FF8A5C', 4: '#7B8CFF' }
-const MARKER_ICON = '/assets/logo.png'
+const MARKER_ICON = '/assets/marker-pin.png'
 
 function dayBg(d) { return DAY_BG[d] || DAY_BG[(((d - 1) % 4) + 4) % 4 + 1] || '#51637A' }
 function hasCoord(s) { return s && s.lat != null && s.lng != null }

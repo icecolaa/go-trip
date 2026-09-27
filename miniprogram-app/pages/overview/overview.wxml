@@ -19,7 +19,7 @@
   <!-- 无行程空态 -->
   <view class="scroll" wx:if="{{!hasTrip}}">
     <view class="card" style="margin:200rpx 32rpx;padding:64rpx 40rpx;display:flex;flex-direction:column;align-items:center;gap:16rpx">
-      <text class="t-sec">还没有选定行程</text><text class="t-sec">{{dbg}}</text>
+      <text class="t-sec">还没有选定行程</text>
       <text class="t-sub">请先从首页选择行程</text>
     </view>
   </view>
