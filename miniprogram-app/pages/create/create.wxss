@@ -1,0 +1,59 @@
+.create .scroll { padding-bottom: 240rpx; }
+
+.steps { display: flex; align-items: center; gap: 12rpx; padding: 16rpx 32rpx 28rpx; }
+.step { display: flex; align-items: center; gap: 12rpx; }
+.step .n {
+  width: 40rpx; height: 40rpx; border-radius: 50%; background: #DDE9F4; color: #8DA0B5;
+  font-size: 22rpx; font-weight: 800; display: flex; align-items: center; justify-content: center;
+}
+.step text { font-size: 24rpx; color: #93A5B8; font-weight: 600; }
+.step.on .n { background: #2E92ED; color: #fff; box-shadow: 0 8rpx 20rpx rgba(46,146,237,.35); }
+.step.on text { color: #1663B4; }
+.line { flex: 1; height: 4rpx; background: #DCE7F2; border-radius: 2rpx; min-width: 28rpx; }
+
+.search-wrap { padding: 0 32rpx; }
+
+.px32 { padding: 0 32rpx; }
+
+.city-cards { display: flex; gap: 24rpx; padding: 0 0 8rpx 32rpx; overflow: hidden; }
+.city-card {
+  flex: none; width: 252rpx; height: 336rpx; border-radius: 36rpx; overflow: hidden;
+  position: relative; box-shadow: var(--sh-card); background: #dfe9f1;
+}
+.city-card image { width: 100%; height: 100%; }
+.city-card .scrim { position: absolute; left: 0; top: 0; right: 0; bottom: 0; background: linear-gradient(180deg, rgba(10,35,60,0) 42%, rgba(10,35,60,.72)); }
+.city-card .hot {
+  position: absolute; top: 18rpx; left: 18rpx; background: var(--yel400); color: #6B5200;
+  font-size: 20rpx; font-weight: 800; border-radius: 999rpx; padding: 6rpx 16rpx;
+}
+.city-card .info { position: absolute; left: 22rpx; bottom: 20rpx; display: flex; flex-direction: column; }
+.city-card .t { color: #fff; font-size: 30rpx; font-weight: 800; }
+.city-card .s { color: #fff; opacity: .9; font-size: 21rpx; margin-top: 2rpx; }
+.city-card.tail { width: 68rpx; border-radius: 36rpx 0 0 36rpx; }
+
+.date-card { margin: 28rpx 32rpx 0; padding: 28rpx 32rpx; }
+.date-head { display: flex; align-items: center; gap: 14rpx; margin-bottom: 24rpx; }
+.date-head .ic { width: 32rpx; height: 32rpx; }
+.date-head .t { font-size: 29rpx; font-weight: 800; }
+.date-row { display: flex; align-items: center; gap: 24rpx; }
+.date-box { flex: 1; display: flex; flex-direction: column; }
+.date-box.right { align-items: flex-end; text-align: right; }
+.date-box .lab { font-size: 22rpx; color: #93A5B8; font-weight: 600; }
+.date-box .d { font-size: 34rpx; font-weight: 800; color: #182A3D; margin-top: 6rpx; }
+.date-box .w { font-size: 22rpx; color: #51637A; }
+.date-arrow {
+  width: 68rpx; height: 68rpx; border-radius: 50%; background: var(--sky100);
+  display: flex; align-items: center; justify-content: center; flex: none;
+}
+.date-arrow .ic { width: 30rpx; height: 30rpx; }
+.weekday { display: flex; justify-content: space-between; padding: 24rpx 12rpx 4rpx; border-top: 2rpx dashed var(--line); margin-top: 26rpx; }
+.weekday text { font-size: 21rpx; color: #93A5B8; text-align: center; width: 60rpx; padding: 4rpx 0; border-radius: 16rpx; }
+.weekday .on { color: #fff; background: #2E92ED; font-weight: 700; }
+.weekday .go { color: #6B5200; background: var(--yel400); font-weight: 800; }
+
+.cta-space { height: 60rpx; }
+.bottom-cta {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 35;
+  padding: 20rpx 32rpx calc(44rpx + env(safe-area-inset-bottom));
+  background: linear-gradient(180deg, rgba(243,248,252,0), var(--bg) 38%);
+}

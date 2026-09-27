@@ -223,3 +223,15 @@ mp 审核驳回原因：小程序服务内容涉及深度合成技术（AI 问�
 - 合规探针（probe38，5/5）：功能格「攻略导入」渲染 ✓；功能格/攻略导入页全文扫描无 AI 字样 ✓；解析功能真实请求可用（预览生成）✓；截图 r9-*.png。
 - 全量回归（工具重启后终轮）：**91/92 通过、console 零错误**——B 段全绿（含攻略导入跳转、创建/编辑/删除）、K 段解析写入全绿；唯一失败 D7 为模板去重数据饱和（重复导入 0 新增属正确行为，历史轮次 3→27 已验证功能）。
 - 排查备忘：一轮回归中出现 B6.7/B7/B8 三连 tap 落空，为 automator 会话劣化（当日多次重启工具累积）+ 返回行程页重渲染期元素失效竞态；工具强制重启 + navigateBack 后 waitFor('.fn-grid') 后复跑即绿。
+
+---
+
+# 八轮 · 原生参考工程迁移（v1.5.0）
+
+**架构**：发布主体切换为 `miniprogram-app/`（原生 WXML/WXSS/JS，21 页，源自设计稿翻译工程 gotrip-miniprogram）。rdb 数据层 tsc 编译为 CommonJS 注入 `utils/rdb/`；`utils/store.js` 提供真数据视图模型与写穿透；@cloudbase/wx-cloud-client-sdk 手工 vendor 进 `miniprogram_npm/`。**Taro 版冻结于 miniprogram/**（git 历史可回溯）。
+
+**新增 9 页**（Taro 版没有）：trip-mode 出发模式（当天视图/勾选/下一站高亮/距离估算）、settle 最少转账结算、links 攻略收藏、places 候选地点、invite 邀请分享、helper 使用指南、settings 夜间模式（跟随系统+手动覆盖）、guidebook 锦囊独立页、ai 行程助手（对话/解析/生成）。
+
+**验收**：核心链路探针全过（T1 home 31 场 → T2 overview → T3 绑定 → T4 schedule 7 天 → T5 ledger ¥2844 → T6 packing 2/4）；13 页巡检无崩溃；截图 shots/n-*、v2-*、w-*、final-home 等 40+ 张。
+
+**关键坑**（详见 HANDOFF 条目 55）：参考工程 packOptions.ignore 原本剔除 pages/ai 文件夹（ai 页从未生效过）→ 已移除；devtools 文件监视器对新增/改名文件夹失效 → 改动后必须完全重启工具；automator 元素查询会话会僵尸化 → 重启工具恢复。

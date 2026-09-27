@@ -1,0 +1,23 @@
+.guidebook .scroll { padding-bottom: 40rpx; }
+.city-rail { white-space: nowrap; padding: 4rpx 32rpx 8rpx; }
+.city-chip {
+  display: inline-flex; height: 60rpx; padding: 0 26rpx; margin-right: 14rpx;
+  border-radius: 30rpx; background: var(--card); color: var(--ink2);
+  font-size: 25rpx; font-weight: 600; line-height: 56rpx; border: 2rpx solid var(--line);
+}
+.city-chip.on { background: var(--sky500); color: #fff; border-color: var(--sky500); font-weight: 800; }
+
+.g-card { background: var(--card); border-radius: 32rpx; box-shadow: var(--sh-card); padding: 24rpx 26rpx; margin: 0 32rpx 20rpx; }
+.g-head { display: flex; align-items: center; gap: 16rpx; margin-bottom: 14rpx; }
+.g-ic { width: 68rpx; height: 68rpx; border-radius: 22rpx; display: flex; align-items: center; justify-content: center; flex: none; }
+.g-ic .ic { width: 34rpx; height: 34rpx; }
+.g-name { font-size: 29rpx; font-weight: 800; color: var(--ink); }
+.g-sub { margin-left: auto; font-size: 21rpx; color: var(--ink3); }
+.g-item { display: flex; align-items: center; gap: 14rpx; padding: 10rpx 4rpx; }
+.g-item text { flex: 1; font-size: 25rpx; color: var(--ink2); line-height: 1.5; }
+.g-dot { width: 10rpx; height: 10rpx; border-radius: 50%; flex: none; }
+.g-del { width: 44rpx; height: 44rpx; display: flex; align-items: center; justify-content: center; flex: none; }
+.g-del .ic { width: 22rpx; height: 22rpx; color: var(--ink3); }
+
+.g-actions { display: flex; gap: 20rpx; padding: 8rpx 32rpx 0; }
+.grow { flex: 1; }

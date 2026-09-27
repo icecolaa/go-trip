@@ -1,0 +1,29 @@
+/* 悬浮毛玻璃胶囊 TabBar：首页 / 出发(黄) / 我的 */
+.tb {
+  position: fixed; left: 32rpx; right: 32rpx;
+  bottom: calc(88rpx + env(safe-area-inset-bottom));
+  z-index: 300; height: 128rpx; border-radius: 64rpx;
+  display: flex; align-items: center; padding: 0 20rpx;
+  background: linear-gradient(180deg, rgba(255,255,255,.80), rgba(255,255,255,.55));
+  -webkit-backdrop-filter: blur(60rpx) saturate(1.9);
+  backdrop-filter: blur(60rpx) saturate(1.9);
+  border: 2rpx solid rgba(255,255,255,.85);
+  box-shadow: inset 0 2rpx 0 rgba(255,255,255,.65), 0 24rpx 64rpx rgba(23,84,153,.16);
+}
+.tb-tab .ic, .tb-tab text { transition: color 0.2s ease; }
+.tb-tab {
+  flex: 1; display: flex; flex-direction: column; align-items: center; gap: 6rpx;
+}
+.tb-tab .ic { width: 48rpx; height: 48rpx; color: #93A5B8; }
+.tb-tab text { font-size: 21rpx; color: #93A5B8; font-weight: 500; }
+.tb-tab.on .ic { color: #2E92ED; }
+.tb-tab.on text { color: #1B78D8; font-weight: 700; }
+
+.tb-ai {
+  flex: none; display: flex; align-items: center; gap: 12rpx; height: 92rpx; margin: 0 12rpx;
+  padding: 0 32rpx 0 14rpx; border-radius: 46rpx;
+  background: linear-gradient(135deg, #FFDE5C, #FFC414);
+  box-shadow: 0 12rpx 32rpx rgba(255,196,20,.4);
+}
+.tb-ai-face { width: 64rpx; height: 64rpx; border-radius: 50%; border: 4rpx solid #fff; background: #54A6F0; }
+.tb-ai-txt { font-size: 27rpx; font-weight: 800; color: #6B5200; white-space: nowrap; }

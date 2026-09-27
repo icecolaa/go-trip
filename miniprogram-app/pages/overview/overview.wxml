@@ -1,0 +1,136 @@
+<!-- 行程总览 · 协作中枢 -->
+<view class="screen overview {{themeClass}}">
+  <!-- 照片头图 -->
+  <view class="photo-head">
+    <image class="bg" src="{{coverSrc}}" mode="aspectFill" />
+    <view class="scrim"></view>
+    <nav-bar float="{{true}}" back="{{true}}" photo="{{true}}" />
+    <view class="head-title">
+      <view class="chip-live"><view class="i"></view><text>{{liveTxt}}</text></view>
+      <text class="t">{{tripTitle}}</text>
+      <view class="meta">
+        <view class="ic ic-cal"></view><text>{{dateLabel}}</text>
+        <text class="div" wx:if="{{stopsCount}}">|</text>
+        <view class="ic ic-route" wx:if="{{stopsCount}}"></view><text wx:if="{{stopsCount}}">共 {{stopsCount}} 个安排</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- 无行程空态 -->
+  <view class="scroll" wx:if="{{!hasTrip}}">
+    <view class="card" style="margin:200rpx 32rpx;padding:64rpx 40rpx;display:flex;flex-direction:column;align-items:center;gap:16rpx">
+      <text class="t-sec">还没有选定行程</text><text class="t-sec">{{dbg}}</text>
+      <text class="t-sub">请先从首页选择行程</text>
+    </view>
+  </view>
+
+  <block wx:if="{{hasTrip}}">
+  <!-- 成员条（负 margin 叠在头图上） -->
+  <view class="member-wrap anim-rise">
+    <view class="card member-bar">
+      <view class="av-stack">
+        <view class="avatar {{item.av}}" wx:for="{{members}}" wx:key="id">{{item.initial}}</view>
+      </view>
+      <view class="invite-add" hover-class="press" bindtap="invite"><view class="ic ic-plus" style="color:#B8860B"></view></view>
+      <text class="invite-txt">{{ownerName}} 是管理员 · 邀请同伴协作</text>
+      <text class="tag blue">{{members.length}} 人</text>
+    </view>
+  </view>
+
+  <view class="scroll">
+    <!-- 功能入口 -->
+    <view class="actions anim-rise d1">
+      <view class="act" hover-class="press" bindtap="go" data-url="/pages/schedule/schedule">
+        <view class="big blue"><view class="ic ic-note"></view></view><text>日程</text>
+      </view>
+      <view class="act" hover-class="press" bindtap="go" data-url="/pages/map/map">
+        <view class="big blue"><view class="ic ic-map"></view></view><text>地图</text>
+      </view>
+      <view class="act" hover-class="press" bindtap="go" data-url="/pages/ledger/ledger">
+        <view class="big yellow"><view class="ic ic-wallet"></view></view>
+        <text>记账</text>
+        <view class="bubble-tip" wx:if="{{billCount}}">{{billCount}} 笔</view>
+      </view>
+      <view class="act" hover-class="press" bindtap="go" data-url="/pages/packing/packing">
+        <view class="big blue"><view class="ic ic-list"></view></view><text>清单</text>
+      </view>
+      <view class="act" hover-class="press" bindtap="go" data-url="/pages/guidebook/guidebook">
+        <view class="big green"><view class="ic ic-compass"></view></view><text>锦囊</text>
+      </view>
+      <view class="act" hover-class="press" bindtap="go" data-url="/pages/journal/journal">
+        <view class="big green"><view class="ic ic-camera"></view></view><text>日志</text>
+      </view>
+      <view class="act" hover-class="press" bindtap="go" data-url="/pages/links/links">
+        <view class="big green"><view class="ic ic-link"></view></view><text>收藏</text>
+      </view>
+      <view class="act" hover-class="press" bindtap="go" data-url="/pages/flights/flights">
+        <view class="big yellow"><view class="ic ic-send"></view></view><text>飞哪儿</text>
+      </view>
+      <view class="act" hover-class="press" bindtap="go" data-url="/pages/settle/settle">
+        <view class="big yellow"><view class="ic ic-transfer"></view></view><text>结算</text>
+      </view>
+    </view>
+
+    <!-- 天气速览 -->
+    <view class="card wx-strip anim-rise d2">
+      <view class="wx-head">
+        <text class="t">天气速览 · {{city}}</text>
+        <text class="s">行程日期窗口</text>
+      </view>
+      <view class="wx-days">
+        <view class="wx-day" wx:for="{{weather}}" wx:key="date">
+          <text class="d">{{item.date}}</text>
+          <text class="i">{{item.icon}}</text>
+          <text class="t2 num">{{item.lo}}~{{item.hi}}°C</text>
+          <text class="t3">{{item.tip}}</text>
+        </view>
+      </view>
+    </view>
+
+    <!-- 出发模式 CTA -->
+    <view class="tm-cta" hover-class="press" bindtap="go" data-url="/pages/trip-mode/trip-mode">
+      <view class="tm-cta-ic"><view class="ic ic-compass"></view></view>
+      <view class="tm-cta-txt">
+        <text class="t">出发模式 · 今天的行程</text>
+        <text class="s">逐站打勾 · 下一站高亮 · 离线可看</text>
+      </view>
+      <view class="ic ic-right" style="color:#D89E00"></view>
+    </view>
+
+    <!-- 小助手建议 -->
+    <view class="ai-strip anim-rise d2" hover-class="press" bindtap="go" data-url="/pages/schedule/schedule">
+      <image class="face" src="/assets/logo.png" mode="aspectFill" />
+      <text class="txt">{{assistantTip}}</text>
+      <view class="ic ic-right" style="color:#D89E00"></view>
+    </view>
+
+    <!-- 进度 -->
+    <view class="card progress-card anim-rise d3">
+      <view class="row"><text class="t">行程进度</text><text class="r">完成 {{progress}}%</text></view>
+      <view class="progress"><view class="bar" style="width:{{progress}}%"></view></view>
+      <view class="tags">
+        <text class="tag blue">支出 {{billCount}} 笔 · {{totalSpentTxt}}</text>
+        <text class="tag yellow" wx:if="{{budgetTxt}}">{{budgetTxt}}</text>
+        <text class="tag green" wx:if="{{perHeadTxt}}">{{perHeadTxt}}</text>
+        <text class="tag gray" wx:if="{{packingTag}}">{{packingTag}}</text>
+      </view>
+    </view>
+
+    <view class="sec">
+      <text class="h">每日安排</text>
+      <view class="more" hover-class="press" bindtap="go" data-url="/pages/schedule/schedule"><text>去日程</text><view class="ic ic-right"></view></view>
+    </view>
+
+    <view class="day-card {{item.state}} anim-rise d1" wx:for="{{dayList}}" wx:key="d">
+      <view class="today-rib" wx:if="{{item.isToday}}">今天</view>
+      <view class="day-badge"><text class="b">D{{item.d}}</text><text class="s">{{item.date}}</text></view>
+      <view class="day-main">
+        <view class="h">{{item.title}} <view class="ic ic-check" wx:if="{{item.state === 'done'}}" style="color:#2FA96E"></view></view>
+        <text class="s">{{item.count}} 个地点 · {{item.week}}</text>
+      </view>
+      <text class="tag yellow" wx:if="{{item.count === 0}}">待补充</text>
+    </view>
+    <view style="height:60rpx"></view>
+  </view>
+  </block>
+</view>

@@ -1,0 +1,69 @@
+.tmode { background: linear-gradient(180deg, #1B78D8 0%, #2E92ED 240rpx, var(--bg) 560rpx); }
+@media (prefers-color-scheme: dark) { .tmode { background: linear-gradient(180deg, #14406E 0%, #12304F 240rpx, var(--bg) 560rpx); } }
+.tmode.theme-dark { background: linear-gradient(180deg, #14406E 0%, #12304F 240rpx, var(--bg) 560rpx); }
+
+.tm-hero { padding: 16rpx 32rpx 28rpx; display: flex; flex-direction: column; }
+.tm-days { display: flex; gap: 12rpx; }
+.tm-day {
+  flex: 1; height: 72rpx; border-radius: 36rpx; text-align: center; line-height: 68rpx;
+  background: rgba(255,255,255,.22); color: #fff; font-size: 26rpx; font-weight: 700;
+  border: 2rpx solid rgba(255,255,255,.35);
+}
+.tm-day.on { background: var(--yel400); color: #6B5200; border-color: var(--yel400); box-shadow: 0 8rpx 24rpx rgba(255,196,20,.4); }
+.tm-title { color: #fff; font-size: 44rpx; font-weight: 900; margin-top: 24rpx; text-shadow: 0 4rpx 16rpx rgba(8,30,55,.4); }
+.tm-sub { display: flex; align-items: center; gap: 12rpx; color: rgba(255,255,255,.92); font-size: 25rpx; margin-top: 8rpx; }
+.dot-sep { opacity: .6; }
+.tm-progress { height: 14rpx; border-radius: 8rpx; background: rgba(255,255,255,.25); overflow: hidden; margin-top: 20rpx; }
+.tm-progress .bar { height: 100%; border-radius: 8rpx; background: linear-gradient(90deg, #FFDE5C, #FFC414); transition: width .3s ease; }
+
+.tm-scroll { flex: 1; overflow: hidden; padding: 8rpx 32rpx 0; box-sizing: border-box; }
+
+.tm-legend { display: flex; gap: 24rpx; padding: 8rpx 4rpx 16rpx; }
+.tm-legend-chip { display: flex; align-items: center; gap: 8rpx; font-size: 21rpx; color: var(--ink3); font-weight: 600; }
+.pin { width: 16rpx; height: 16rpx; border-radius: 50%; }
+.pin.d1 { background: #2BB8A8; } .pin.d2 { background: #2E92ED; } .pin.d3 { background: #FF8A5C; } .pin.d4 { background: #7B8CFF; }
+
+.tm-stop {
+  display: flex; align-items: center; gap: 20rpx; background: var(--card);
+  border-radius: 28rpx; box-shadow: var(--sh-card); padding: 24rpx 26rpx; margin-bottom: 18rpx;
+  border: 3rpx solid transparent;
+}
+.tm-stop.next { border-color: var(--yel400); box-shadow: 0 12rpx 32rpx rgba(255,196,20,.25); }
+.tm-stop.done { opacity: .55; }
+.tm-stop.done .name { text-decoration: line-through; }
+.tm-check {
+  width: 52rpx; height: 52rpx; border-radius: 50%; border: 4rpx solid #C9D6E3;
+  display: flex; align-items: center; justify-content: center; flex: none;
+}
+.tm-check.on { background: var(--green); border-color: var(--green); }
+.tm-check.on .ic { width: 28rpx; height: 28rpx; color: #fff; }
+.tm-stop-main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.tm-l1 { display: flex; align-items: center; gap: 16rpx; }
+.tm-l1 .time { font-size: 25rpx; font-weight: 800; color: var(--sky600); font-variant-numeric: tabular-nums; }
+.tm-l1 .name { font-size: 29rpx; font-weight: 800; color: var(--ink); flex: 1; min-width: 0; }
+.next-rib {
+  flex: none; background: var(--yel400); color: #6B5200; font-size: 19rpx; font-weight: 800;
+  border-radius: 999rpx; padding: 4rpx 14rpx;
+}
+.tm-l2 { display: flex; align-items: center; gap: 16rpx; margin-top: 6rpx; flex-wrap: wrap; }
+.tm-l2 .num { font-size: 23rpx; color: #B8860B; font-weight: 800; }
+.tm-l2 .note { font-size: 22rpx; color: var(--ink3); }
+.tm-l2 .leg { font-size: 21rpx; color: var(--sky500); }
+.tm-go {
+  width: 72rpx; height: 72rpx; border-radius: 50%; flex: none;
+  background: linear-gradient(135deg, var(--sky400), var(--sky600));
+  display: flex; align-items: center; justify-content: center;
+}
+.tm-go .ic { width: 32rpx; height: 32rpx; color: #fff; }
+
+.tm-sketch { padding: 24rpx; }
+.tm-sketch-head { display: flex; align-items: center; }
+.tm-sketch-head .t { font-size: 27rpx; font-weight: 800; color: var(--ink); }
+.tm-sketch-head .tag { margin-left: auto; }
+.tm-sketch-img { width: 100%; border-radius: 20rpx; margin-top: 16rpx; }
+
+.tm-cta {
+  flex: none; display: flex; gap: 20rpx; padding: 20rpx 32rpx calc(28rpx + env(safe-area-inset-bottom));
+  background: var(--card); border-top: 2rpx solid var(--line);
+}
+.tm-cta-btn { flex: 1; height: 88rpx; }

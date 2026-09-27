@@ -1,0 +1,73 @@
+<!-- 每日行程：按天编排 · 排序 · 跨天移动 · 费用/备注 -->
+<view class="screen schedule {{themeClass}}">
+  <nav-bar float="{{true}}" back="{{true}}" />
+
+  <!-- 无行程空态 -->
+  <view wx:if="{{!hasTrip}}" style="margin:200rpx 32rpx">
+    <view class="card" style="padding:64rpx 40rpx;display:flex;flex-direction:column;align-items:center;gap:16rpx">
+      <text class="t-sec">还没有选定行程</text>
+      <text class="t-sub">请先从首页选择行程</text>
+    </view>
+  </view>
+
+  <view class="scroll" wx:if="{{hasTrip}}">
+    <view class="days-bar">
+      <view class="day-pill {{dayIdx === index ? 'on' : ''}}" wx:for="{{days}}" wx:key="d"
+            hover-class="press" bindtap="pickDay" data-i="{{index}}">
+        <text class="b">D{{item.d}}</text>
+        <text class="s">{{item.date}}</text>
+      </view>
+    </view>
+    <view class="date-line">
+      <text class="d">{{days[dayIdx].date}}</text>
+      <text class="w">{{days[dayIdx].week}} · {{dayStops.length}} 个地点 · 合计 ¥{{dayCost}}</text>
+    </view>
+
+    <view class="tl">
+      <block wx:for="{{dayStops}}" wx:key="id">
+        <view class="drive-chip" wx:if="{{item.leg}}">
+          <view class="d-ic"><view class="ic ic-car"></view></view>
+          <text>{{item.leg}}</text>
+        </view>
+        <view class="tl-item {{index === dayStops.length - 1 ? 'last' : ''}}">
+          <view class="tl-time"><text>{{item.time}}</text></view>
+          <view class="tl-node">
+            <view class="dot {{item.type === '餐饮' ? 'meal' : item.type === '住宿' ? 'stay' : ''}}"></view>
+            <view class="bar" wx:if="{{index < dayStops.length - 1}}"></view>
+          </view>
+          <view class="tl-card pad-sm">
+            <view class="mini-tile {{item.type === '餐饮' ? 'yellow' : item.type === '住宿' ? 'blue' : item.type === '门票' ? 'green' : ''}}">
+              <view class="ic ic-{{item.icon}}"></view>
+            </view>
+            <view class="tl-main">
+              <text class="h">{{item.name}}</text>
+              <view class="s">
+                <text wx:if="{{item.cost > 0}}" class="tag yellow num">¥{{item.cost}}</text>
+                <text wx:if="{{item.note}}" class="note">{{item.note}}</text>
+              </view>
+            </view>
+            <view class="op" hover-class="press" bindtap="stopMenu" data-id="{{item.id}}">
+              <view class="ic ic-drag"></view>
+            </view>
+          </view>
+        </view>
+      </block>
+      <view wx:if="{{!dayStops.length}}" class="empty">
+        <text>这一天还没有安排</text>
+        <text class="tag blue">点底部「＋安排」或「添加地点」补齐</text>
+      </view>
+    </view>
+    <view class="cta-space"></view>
+  </view>
+
+  <view class="bottom-cta" wx:if="{{hasTrip}}">
+    <view class="map-btn" hover-class="press" bindtap="goTripMode"><view class="ic ic-compass"></view></view>
+    <view class="map-btn" hover-class="press" bindtap="goMap"><view class="ic ic-map"></view></view>
+    <view class="btn yellow grow" hover-class="press" bindtap="addPlan">
+      <view class="ic ic-plus"></view><text>＋安排</text>
+    </view>
+    <view class="btn ghost grow" hover-class="press" bindtap="addPlace">
+      <view class="ic ic-search"></view><text>添加地点</text>
+    </view>
+  </view>
+</view>

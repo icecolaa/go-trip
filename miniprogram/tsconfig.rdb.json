@@ -10,5 +10,9 @@
     "skipLibCheck": true,
     "declaration": false
   },
-  "include": ["src/rdb/**/*.ts", "src/shared/**/*.ts"]
+  "include": [
+    "src/rdb/**/*.ts",
+    "src/shared/**/*.ts"
+  ],
+  "outDir": "../miniprogram-app/utils/rdb"
 }
