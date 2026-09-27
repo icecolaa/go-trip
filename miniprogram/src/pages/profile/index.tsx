@@ -5,7 +5,7 @@ import { syncTabBar } from '../../tab-sync'
 import { ensureProfile, listTrips, updateProfile } from '../../rdb/trip'
 import type { Profile, TripCardInfo } from '../../types'
 
-const APP_VERSION = 'v1.4.2'
+const APP_VERSION = 'v1.4.4'
 
 /** 我的 Tab：资料卡 + 旅程统计 + 通用入口（飞哪儿在此，无自托管板块）。 */
 export default function Profile() {
