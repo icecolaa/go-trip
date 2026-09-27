@@ -14,7 +14,7 @@
 import crypto from 'node:crypto';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { ApiError, json, readBody } from './util.ts';
-import { searchPois, geocodePlaces, cleanActivityQuery, type GeocodeItem } from './poi.ts';
+import { searchPois, geocodePlaces, cleanActivityQuery, reverseGeocode, type GeocodeItem } from './poi.ts';
 import { getWeather } from './weather.ts';
 import { parseGuide, generatePlan, aiConfigured } from './ai.ts';
 import { buildHandbook, aiHandbook } from './handbook.ts';
@@ -71,6 +71,16 @@ function matchPath(pattern: string, url: string): Record<string, string> | null 
 function queryOf(req: IncomingMessage): URLSearchParams {
   return new URLSearchParams((req.url || '').split('?')[1] || '');
 }
+
+/* ==================== 位置：逆地理（坐标→城市） ==================== */
+// 供飞哪儿「识别出发地」等场景：wx.getLocation 拿坐标 → 此接口换城市名
+route('GET', '/api/poi/regeo', async (req, res) => {
+  const lat = Number(queryOf(req).get('lat'));
+  const lng = Number(queryOf(req).get('lng'));
+  if (!isFinite(lat) || !isFinite(lng)) throw new ApiError(400, '缺少坐标');
+  const out = await reverseGeocode(lat, lng);
+  json(res, 200, out || { province: '', city: '', district: '' });
+});
 
 /* ==================== AI：封面生成（CogView，异步 job） ==================== */
 // callContainer 15s 硬超时，CogView 生成 10~30s → 照飞哪儿模式 job 化：

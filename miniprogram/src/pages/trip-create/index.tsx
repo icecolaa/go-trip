@@ -23,6 +23,23 @@ export default function TripCreate() {
   const [color, setColor] = useState(COLORS[0])
   const [busy, setBusy] = useState(false)
 
+  /** 地图选目的地：从地点名/地址提取城市关键词回填 */
+  const pickDestination = () => {
+    Taro.chooseLocation({
+      success: (res) => {
+        const src = res.name || res.address || ''
+        // 去掉常见 POI 后缀与省/区前缀，保留城市核心（如「伊春市伊春区XX酒店」→「伊春」）
+        const m = src.match(/([^省市区县]+市)/)
+        setDestination(m ? m[1].replace(/市$/, '') : src.slice(0, 20))
+      },
+      fail: (err: any) => {
+        const msg = String(err?.errMsg || '')
+        if (msg.includes('cancel')) return
+        Taro.showToast({ title: '选点不可用（需在后台开通并配置隐私指引）', icon: 'none' })
+      },
+    })
+  }
+
   const create = async () => {
     if (busy) return
     if (!title.trim()) { Taro.showToast({ title: '给旅程起个名字吧', icon: 'none' }); return }
@@ -56,7 +73,10 @@ export default function TripCreate() {
           <Input className="input" value={title} onInput={e => setTitle(e.detail.value)} placeholder="例如：云南大理丽江 6 日慢游" maxlength={60} />
         </View>
         <View className="field">
-          <Text className="label">目的地</Text>
+          <View className="row-between" style={{ marginBottom: '12rpx' }}>
+            <Text className="label" style={{ marginBottom: 0 }}>目的地</Text>
+            <Text className="linkish" onClick={pickDestination}>📍 地图选目的地</Text>
+          </View>
           <Input className="input" value={destination} onInput={e => setDestination(e.detail.value)} placeholder="城市或地区，例如：大理 → 丽江" maxlength={60} />
         </View>
         <View className="row2">

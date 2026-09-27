@@ -126,3 +126,39 @@
 2. devtools 模拟器 models.list 间歇性空返回（同一代码时而查到时而空），**真机验收待做**；真机身份一致性问题应不存在。
 3. 测试账号行程数据 19 场（验收产生），可用长按删除清理。
 4. 小红书跳转 appid 未接入（无可靠公开 appid），现为复制搜索词方案。
+
+---
+
+# 四轮 · 位置 API 矩阵 + tab 高亮/新建按钮修复（2026-09-27 · v1.4.1）
+
+## 一、位置类微信 API 落点（wx 官方文档对齐）
+
+| API | 落点 | 说明 |
+|---|---|---|
+| `wx.chooseLocation` | activity「📍地图选点」、trip-create「📍地图选目的地」 | 选点回填名称+经纬度入库（gt_activities.lat/lng），打通地图页打点与导航 |
+| `wx.getLocation` | map「📍定位到当前位置」、flywhere「📍定位识别出发地」 | gcj02 精确定位；flywhere 经容器新增 `GET /api/poi/regeo`（高德逆地理）换城市名回填 |
+| `wx.startLocationUpdate` + `wx.onLocationChange` | map「📡持续追踪」开关 | 地图中心实时跟随；`useUnload` 停止更新防后台耗电；`offLocationChange` 成对解绑 |
+| `wx.chooseAddress` | packing「📦旅行地址簿·收货地址」 | 收件人/电话/完整地址，本地存储（gotrip:addr-address），隐私不出设备 |
+| `wx.choosePoi` | packing「🏨住宿位置」 | POI 名/地址/坐标本地存储（gotrip:addr-hotel）；automator 无法 mock 该接口，验收走降级断言 |
+| `wx.getFuzzyLocation` | 未启用 | 与 getLocation 互斥声明，本版启用精确位置；如审核受限可切换 |
+| `<OfficialAccount>` | 我的页（上轮已加） | 绑定同主体公众号后特定场景显示 |
+
+**平台合规**（`app.config.ts`）：`requiredPrivateInfos` 声明 6 项（getLocation/onLocationChange/startLocationUpdate/chooseLocation/choosePoi/chooseAddress）+ `permission['scope.userLocation']` 用途说明。**上线前需在 mp 后台「开发管理→接口设置」申请开通对应接口，并在「用户隐私保护指引」声明收集位置信息**，否则真机调用 fail（代码已全部 fail-soft 降级，不会白屏）。
+
+## 二、用户反馈问题修复
+
+1. **tab 切换高亮不更新（真 bug）**：Taro 3.6 + React 下 `getTabBar()` 返回原生组件包装器，类方法 `setSelected` 不在其上而在 `$taroInstances`（React 实例）——原 syncTabBar 的 `typeof bar.setSelected === 'function'` 恒 false 静默跳过。修复：`tab-sync.ts` 双通道兜底（wrapper 方法 → `$taroInstances.setSelected`）+ storage 记忆选中态（组件 constructor 立即恢复）。**自动化断言**：三 tab 轮切 state 跟随 react:0→1→2→0，截图确认高亮正确。
+2. **＋新建按钮跨机型样式**：WeChat `size="mini"` 原生盒模型在不同机型浮动。改为 `.head .new-btn` 固定 152×64rpx、行高对齐、`flex-shrink:0`、`white-space:nowrap`，窄屏（320px）不换行不出屏。
+
+## 三、验收
+
+- **回归：92/92 全部通过，console 零错误**（三轮全量脚本）。
+- 新增专项探针 probe28（8/8）：chooseLocation mock 回填地点→带坐标保存→上榜→清理；chooseAddress 地址簿展示；choosePoi 点击降级不崩溃（automator 不支持 mock 该接口，成功路径为代码审查+真机项）；flywhere 识别入口渲染；map 持续追踪按钮渲染。
+- tab 高亮断言：probe35 轮切读 React 实例 state 跟随；新建按钮几何 390px 宽下不出屏。
+- 截图：`work/uitest/shots/r4-*.png`、`r5/r6-tab-highlight-*.png`、`probe27/28/29` 等。
+
+## 四、上线前操作单（位置接口）
+
+1. mp 后台「开发管理→接口设置」：申请 `getLocation`、`onLocationChange`、`startLocationUpdate`、`chooseLocation`、`choosePoi`、`chooseAddress`（使用场景照上表填写）。
+2. 「用户隐私保护指引」补充：位置信息（导航/识别出发地/行程记录）、所选照片（自定义背景/日志图）、剪贴板（小红书搜索词）。
+3. AI 生成封面需重新部署容器（gotrip-018 未含 gen-cover/regeo 路由）。

@@ -3,6 +3,7 @@
 import { Component } from 'react'
 import { View, Image, Text } from '@tarojs/components'
 import Taro from '@tarojs/taro'
+import { initialTab } from '../tab-sync'
 import './index.css'
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -17,7 +18,11 @@ interface Props { }
 interface State { selected: number }
 
 export default class CustomTabBar extends Component<Props, State> {
-  state: State = { selected: 0 }
+  // switchTab 会重建 tab 组件实例：constructor 里恢复上次选中态，避免高亮滞留
+  constructor(props: Props) {
+    super(props)
+    this.state = { selected: initialTab() }
+  }
 
   setSelected(index: number): void {
     this.setState({ selected: index })

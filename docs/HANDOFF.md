@@ -1,7 +1,8 @@
 # 交接文档（HANDOFF）
 
 > 面向下一个接手的开发者或 AI 会话。先读根目录 `CLAUDE.md`（规则手册），再读本文（现状、过程与经验）。
-> 更新：2026-09-27（条目 50：三轮改版——液态玻璃 custom-tab-bar、行程页真背景(上传+AI 生成)、微信 API 矩阵、**models.list 空结果平台怪癖与 custom-tab-bar chunk 竞态两大坑**、1.4.0 上传）。
+> 更新：2026-09-27（条目 51：四轮——位置类微信 API 矩阵（chooseLocation/getLocation/onLocationChange/chooseAddress/choosePoi + 容器 regeo）、**tab 高亮不更新真根因（getTabBar 包装器无类方法，React 实例在 $taroInstances）**、＋新建按钮固定尺寸、1.4.1 上传）。
+> 上一条：2026-09-27（条目 50：三轮改版——液态玻璃 custom-tab-bar、行程页真背景(上传+AI 生成)、微信 API 矩阵、**models.list 空结果平台怪癖与 custom-tab-bar chunk 竞态两大坑**、1.4.0 上传）。
 > 上一条：2026-09-27（条目 49：二轮改版——原生 tabBar 三栏(行程/消息/我的)、消息页/我的页、飞哪儿入我的页、伊春演示行程、行程长按删除、1.3.0 上传）。
 > 上一条：2026-09-27（条目 48：小程序 UI 改版「晴空航线」落地——12 页全换肤、journal 白屏预存 bug 修复、1.2.0 上传；新窗口读状态一览 + 48/49 + `docs/miniprogram-design.md`）。
 > 上一条：2026-09-27（条目 47：会话收尾快照——gotrip-018 上线、1.1.5 已传待设体验版、工具上传通道适配新版异步 API、改版底稿就绪待拍板方向）。
@@ -25,6 +26,8 @@
 | 待办 Top3 | ① **1.1.5 设体验版** → 真机：行程卡点入（46 修复主验）、日志图片上传、AI 解析、锦囊、飞哪儿 ② **控制台建 Web 账号**（身份认证→用户管理）→ 线上登录自测（唯一没验的成功路径）③ **拍板改版方向 A/B** → 按 miniprogram-features.md 出 DESIGN 规范→确认→实施（第一刀：app.css 去重 894→~223 行 + token 化）。可选：清理 gt_users 测试行（备份 work/incident-0115/ 同目录参考条目 45 操作单） |
 
 ## 2026-08~09 主要交付（按主题）
+
+51. **四轮：位置 API 矩阵 + tab 高亮修复（2026-09-27，1.4.1）**：① 位置 API 六处落点（详见 acceptance/REPORT 三轮后四轮章节）：chooseLocation（activity 地图选点带坐标入库/trip-create 目的地）、getLocation（map 定位/flywhere 识别出发地→容器 `GET /api/poi/regeo` 高德逆地理）、startLocationUpdate+onLocationChange（map 持续追踪，onUnload 停止）、chooseAddress+choosePoi（packing 旅行地址簿，本地存储不联库）；app.config `requiredPrivateInfos` 6 项 + permission 用途，**上线前需 mp 后台申请接口+隐私指引**。getFuzzyLocation 未启用（与 getLocation 互斥）。② **tab 高亮不更新真根因**：getTabBar() 返回原生包装器，React 实例在 `$taroInstances`（setSelected 在实例上）——syncTabBar 双通道兜底 + storage 记忆（constructor initialTab 恢复）。③ ＋新建按钮固定 152×64rpx（size=mini 原生盒模型跨机型浮动）。④ ui-skills（npx）打磨：tab icon/label 加 transition。验收：回归 92/92 + probe28 位置 API 专项 8/8 + probe35 高亮轮切断言。
 
 50. **三轮改版：液态玻璃 tabBar + 真背景 + 微信 API（2026-09-27，1.4.0）**：① `custom-tab-bar` 液态玻璃（浮岛圆角+backdrop-filter，wxss 走 copy.patterns——Taro 不编译 custom-tab-bar 的 CSS import）；② 行程页 hero 真背景：cover_image fileID 直显/📸chooseMedia 上传/✨AI 生成（容器 `/api/ai/gen-cover/submit|result` 异步 job 调 CogView-3-flash，base64→FSM→云存储，**需重部容器**）；③ 微信 API 矩阵：useShareAppMessage×4、openLocation 导航、getLocation 定位、小红书=复制搜索词（无可靠 appid）、OfficialAccount 组件；④ **两大坑**：**(a) 页面 chunk import custom-tab-bar 的导出在 chunk 加载完成前是 undefined，useDidShow 里调用即同步抛错打断整页 load（三 tab 页全空假象）——syncTabBar 移独立 tab-sync.ts+全 try/catch；**(b) 平台 models.list 空条件（无 where）返回空记录（gt_trips 19 行挂/空、gt_users 8 行正常，疑似当日平台变更）——全量列表必须带显式 where，listTrips 用 share_token 挪用锚点（=profile.owner 值 weda_<openid>，createTrip/seed 显式写入）。**排查方法论**：automator 的 console/storage 通道只通 evaluate 环境，页面侧用 globalThis 变量+evaluate 读（getCurrentPages 可用证明同环境）。验收 92/92+console 0 错。遗留：AI 封面待容器重部；模拟器 models.list 间歇空待真机复验。
 

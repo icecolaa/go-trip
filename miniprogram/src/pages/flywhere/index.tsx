@@ -3,6 +3,8 @@ import { View, Text, Input, Button, Picker } from '@tarojs/components'
 import Taro from '@tarojs/taro'
 import { api, ApiFail } from '../../api/request'
 
+declare const wx: any
+
 interface FlightResult {
   id: string; city: string; code: string; domestic: boolean
   date: string; backDate: string; airline: string
@@ -28,6 +30,30 @@ export default function FlyWhere() {
   const [elapsed, setElapsed] = useState(0)
   const [results, setResults] = useState<FlightResult[] | null>(null)
   const [error, setError] = useState('')
+
+  /** 定位识别出发地：getLocation 精确坐标 → 容器高德 regeo → 城市名回填 */
+  const detectOrigin = () => {
+    Taro.getLocation({
+      type: 'gcj02',
+      success: async (loc) => {
+        try {
+          Taro.showLoading({ title: '识别中…' })
+          const out = await api.get<{ city: string; province: string }>(`/api/poi/regeo?lat=${loc.latitude}&lng=${loc.longitude}`)
+          Taro.hideLoading()
+          const city = String(out.city || '').replace(/市$/, '')
+          if (!city) { Taro.showToast({ title: '未能识别城市，请手动填写', icon: 'none' }); return }
+          setOrigin(city)
+        } catch (e) {
+          Taro.hideLoading()
+          Taro.showToast({ title: '识别失败，请手动填写', icon: 'none' })
+        }
+      },
+      fail: (err: any) => {
+        const msg = String(err?.errMsg || '')
+        Taro.showToast({ title: msg.includes('auth') ? '请授权位置权限' : '定位不可用，请手动填写', icon: 'none' })
+      },
+    })
+  }
 
   const search = async () => {
     if (busy) return
@@ -64,8 +90,11 @@ export default function FlyWhere() {
       <View className="fw-eyebrow">PRICE-LED FLIGHT DISCOVERY</View>
       <View className="panel">
         <View className="field">
-          <Text className="label">出发城市</Text>
-          <Input className="input" value={origin} onInput={e => setOrigin(e.detail.value)} placeholder="例如：北京" maxlength={20} />
+          <View className="row-between" style={{ marginBottom: '12rpx' }}>
+            <Text className="label" style={{ marginBottom: 0 }}>出发城市</Text>
+            <Text className="linkish" onClick={detectOrigin}>📍 定位识别出发地</Text>
+          </View>
+          <Input className="input" value={origin} onInput={e => setOrigin(e.detail.value)} placeholder="例如：北京，可点上方链接自动识别" maxlength={20} />
         </View>
         <View className="field">
           <Text className="label">目的地（留空 = 全国探索）</Text>

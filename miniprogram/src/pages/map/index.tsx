@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { View, Text, Map, Button } from '@tarojs/components'
-import Taro from '@tarojs/taro'
+import Taro, { useUnload } from '@tarojs/taro'
 import { loadTripBundle } from '../../rdb/trip'
 import type { TripBundle, Activity } from '../../types'
 
@@ -16,6 +16,37 @@ export default function TripMap() {
   const [error, setError] = useState('')
   const [center, setCenter] = useState<{ latitude: number; longitude: number } | null>(null)
   const [locating, setLocating] = useState(false)
+  const [tracking, setTracking] = useState(false)
+
+  /** 持续追踪：startLocationUpdate + onLocationChange 让地图中心实时跟随（行程中导航用） */
+  const onLoc = (res: { latitude: number; longitude: number }) => setCenter({ latitude: res.latitude, longitude: res.longitude })
+  const toggleTracking = () => {
+    if (tracking) {
+      Taro.offLocationChange(onLoc as never)
+      Taro.stopLocationUpdate()
+      setTracking(false)
+      return
+    }
+    Taro.startLocationUpdate({
+      success: () => {
+        Taro.onLocationChange(onLoc as never)
+        setTracking(true)
+        Taro.showToast({ title: '持续追踪已开启', icon: 'success' })
+      },
+      fail: (err: any) => {
+        const msg = String(err?.errMsg || '')
+        Taro.showToast({ title: msg.includes('auth') ? '请授权位置权限' : '持续定位需在后台申请开通该接口', icon: 'none' })
+      },
+    })
+  }
+
+  // 页面卸载时停止持续定位，避免后台耗电
+  useUnload(() => {
+    try {
+      Taro.offLocationChange(onLoc as never)
+      Taro.stopLocationUpdate()
+    } catch (e) { /* ignore */ }
+  })
 
   const locateMe = () => {
     if (locating) return
@@ -103,6 +134,7 @@ export default function TripMap() {
         onError={() => {}}
       />
       <View className="map-tools">
+        <Button className={`chip ${tracking ? 'on' : ''}`} size="mini" onClick={toggleTracking}>📡 持续追踪{tracking ? '中·点击关闭' : ''}</Button>
         <Button className="chip" size="mini" loading={locating} onClick={locateMe}>📍 定位到当前位置</Button>
         <Button className="chip" size="mini" onClick={searchXhs}>📕 小红书搜攻略</Button>
       </View>

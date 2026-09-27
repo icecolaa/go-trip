@@ -90,7 +90,7 @@ export default function Trips() {
 
       <View className="head">
         <Text className="title">我的旅程</Text>
-        <Button className="submit-inline yellow" size="mini" onClick={goCreate}>＋ 新建</Button>
+        <Button className="submit-inline yellow new-btn" onClick={goCreate}>＋ 新建</Button>
       </View>
 
       {error && <View className="error">{error}</View>}

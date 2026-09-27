@@ -17,6 +17,20 @@ export default defineAppConfig({
   ],
   /** 按需注入（基础库 2.11.1+）：仅注入当前页面所需的代码，降低启动耗时与内存。 */
   lazyCodeLoading: 'requiredComponents',
+  /** 位置类隐私接口声明（mp 后台「接口设置」同步申请开通；getFuzzyLocation 与 getLocation 互斥，本版启用精确） */
+  requiredPrivateInfos: [
+    'getLocation',
+    'onLocationChange',
+    'startLocationUpdate',
+    'chooseLocation',
+    'choosePoi',
+    'chooseAddress',
+  ],
+  permission: {
+    'scope.userLocation': {
+      desc: '用于在地图上定位当前位置、识别出发城市，以及记录行程地点',
+    },
+  },
   tabBar: {
     custom: true,
     color: '#93A5B8',
