@@ -186,3 +186,13 @@
 ## 三、验收
 
 全量回归 89 项：86 通过；3 项失败（B11/C7/D5）为**用例依赖首张卡数据**所致（点进了无种子的空测试行程），修正用例固定进入伊春种子行程后复跑（结果见本轮最终数字），非本次改动回归——B9/B10/C6/C5/D3/D4（同为表单/输入链路）本轮全绿。
+
+---
+
+# 六轮 · 撤下 startLocationUpdate/onLocationChange（2026-09-27 · v1.4.3）
+
+用户 mp 后台截图：`wx.startLocationUpdate`/`wx.onLocationChange` **审核不通过**（其余 chooseAddress/chooseLocation/choosePoi/getFuzzyLocation/getLocation 已开通）。按要求撤下两接口：
+- `app.config.ts` requiredPrivateInfos 移除 `onLocationChange`/`startLocationUpdate`（保留 getLocation/chooseLocation/choosePoi/chooseAddress 四项已开通声明）；
+- map 页移除「📡持续追踪」按钮与 startLocationUpdate/onLocationChange/offLocationChange/stopLocationUpdate 全部调用及卸载清理；**「📍定位到当前位置」（getLocation 单次定位）保留**。
+- 验证：dist 零残留；地图页「持续追踪已移除/定位保留」探针通过；回归结果见下。
+- getFuzzyLocation 已开通但与 getLocation 互斥声明，维持不启用；startLocationUpdateBackground 暂无权限不涉及。

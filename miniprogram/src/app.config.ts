@@ -18,10 +18,9 @@ export default defineAppConfig({
   /** 按需注入（基础库 2.11.1+）：仅注入当前页面所需的代码，降低启动耗时与内存。 */
   lazyCodeLoading: 'requiredComponents',
   /** 位置类隐私接口声明（mp 后台「接口设置」同步申请开通；getFuzzyLocation 与 getLocation 互斥，本版启用精确） */
+  // startLocationUpdate/onLocationChange 审核未通过（2026-09-27），不声明不调用；持续追踪功能已撤下
   requiredPrivateInfos: [
     'getLocation',
-    'onLocationChange',
-    'startLocationUpdate',
     'chooseLocation',
     'choosePoi',
     'chooseAddress',

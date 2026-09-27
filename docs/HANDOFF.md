@@ -28,6 +28,8 @@
 
 ## 2026-08~09 主要交付（按主题）
 
+53. **六轮：撤下持续定位接口（2026-09-27，1.4.3）**：mp 后台 `startLocationUpdate`/`onLocationChange` 审核不通过 → requiredPrivateInfos 移除两项、map 页「持续追踪」功能整体撤下（按钮/状态/调用/卸载清理），`getLocation` 单次定位保留（已开通）。审核通过前不要重新引入这两接口；如需行程中实时跟随，待审核通过后按条目四轮的 toggleTracking 实现恢复（git 历史可查）。
+
 52. **五轮：表单遮挡修复 + 参考工程对齐（2026-09-27，1.4.2）**：用户截图实锤新建旅程页输入文字纵向裁半。根因：`.input` 仅纵向 padding 无显式高度，Taro 原生 input 内容区被挤。修复对齐 `E:\code\picture\gotrip-miniprogram\`（设计稿全量原生翻译 21 页，**后续改样式的逐页规格基准**）：`.input` height 88rpx+flex 居中+药丸 40rpx、textarea 补行高、卡片 40rpx+双层投影、trip-cover 260rpx、全局 box-sizing、字体栈前置 -apple-system。同类排查：全部表单页共用 .input 一并修复，textarea 补 line-height，标签/徽标/日期行无裁切。验收截图 r7-create-*.png 正常+60 字超长均完整显示。
 
 51. **四轮：位置 API 矩阵 + tab 高亮修复（2026-09-27，1.4.1）**：① 位置 API 六处落点（详见 acceptance/REPORT 三轮后四轮章节）：chooseLocation（activity 地图选点带坐标入库/trip-create 目的地）、getLocation（map 定位/flywhere 识别出发地→容器 `GET /api/poi/regeo` 高德逆地理）、startLocationUpdate+onLocationChange（map 持续追踪，onUnload 停止）、chooseAddress+choosePoi（packing 旅行地址簿，本地存储不联库）；app.config `requiredPrivateInfos` 6 项 + permission 用途，**上线前需 mp 后台申请接口+隐私指引**。getFuzzyLocation 未启用（与 getLocation 互斥）。② **tab 高亮不更新真根因**：getTabBar() 返回原生包装器，React 实例在 `$taroInstances`（setSelected 在实例上）——syncTabBar 双通道兜底 + storage 记忆（constructor initialTab 恢复）。③ ＋新建按钮固定 152×64rpx（size=mini 原生盒模型跨机型浮动）。④ ui-skills（npx）打磨：tab icon/label 加 transition。验收：回归 92/92 + probe28 位置 API 专项 8/8 + probe35 高亮轮切断言。
