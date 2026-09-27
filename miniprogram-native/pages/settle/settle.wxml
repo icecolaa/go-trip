@@ -1,0 +1,76 @@
+<!-- 智能结算 · 最少转账 -->
+<view class="screen settle {{themeClass}}">
+  <nav-bar float="{{true}}" back="{{true}}" />
+
+  <view class="scroll">
+    <view wx:if="{{noTrip}}" class="anim-rise" style="padding:140rpx 40rpx;text-align:center;">
+      <text style="font-size:30rpx;color:var(--ink3)">请先从首页选择行程</text>
+    </view>
+    <block wx:else>
+    <view class="hero-card anim-rise">
+      <view class="save-tag">少转 {{naive - transfers.length}} 笔</view>
+      <view class="lab"><view class="ic ic-spark" style="color:#D89E00"></view><text>最少转账算法 · {{naive}} 笔欠款 → {{transfers.length}} 笔结清</text></view>
+      <text class="h">只需 <text class="hl">{{transfers.length}} 笔转账</text>，{{details.length}} 人账目全部结清</text>
+      <view class="tags">
+        <text class="tag yellow">总支出 ¥{{totalSpent}}</text>
+        <text class="tag yellow">人均 ¥{{perPerson}}</text>
+        <text class="tag green">已结清 {{done}} / {{transfers.length}}</text>
+      </view>
+    </view>
+
+    <view class="sec">
+      <text class="h">转账方案</text>
+      <view class="more"><text>按微信收款</text><view class="ic ic-right"></view></view>
+    </view>
+
+    <view class="trans anim-rise" style="animation-delay:{{index * 70}}ms" wx:for="{{transfers}}" wx:key="id">
+      <view class="pair">
+        <view class="who">
+          <view class="avatar {{item.fromAv}}">{{item.fromInitial}}</view>
+          <text>{{item.from}}</text>
+        </view>
+        <view class="arrow"><view class="line"></view><view class="ic ic-right" style="color:#2E92ED"></view></view>
+        <view class="who">
+          <view class="avatar {{item.toAv}}">{{item.toInitial}}</view>
+          <text>{{item.to}}</text>
+        </view>
+      </view>
+      <view class="money">
+        <text class="v">{{item.amount}}</text>
+        <text class="k">{{item.note}}</text>
+      </view>
+      <view class="act {{item.paid ? 'paid' : 'mark'}}" hover-class="press" bindtap="togglePaid" data-id="{{item.id}}">
+        <text>{{item.paid ? '已收 ✓' : '标记已转'}}</text>
+      </view>
+    </view>
+
+    <view class="sec">
+      <text class="h">每人收支明细</text>
+      <view class="more"><text>展开全部</text><view class="ic ic-right"></view></view>
+    </view>
+    <view class="card detail-card">
+      <view class="detail-row" wx:for="{{details}}" wx:key="name">
+        <view class="avatar {{item.av}}">{{item.initial}}</view>
+        <view class="n-wrap">
+          <text class="n">{{item.name}}</text>
+          <text class="calc">{{item.calc}}</text>
+        </view>
+        <text class="net {{item.neg ? 'neg' : 'pos'}}">{{item.net}}</text>
+      </view>
+    </view>
+
+    <view class="foot-note">
+      <image src="/assets/logo.png" mode="aspectFill" />
+      <text class="txt">全部结清后自动生成 <text class="b">行程账单报告</text>，可导出 Excel 存档或分享到微信群留念。</text>
+    </view>
+    <view style="height:220rpx"></view>
+    </block>
+  </view>
+
+  <view class="bottom-cta">
+    <view class="btn ghost grow" hover-class="press" bindtap="export"><text>导出账单</text></view>
+    <view class="btn yellow remind" hover-class="press" bindtap="remind">
+      <view class="ic ic-wechat"></view><text>微信提醒未结清成员</text>
+    </view>
+  </view>
+</view>

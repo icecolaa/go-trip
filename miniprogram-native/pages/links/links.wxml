@@ -1,0 +1,35 @@
+<!-- 攻略收藏：小红书 / 链接 · 备注标题 · 长按删除 -->
+<view class="screen linkspg {{themeClass}}">
+  <nav-bar float="{{true}}" back="{{true}}" />
+  <view class="scroll">
+    <view wx:if="{{noTrip}}" class="anim-rise" style="padding:140rpx 40rpx;text-align:center;">
+      <text style="font-size:30rpx;color:var(--ink3)">请先从首页选择行程</text>
+    </view>
+    <block wx:else>
+    <view class="lk-add card anim-rise" hover-class="press" bindtap="addLink">
+      <view class="lk-add-ic"><view class="ic ic-link"></view></view>
+      <view class="lk-add-txt">
+        <text class="t">收藏一条攻略</text>
+        <text class="s">粘贴小红书 / 公众号链接并备注标题</text>
+      </view>
+      <view class="ic ic-right" style="color:var(--ink3)"></view>
+    </view>
+
+    <view class="lk-item anim-rise" style="animation-delay:{{index * 60}}ms" wx:for="{{links}}" wx:key="id"
+          hover-class="press" bindtap="openLink" bindlongpress="delLink" data-i="{{index}}">
+      <view class="lk-src {{item.source === '小红书' ? 'xhs' : 'web'}}">{{item.source}}</view>
+      <view class="lk-main">
+        <text class="t">{{item.title}}</text>
+        <text class="u">{{item.url}}</text>
+      </view>
+      <view class="lk-go"><view class="ic ic-right"></view></view>
+    </view>
+
+    <view wx:if="{{!links.length}}" class="lk-empty">
+      <text class="t">还没有收藏</text>
+      <text class="s">看到好攻略先存进来，出行前统一翻看</text>
+    </view>
+    <view style="height:60rpx"></view>
+    </block>
+  </view>
+</view>

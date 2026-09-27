@@ -1,0 +1,6 @@
+{
+  "navigationBarTitleText": "行程助手",
+  "usingComponents": {
+    "nav-bar": "/components/nav-bar"
+  }
+}

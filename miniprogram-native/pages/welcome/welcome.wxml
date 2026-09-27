@@ -1,0 +1,39 @@
+<!-- 欢迎页：天空渐变 + 航线母题，初始化完成后自动进入首页 -->
+<view class="screen welcome {{themeClass}}">
+  <view class="hero-sky">
+    <view class="cloud c1"></view>
+    <view class="cloud c2"></view>
+    <view class="cloud c3"></view>
+    <view class="flight-arc"></view>
+    <text class="plane">✈</text>
+  </view>
+
+  <nav-bar />
+
+  <view class="hero-wrap">
+    <view class="logo-card anim-pop">
+      <image src="/assets/logo.png" mode="aspectFill" />
+    </view>
+    <view class="brand">
+      <text class="cn">出发吧</text>
+      <text class="en">GoTrip</text>
+    </view>
+    <text class="slogan">和朋友 · 把旅行计划成真</text>
+    <view class="feats anim-rise d2">
+      <view class="feat"><view class="ic ic-route" style="color:#2E92ED"></view><text>协作规划</text></view>
+      <view class="feat"><view class="ic ic-wallet" style="color:#FFC414"></view><text>AA记账</text></view>
+      <view class="feat"><view class="ic ic-compass" style="color:#7B8CFF"></view><text>旅行锦囊</text></view>
+    </view>
+  </view>
+
+  <view class="login-area">
+    <block wx:if="{{failed}}">
+      <view class="btn btn-block" hover-class="press" bindtap="goHome">
+        <text>进入首页</text>
+        <view class="ic ic-right" style="width:28rpx;height:28rpx"></view>
+      </view>
+      <text class="skip">数据整理中遇到点问题，稍后可在首页下拉重试</text>
+    </block>
+    <text wx:else class="skip">正在为你准备行程，马上出发…</text>
+  </view>
+</view>

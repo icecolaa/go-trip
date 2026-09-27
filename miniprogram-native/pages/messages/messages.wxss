@@ -1,0 +1,40 @@
+.messages .scroll { padding-top: 12rpx; }
+
+.invite-banner {
+  margin: 12rpx 32rpx 0; display: flex; align-items: center; gap: 22rpx; padding: 26rpx 28rpx;
+  background: linear-gradient(135deg, #FFFDF4, #FFF3C8); border: 2rpx solid #FFE9A8;
+  border-radius: 36rpx; box-shadow: 0 16rpx 40rpx rgba(255,196,20,.18);
+}
+.invite-banner .avatar { width: 80rpx; height: 80rpx; flex: none; }
+.invite-banner .mid { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+.invite-banner .t { font-size: 27rpx; font-weight: 800; color: #6B5200; }
+.invite-banner .s { font-size: 23rpx; color: #A97E00; margin-top: 4rpx; }
+.invite-banner .go {
+  flex: none; background: var(--yel400); color: #6B5200; font-size: 23rpx; font-weight: 800;
+  border-radius: 28rpx; padding: 12rpx 24rpx; box-shadow: var(--sh-yellow);
+}
+
+.trip-chip-row { display: flex; align-items: center; gap: 12rpx; padding: 24rpx 36rpx 16rpx; }
+.trip-chip-row .tc {
+  display: flex; align-items: center; gap: 10rpx; background: var(--sky100);
+  border-radius: 999rpx; padding: 7rpx 20rpx 7rpx 8rpx;
+  font-size: 22rpx; color: #1663B4; font-weight: 600;
+}
+.trip-chip-row .tc image { width: 36rpx; height: 36rpx; border-radius: 50%; }
+.trip-chip-row .line { flex: 1; height: 2rpx; background: var(--line); }
+
+.msg-row {
+  display: flex; gap: 22rpx; background: var(--card); border-radius: 32rpx;
+  box-shadow: var(--sh-card); padding: 24rpx 26rpx; margin: 0 32rpx 18rpx; align-items: center;
+}
+.msg-row .avatar { width: 80rpx; height: 80rpx; flex: none; }
+.msg-row .avatar.ai { background: linear-gradient(135deg, #FFDE5C, #54A6F0); overflow: hidden; }
+.msg-row .avatar.ai image { width: 100%; height: 100%; border-radius: 50%; }
+.m-main { flex: 1; min-width: 0; }
+.l1 { display: flex; align-items: center; font-size: 27rpx; color: #182A3D; line-height: 1.4; }
+.l1 .n { font-weight: 800; }
+.m-main .l2 {
+  font-size: 22rpx; color: #93A5B8; margin-top: 6rpx;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.time { flex: none; font-size: 20rpx; color: #93A5B8; align-self: flex-start; margin-top: 6rpx; }
