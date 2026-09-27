@@ -17,7 +17,7 @@
         <text class="t-sub" style="font-weight:700;color:var(--ink)">旅程名称</text>
         <view class="input" style="margin-top:14rpx">
           <view class="ic ic-flag"></view>
-          <input value="{{title}}" maxlength="60" placeholder="如：国庆伊春赏秋之旅" placeholder-class="ph" bindinput="onTitle" style="flex:1;font-size:28rpx" />
+          <input value="{{title}}" maxlength="60" placeholder="如：国庆伊春赏秋之旅" placeholder-class="ph" bindinput="onTitle" confirm-type="next" cursor-spacing="16" style="flex:1;font-size:28rpx" />
         </view>
         <text class="t-cap" style="display:block;margin-top:8rpx;text-align:right">{{title.length}}/60</text>
       </view>
@@ -25,7 +25,7 @@
         <text class="t-sub" style="font-weight:700;color:var(--ink)">目的地</text>
         <view class="input" style="margin-top:14rpx">
           <view class="ic ic-pin"></view>
-          <input value="{{destination}}" maxlength="40" placeholder="如：伊春（选填）" placeholder-class="ph" bindinput="onDestination" style="flex:1;font-size:28rpx" />
+          <input value="{{destination}}" maxlength="40" placeholder="如：伊春（选填）" placeholder-class="ph" bindinput="onDestination" confirm-type="next" cursor-spacing="16" style="flex:1;font-size:28rpx" />
         </view>
         <text class="t-cap" style="display:block;margin-top:8rpx;text-align:right">{{destination.length}}/40</text>
       </view>
@@ -33,7 +33,7 @@
         <text class="t-sub" style="font-weight:700;color:var(--ink)">预算（¥，选填）</text>
         <view class="input" style="margin-top:14rpx">
           <view class="ic ic-wallet"></view>
-          <input value="{{budget}}" type="digit" placeholder="本程大概花多少" placeholder-class="ph" bindinput="onBudget" style="flex:1;font-size:28rpx" />
+          <input value="{{budget}}" type="digit" placeholder="本程大概花多少" placeholder-class="ph" bindinput="onBudget" confirm-type="done" cursor-spacing="16" style="flex:1;font-size:28rpx" />
         </view>
       </view>
     </view>

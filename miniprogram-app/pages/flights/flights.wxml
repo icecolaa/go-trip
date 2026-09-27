@@ -10,12 +10,12 @@
       <view class="fl-row">
         <view class="fl-field">
           <text class="lab">出发地</text>
-          <input class="fl-input" value="{{from}}" bindinput="onFrom" placeholder="如 北京" placeholder-class="ph" />
+          <input class="fl-input" value="{{from}}" bindinput="onFrom" confirm-type="next" cursor-spacing="16" placeholder="如 北京" placeholder-class="ph" />
         </view>
         <view class="fl-swap" hover-class="press" bindtap="swapCity"><view class="ic ic-transfer"></view></view>
         <view class="fl-field">
           <text class="lab">目的地</text>
-          <input class="fl-input" value="{{to}}" bindinput="onTo" placeholder="选填 · 随便飞哪儿" placeholder-class="ph" />
+          <input class="fl-input" value="{{to}}" bindinput="onTo" confirm-type="done" cursor-spacing="16" placeholder="选填 · 随便飞哪儿" placeholder-class="ph" />
         </view>
       </view>
       <view class="fl-row2">

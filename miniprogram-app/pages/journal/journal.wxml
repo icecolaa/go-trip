@@ -49,7 +49,7 @@
       <view class="j-day-chip {{form.moodIdx === index ? 'on' : ''}}" wx:for="{{moods}}" wx:key="*this"
             hover-class="press" bindtap="pickMood" data-i="{{index}}">{{item}}</view>
     </view>
-    <textarea class="j-input" value="{{form.text}}" placeholder="今天的心情、见闻、梗图素材…" placeholder-class="ph"
+    <textarea class="j-input" value="{{form.text}}" placeholder="今天的心情、见闻、梗图素材…" placeholder-class="ph" show-confirm-bar="{{false}}" adjust-position="{{true}}"
               bindinput="onText" maxlength="300" />
     <view class="j-pick" hover-class="press" bindtap="chooseImages">
       <view class="ic ic-camera" style="color:var(--sky500)"></view>

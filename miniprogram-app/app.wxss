@@ -185,6 +185,7 @@ button::after { border: none; }
 .ic-more-circle { -webkit-mask-image: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.8'><circle cx='12' cy='12' r='8.5' stroke-dasharray='3.5 2.2'/></svg>"); mask-image: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.8'><circle cx='12' cy='12' r='8.5' stroke-dasharray='3.5 2.2'/></svg>"); }
 
 /* ---------- 输入框 ---------- */
+.input:focus-within { border-color: var(--sky300); box-shadow: 0 0 0 3rpx rgba(46,146,237,0.08); }
 .input {
   display: flex; align-items: center; gap: 16rpx; background: var(--card); border-radius: 40rpx;
   height: 80rpx; padding: 0 28rpx; border: 2rpx solid var(--line);
@@ -219,6 +220,8 @@ button::after { border: none; }
 .msg.me .bubble { background: linear-gradient(135deg, var(--sky400), var(--sky600)); color: #fff; border-radius: 32rpx 8rpx 32rpx 32rpx; box-shadow: 0 12rpx 32rpx rgba(46,146,237,.28); }
 
 /* ---------- FAB ---------- */
+.fab:active { transform: scale(0.94); transition: transform 0.12s ease; }
+.fab { transition: transform 0.15s cubic-bezier(0.16, 1, 0.3, 1); }
 .fab {
   position: fixed; right: 32rpx; z-index: 35;
   display: flex; align-items: center; gap: 12rpx; height: 88rpx; padding: 0 32rpx 0 24rpx; border-radius: 44rpx;
@@ -269,8 +272,8 @@ button::after { border: none; }
   50%      { transform: translateY(-14rpx); }
 }
 @keyframes shimmer {
-  from { background-position: -400rpx 0; }
-  to   { background-position: 400rpx 0; }
+  0% { background-position: -400rpx 0; }
+  100% { background-position: 400rpx 0; }
 }
 
 /* 入场：卡片级 rise + 级联延迟 */
@@ -283,6 +286,13 @@ button::after { border: none; }
 
 /* 按压反馈：配合 hover-class 使用（view 组件） */
 .press { opacity: 0.82; transform: scale(0.985); }
+.trip-row, .btn, .chip, .act, .pk-item, .lk-item, .city-chip, .day-pill {
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+.trip-row:active, .btn:active, .act:active {
+  opacity: 0.85; transform: scale(0.98);
+}
+.tab-item image { transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1); }
 .btn, .chip, .cell, .act, .trip-row, .trans, .day-card, .create-btn,
 .add-btn, .added-btn, .key, .payer, .cat-c, .way, .tab-press {
   transition: opacity 0.15s ease, transform 0.15s ease;
