@@ -556,3 +556,165 @@ button[disabled] { opacity: 0.45; }
 
 /* ---------- 地图 ---------- */
 .map { width: 100%; height: 60vh; border-radius: 32rpx; }
+
+/* ============================================================
+   二轮改版：消息页（09）· 我的页（14）
+   ============================================================ */
+
+/* ---------- 消息页 ---------- */
+.welcome-card {
+  display: flex;
+  align-items: center;
+  gap: 20rpx;
+  background: linear-gradient(135deg, var(--yel-100), #FFFBEA);
+  border: 1px solid var(--yel-200);
+  border-radius: 28rpx;
+  padding: 26rpx 28rpx;
+  margin-bottom: 24rpx;
+  box-shadow: 0 8rpx 24rpx rgba(255, 196, 20, 0.14);
+}
+.welcome-card .wc-emoji { font-size: 44rpx; flex-shrink: 0; }
+.welcome-card .wc-main { flex: 1; min-width: 0; }
+.welcome-card .wc-title { font-size: 28rpx; font-weight: 800; color: var(--yel-text); }
+.welcome-card .wc-sub { font-size: 24rpx; color: #A97E00; margin-top: 4rpx; line-height: 1.5; }
+.trip-chip-row { display: flex; align-items: center; gap: 14rpx; margin: 28rpx 4rpx 16rpx; }
+.trip-chip-row .tcr-chip {
+  display: flex;
+  align-items: center;
+  gap: 10rpx;
+  background: var(--sky-100);
+  border-radius: 999rpx;
+  padding: 8rpx 24rpx 8rpx 10rpx;
+  font-size: 25rpx;
+  font-weight: 800;
+  color: var(--sky-700);
+  max-width: 70%;
+}
+.trip-chip-row .tcr-emoji {
+  width: 44rpx;
+  height: 44rpx;
+  border-radius: 50%;
+  background: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24rpx;
+  flex-shrink: 0;
+}
+.trip-chip-row .tcr-line { flex: 1; height: 1px; background: var(--line); }
+.msg-cell {
+  display: flex;
+  align-items: flex-start;
+  gap: 18rpx;
+  background: #fff;
+  border-radius: 28rpx;
+  box-shadow: var(--sh-card);
+  padding: 26rpx 28rpx;
+  margin-bottom: 18rpx;
+}
+.msg-cell .avatar { width: 72rpx; height: 72rpx; font-size: 26rpx; }
+.msg-cell .msg-main { flex: 1; min-width: 0; }
+.msg-cell .msg-title { font-size: 28rpx; color: var(--ink); }
+.msg-cell .msg-title b { font-weight: 800; }
+.msg-cell .msg-detail { font-size: 25rpx; color: var(--ink-2); margin-top: 6rpx; line-height: 1.5; word-break: break-all; display: block; }
+.msg-cell .msg-time { font-size: 22rpx; color: var(--ink-3); flex-shrink: 0; padding-top: 4rpx; font-variant-numeric: tabular-nums; }
+
+/* ---------- 我的页 ---------- */
+.profile-card { display: flex; align-items: center; gap: 24rpx; padding: 34rpx 30rpx; }
+.profile-card .pc-avatar {
+  width: 128rpx;
+  height: 128rpx;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--sky-400), var(--sky-600));
+  color: #fff;
+  font-size: 52rpx;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  border: 6rpx solid #fff;
+  box-shadow: 0 10rpx 26rpx rgba(46, 146, 237, 0.3);
+}
+.profile-card .pc-main { flex: 1; min-width: 0; }
+.profile-card .pc-name-row { display: flex; align-items: center; gap: 14rpx; flex-wrap: wrap; }
+.profile-card .pc-name { font-size: 38rpx; font-weight: 900; color: var(--ink); }
+.profile-card .pc-level {
+  background: var(--yel-100);
+  color: var(--yel-ink);
+  font-size: 21rpx;
+  font-weight: 800;
+  border-radius: 999rpx;
+  padding: 4rpx 16rpx;
+}
+.profile-card .pc-id { font-size: 24rpx; color: var(--ink-3); margin-top: 8rpx; font-variant-numeric: tabular-nums; }
+.profile-card .pc-edit {
+  width: 72rpx;
+  height: 72rpx;
+  border-radius: 50%;
+  background: var(--sky-50);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 30rpx;
+  flex-shrink: 0;
+}
+.stat-grid {
+  display: flex;
+  background: #fff;
+  border-radius: 32rpx;
+  box-shadow: var(--sh-card);
+  padding: 30rpx 0;
+  margin-bottom: 24rpx;
+}
+.stat-grid .stat {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8rpx;
+  position: relative;
+}
+.stat-grid .stat + .stat::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 12rpx;
+  bottom: 12rpx;
+  width: 1px;
+  background: var(--line);
+}
+.stat-grid .stat-num { font-size: 38rpx; font-weight: 900; color: var(--ink); font-variant-numeric: tabular-nums; }
+.stat-grid .stat-num .yen { font-size: 26rpx; font-weight: 800; margin-right: 2rpx; }
+.stat-grid .stat-label { font-size: 22rpx; color: var(--ink-3); }
+.menu-cell {
+  display: flex;
+  align-items: center;
+  gap: 22rpx;
+  background: #fff;
+  border-radius: 28rpx;
+  box-shadow: var(--sh-card);
+  padding: 28rpx 30rpx;
+  margin-bottom: 20rpx;
+}
+.menu-cell:active { background: var(--sky-50); }
+.menu-cell .mc-ic {
+  width: 84rpx;
+  height: 84rpx;
+  border-radius: 26rpx;
+  background: var(--sky-50);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.menu-cell .mc-ic image { width: 44rpx; height: 44rpx; }
+.menu-cell .mc-main { flex: 1; min-width: 0; }
+.menu-cell .mc-title { font-size: 30rpx; font-weight: 800; color: var(--ink); }
+.menu-cell .mc-sub { font-size: 24rpx; color: var(--ink-3); margin-top: 4rpx; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.menu-cell .mc-arrow { color: var(--ink-3); font-size: 30rpx; flex-shrink: 0; }
+.sec-label { display: flex; align-items: center; gap: 16rpx; font-size: 24rpx; font-weight: 700; color: var(--ink-3); margin: 30rpx 8rpx 18rpx; }
+.sec-label::after { content: ''; flex: 1; height: 1px; background: var(--line); }
+.foot-brand { display: flex; flex-direction: column; align-items: center; gap: 10rpx; padding: 40rpx 0 60rpx; }
+.foot-brand .fb-logo { width: 96rpx; height: 96rpx; border-radius: 28rpx; box-shadow: var(--sh-card); }
+.foot-brand .fb-text { font-size: 22rpx; color: var(--ink-3); letter-spacing: 1rpx; }

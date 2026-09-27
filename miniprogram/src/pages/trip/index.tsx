@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react'
 import { View, Text, Button } from '@tarojs/components'
-import Taro, { usePullDownRefresh } from '@tarojs/taro'
+import Taro, { useDidShow, usePullDownRefresh } from '@tarojs/taro'
 import { loadTripBundle } from '../../rdb/trip'
 import type { TripBundle, Activity } from '../../types'
 
@@ -32,7 +32,10 @@ export default function Trip() {
     load().finally(() => Taro.stopPullDownRefresh())
   })
 
-  // 首次加载（单主人架构，无实时订阅）
+  // 首次加载 + 每次回页刷新（子页保存/删除后返回，云写入有可见性延迟，重拉兜底）
+  useDidShow(() => {
+    if (bundle) load()
+  })
   useState(() => {
     load()
   })

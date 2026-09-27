@@ -3,6 +3,7 @@ import { View, Text, Button, Image } from '@tarojs/components'
 import Taro, { useDidShow, usePullDownRefresh } from '@tarojs/taro'
 import { ensureProfile, listTrips } from '../../rdb/trip'
 import { seedDemoTrip } from '../../rdb/seed'
+import { deleteTrip } from '../../rdb/ops'
 import type { Profile, TripCardInfo } from '../../types'
 
 /** 我的旅程：rdb 直连（数据模型），无登录概念——原生身份静默建档。 */
@@ -35,12 +36,27 @@ export default function Trips() {
     Taro.navigateTo({ url: `/pages/trip/index?id=${id}` })
   }
 
-  const goCreate = () => {
-    Taro.navigateTo({ url: '/pages/trip-create/index' })
+  /** 长按删除旅程（级联清理；误触保护走系统确认弹窗）。 */
+  const confirmRemove = (t: TripCardInfo) => {
+    Taro.showModal({
+      title: `删除「${t.title}」？`,
+      content: '行程、安排、账目、清单与动态将一并删除，不可恢复',
+      confirmColor: '#F0655A',
+      success: async (r) => {
+        if (!r.confirm) return
+        try {
+          await deleteTrip(t.id)
+          Taro.showToast({ title: '已删除', icon: 'success' })
+          await load()
+        } catch (e) {
+          Taro.showToast({ title: e instanceof Error ? e.message : '删除失败', icon: 'none' })
+        }
+      },
+    })
   }
 
-  const goFlywhere = () => {
-    Taro.navigateTo({ url: '/pages/flywhere/index' })
+  const goCreate = () => {
+    Taro.navigateTo({ url: '/pages/trip-create/index' })
   }
 
   const importDemo = async () => {
@@ -64,15 +80,6 @@ export default function Trips() {
           <View className="brand-name">出发吧 GoTrip</View>
           <View className="brand-sub">和同伴一起，把旅程安排明白</View>
         </View>
-      </View>
-
-      <View className="fw-entry" onClick={goFlywhere}>
-        <View className="fw-entry-ic">✈️</View>
-        <View className="fw-entry-main">
-          <View className="fw-entry-title">飞哪儿</View>
-          <View className="fw-entry-sub">按票价探索目的地 · 低价机票雷达</View>
-        </View>
-        <Text className="fw-entry-arrow">›</Text>
       </View>
 
       <View className="head">
@@ -99,7 +106,7 @@ export default function Trips() {
       {trips.map(t => {
         const status = tripStatus(t.startDate, t.endDate)
         return (
-          <View key={t.id} className="card trip-card" onClick={() => open(t.id)}>
+          <View key={t.id} className="card trip-card" onClick={() => open(t.id)} onLongPress={() => confirmRemove(t)}>
             <View className="trip-cover" style={{ background: `linear-gradient(135deg, ${tint(t.coverColor, 0.42)}, ${t.coverColor || '#3B6EA5'})` }}>
               <Text className="cover-emoji">{t.coverEmoji}</Text>
               <View className="cover-scrim" />

@@ -53,4 +53,12 @@
 1. 只动皮不碰 `src/rdb/` 数据层；云写入有延迟，一切「写后刷新」走 load() 重拉。
 2. 图标体系 = 数据驱动 emoji（非 SVG mask），与封面/分类字段天然一致；设计稿的线性图标仅用于状态栏/胶囊等系统件（小程序由原生渲染，无需实现）。
 3. 静态资产（logo/marker）走 `src/assets/` + 构建拷贝到 `dist/assets/`（`config/index.ts` 的 copy.patterns；注意 Taro 3.6 的 `to` 相对项目根，需带 `dist/` 前缀）。
-4. 地图 marker 用 `iconPath: '/assets/marker.png'` 绝对路径（曾因图片缺失静默 404，2026-09-27 修复）。
+4. 地图 marker 用 `iconPath: '/assets/marker.png'` 绝对路径（曾因图片缺失静默 404，2026-09-27 修复）。\n
+## 五、二轮改版（2026-09-27 · tabBar 三栏）
+
+- **原生 tabBar**：行程 / 消息 / 我的（`app.config.ts`）。图标 = 设计稿圆头线性 SVG（ic-home/chat/user）经 Chrome headless 渲染的 PNG（81×81，灰 `#93A5B8` / 选中蓝 `#2E92ED`，`src/assets/tab-*.png`）。tab 页导航标题由原生渲染、天然居中。
+- **消息页**（09-messages）：跨行程动态流——`listTrips` + 逐行程 `gt_activity_log`（各取 30 条）合并，按行程分组（trip-chip 头 + 动态 cell），组间按最新动态时间倒序；空态为黄色引导卡。行程 chip 与动态 cell 均可点入行程页。
+- **我的页**（14-profile，按用户要求裁剪）：资料卡（首字头像 + 昵称 + 「旅行家 Lv.n」黄徽标 + GoTrip ID 尾 6 位，铅笔按钮走 editable showModal 改昵称 → `updateRow('gt_users')`）+ 4 格统计（行程数/足迹城市去重/打卡地点=活动数/一起记的账=总支出，数据全部来自 `listTrips` 的 TripCardInfo，零额外查询）+ 菜单：我的行程（switchTab）、**飞哪儿**（从首页迁入）、编辑资料、关于。**无「自托管服务」板块、底部脚注为「出发吧 GoTrip · v1.3.0」（无自托管字样）**。
+- **新增功能位**：行程卡长按删除（`ops.deleteTrip` 级联清理 11 张行程子表 + 主行），确认弹窗红色 confirmColor——此前行程无删除入口（功能缺口）。
+- **演示种子**＝用户指定手绘路线图：国庆伊春深度游（2026-10-01~07，7 天 23 项安排 + 4 占位同伴 + 5 笔支出共 ¥2,844 + 清单 + 4 条动态）。
+- 页内图标补充：cell-route/cell-plane(实为 ic-send 纸飞机)/cell-gear PNG（72×72 蓝），用于我的页菜单；与数据驱动 emoji 并存（菜单固定项用线性图标，数据项用 emoji）。

@@ -4,7 +4,7 @@ import type {
   Activity, Expense, GuideCard, JournalImage, JournalNote, PackingItem, TripCashItem,
   TripMember, TripPlace, TravelLink, TripDay,
 } from '../types'
-import { createRow, createRows, deleteRow, listRows, updateRow } from './entities'
+import { createRow, createRows, deleteRow, deleteRows, listRows, updateRow } from './entities'
 import { logActivity } from './trip'
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -14,6 +14,22 @@ function json<T>(v: any, fallback: T): T {
   if (typeof v !== 'string') return v as T;
   try { return JSON.parse(v) as T; } catch { return fallback; }
 }
+
+/* ---------------- 行程删除（级联清理行程相关表；活动日志随行程消失，无需记录） ---------------- */
+
+const TRIP_SCOPED_TABLES = [
+  'gt_activities', 'gt_days', 'gt_trip_members', 'gt_expenses', 'gt_packing_items',
+  'gt_journal_notes', 'gt_guide_cards', 'gt_travel_links', 'gt_trip_places',
+  'gt_trip_cash_items', 'gt_activity_log',
+] as const;
+
+/** 删除整场旅程：先清子表再删主行（任一步失败即抛出，主行保留可重试）。 */
+export const deleteTrip = async (tripId: string): Promise<void> => {
+  for (const table of TRIP_SCOPED_TABLES) {
+    await deleteRows(table, { trip_id: { $eq: tripId } });
+  }
+  await deleteRow('gt_trips', tripId);
+};
 
 /* ---------------- 占位成员 ---------------- */
 

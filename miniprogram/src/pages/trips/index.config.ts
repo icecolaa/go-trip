@@ -1,5 +1,5 @@
 export default definePageConfig({
-  navigationBarTitleText: '我的旅程 · 出发吧',
+  navigationBarTitleText: '出发吧 GoTrip',
   enablePullDownRefresh: true,
   backgroundTextStyle: 'dark',
 })
