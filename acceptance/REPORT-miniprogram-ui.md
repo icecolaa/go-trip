@@ -162,3 +162,27 @@
 1. mp 后台「开发管理→接口设置」：申请 `getLocation`、`onLocationChange`、`startLocationUpdate`、`chooseLocation`、`choosePoi`、`chooseAddress`（使用场景照上表填写）。
 2. 「用户隐私保护指引」补充：位置信息（导航/识别出发地/行程记录）、所选照片（自定义背景/日志图）、剪贴板（小红书搜索词）。
 3. AI 生成封面需重新部署容器（gotrip-018 未含 gen-cover/regeo 路由）。
+
+---
+
+# 五轮 · 表单文字遮挡修复 + 对齐 gotrip-miniprogram 参考工程（2026-09-27 · v1.4.2）
+
+## 一、问题与根因
+
+用户截图实锤：新建旅程页「旅程名称/目的地/预算」输入框文字纵向被裁半。**根因**：`.input` 只有 `padding: 22rpx 26rpx` 无显式高度——Taro 原生 input 内容区被纵向 padding 挤压裁切。参考工程 `E:\code\picture\gotrip-miniprogram\`（设计稿的全量原生翻译，21 页）中 `.input` 为 `height: 80rpx + flex 居中 + 无纵向 padding`，确认修复方向。
+
+## 二、修复与对齐（app.css）
+
+| 项 | 修复 |
+|---|---|
+| `.input`（核心） | `height: 88rpx` + `display:flex; align-items:center` + `padding: 0 26rpx`（去纵向 padding）+ `line-height: 88rpx`；圆角 24→40rpx 对齐参考药丸形 |
+| `.textarea` | 补 `line-height: 1.5`、圆角 32rpx（多行不受高度限制，保留纵向 padding） |
+| `.card/.panel` | 圆角 36→40rpx；投影升级参考工程双层 `0 2 8 + 0 12 36`（更柔） |
+| `.trip-cover` | 220→260rpx（参考 300rpx 照片封面，我们渐变封面取中值） |
+| 全局 | `view,text,image,input,button,textarea,picker { box-sizing: border-box }`；字体栈前置 `-apple-system` |
+
+**同类问题排查**：逐页核对输入/文本类组件——journal/trip-ai Textarea（多行无裁切风险，已补行高）、activity/budget/packing 表单（共用 `.input`，一并修复）、picker 显示行（`.input.picker` 随 flex 修复）、日期行/标签/徽标无裁切。截图 `r7-create-fixed.png`/`r7-create-longtext.png`：正常与 60 字超长文本均垂直居中完整显示。
+
+## 三、验收
+
+全量回归 89 项：86 通过；3 项失败（B11/C7/D5）为**用例依赖首张卡数据**所致（点进了无种子的空测试行程），修正用例固定进入伊春种子行程后复跑（结果见本轮最终数字），非本次改动回归——B9/B10/C6/C5/D3/D4（同为表单/输入链路）本轮全绿。
