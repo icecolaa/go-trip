@@ -93,3 +93,36 @@
 **修复**：① trip 页 useDidShow 重拉（真 bug）；② 消息页与原生导航标题重复的页内大标题（删除）；③ profile 复用 `updateProfile` 封装（此前裸调 updateRow）；④ 未使用变量/孤儿 CSS 清理（AV_EMOJI_FALLBACK、page-head 三规则、静态类审计）。
 
 **遗留（不阻塞）**：① 演示行程日期写死 2026-10-01~07（按图一指定档期），过期后状态徽标显示「已结束」属预期；② 测试账号内留存验收产生的行程（活动/支出/成员已脚本清理，行程本体靠长按删除可清）；③ 云写入链路时延仍为 10~45s（上一轮遗留，优化方向不变）；④ GitHub 推送需本机代理。
+
+---
+
+# 三轮改版验收 · 液态玻璃 tabBar + 真背景 + 微信 API 矩阵（2026-09-27 · v1.4.0）
+
+> 需求：行程页不用纯色背景（用户上传 / AI 生成兜底）、底部 tabBar 液态玻璃化、接入微信原生 API（分享/选图/定位/导航/公众号）、验证删除行程。
+
+## 一、改动摘要
+
+| 项 | 内容 |
+|---|---|
+| 液态玻璃 tabBar | `tabBar.custom: true` + `custom-tab-bar/`（React 类组件）：浮岛圆角 58rpx、`backdrop-filter: blur(32px) saturate(180%)` 半透明白、白描边+蓝调投影；选中态图标放大+蓝字。Taro 3.6 不编译 custom-tab-bar 的 CSS import → 原生 `index.wxss` 走 copy.patterns 直出（关键坑）。页面 `useDidShow` 调 `tab-sync.ts` 的 `syncTabBar(i)` 同步选中态 |
+| 行程页真背景 | `cover_image` 有 → `<Image>` 直显云存储 fileID + 底部 scrim 保证白字可读；无 → coverColor 渐变兜底。Hero 左下三个圆钮：📸 上传背景（chooseMedia→压缩→uploadFile→入库）、✨ AI 生成封面（容器 CogView 异步 job→base64→FSM 临时文件→云存储）、🔗 分享（openType=share） |
+| 容器新路由 | `POST /api/ai/gen-cover/submit`（秒回 jobId，后台调智谱 CogView-3-flash 生图+下载转 base64）+ `GET /api/ai/gen-cover/result`（轮询取图）。照飞哪儿 job 模式绕 callContainer 15s 硬超时；任务内存存储 5 分钟回收。**需重新部署容器后生效** |
+| 微信 API 矩阵 | `useShareAppMessage`×4 页（分享卡片带封面图）；`Taro.chooseMedia`（选背景图）；`Taro.getLocation`（地图页「定位到当前位置」，失败静默提示）；`Taro.openLocation`（地图页坐标列表行点击→微信地图导航，可在其中切换高德）；小红书：无可靠 appid，改为 `setClipboardData` 复制搜索词+引导（appid 常量可后续补）；`<OfficialAccount>`（我的页，绑定公众号后特定场景自动显示，未绑定无副作用） |
+| 数据修复 | 平台「空条件 models.list 返回空记录」的限制（2026-09-27 起）+ devtools 模拟器 list 行级过滤身份与 create 不一致 → `listTrips` 改用 **share_token 字段挪用作属主锚点**（存 profile 行的平台 owner 值 `weda_<openid>`，createTrip/seed 显式写入、查询显式 where） |
+
+## 二、验收结果
+
+**92/92 全部通过，console 零错误。** 在二轮 90 项基础上：B9 断言升级为「创建→返回→useDidShow 刷新→上榜」全链路；M/N/O 段（tab 切换、消息页、我的页全按钮、长按删除复验）全绿。截图 60+ 张于 `work/uitest/shots/`。
+
+## 三、本轮发现的重大 Bug 与修复
+
+1. **【严重】三 tab 页 load 全灭（行程/消息/我的全空）**：页面 chunk 对 `custom-tab-bar` 异步 chunk 的 import 竞态——`useDidShow` 里调 `syncTabBar`（从 custom-tab-bar 模块 import）时该 chunk 尚未加载，`d.syncTabBar is not a function` 同步抛错打断 load。**修复**：syncTabBar 移入独立 `src/tab-sync.ts`（无 chunk 依赖）+ 全函数 try/catch。**教训**：页面代码严禁 import custom-tab-bar 的运行时导出。
+2. **【平台怪癖】空条件 models.list 返回空记录**（无 orderBy/where 时 gt_trips 挂起或空；gt_users ≤10 行正常）→ 一切「全量列表」必须带显式 where；属主过滤用 share_token 挪用锚点。
+3. **【排查方法论】**automator 的 console/storage 通道与页面 appservice 不互通（console.on 只收 evaluate 环境的输出）——页面侧调试用 globalThis 变量 + evaluate 读取（`getCurrentPages` 可用，证明 evaluate 在 appservice 环境）。
+
+## 四、遗留（不阻塞发布）
+
+1. **AI 生成封面需容器重新部署**（gotrip-018 未含 gen-cover 路由，模拟器点击会提示错误；上传背景不依赖容器可直接用）。
+2. devtools 模拟器 models.list 间歇性空返回（同一代码时而查到时而空），**真机验收待做**；真机身份一致性问题应不存在。
+3. 测试账号行程数据 19 场（验收产生），可用长按删除清理。
+4. 小红书跳转 appid 未接入（无可靠公开 appid），现为复制搜索词方案。

@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { View, Text } from '@tarojs/components'
-import Taro, { useDidShow, usePullDownRefresh } from '@tarojs/taro'
+import Taro, { useDidShow, usePullDownRefresh, useShareAppMessage } from '@tarojs/taro'
+import { syncTabBar } from '../../tab-sync'
 import { listTrips } from '../../rdb/trip'
 import { listRows } from '../../rdb/entities'
 import type { TripCardInfo } from '../../types'
@@ -60,8 +61,11 @@ export default function Messages() {
   }
 
   useDidShow(() => {
+    syncTabBar(1)
     load()
   })
+
+  useShareAppMessage(() => ({ title: '出发吧 GoTrip · 同伴们的每一步都在这里', path: '/pages/messages/index' }))
 
   usePullDownRefresh(() => {
     load().finally(() => Taro.stopPullDownRefresh())
@@ -82,7 +86,7 @@ export default function Messages() {
   }
 
   return (
-    <View className="page">
+    <View className="page tab-page">
       {error && <View className="error">{error}</View>}
 
       {!error && !loading && groups.length === 0 && (

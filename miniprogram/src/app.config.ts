@@ -18,6 +18,7 @@ export default defineAppConfig({
   /** 按需注入（基础库 2.11.1+）：仅注入当前页面所需的代码，降低启动耗时与内存。 */
   lazyCodeLoading: 'requiredComponents',
   tabBar: {
+    custom: true,
     color: '#93A5B8',
     selectedColor: '#1B78D8',
     backgroundColor: '#ffffff',

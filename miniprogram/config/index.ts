@@ -24,6 +24,8 @@ export default defineConfig(async (merge) => {
       // 注意：Taro 3.6 的 copy.to 是相对项目根（appPath），不是 outputRoot，所以要写 dist/ 前缀
       patterns: [
         { from: 'src/assets/', to: 'dist/assets/', ignore: ['.*'] },
+        // Taro 3.6 不编译 custom-tab-bar 的 CSS import，原生 wxss 走拷贝直出
+        { from: 'src/custom-tab-bar/index.wxss', to: 'dist/custom-tab-bar/index.wxss' },
       ],
       options: {},
     },

@@ -10,6 +10,7 @@ import { ensureProfile } from './trip';
 const DAY = (n: number): string => `2026-10-${String(n).padStart(2, '0')}`;
 
 export async function seedDemoTrip(ownerName: string): Promise<string> {
+  const me = await ensureProfile();
   const trip = await createRow('gt_trips', {
     title: '国庆伊春深度游',
     destination: '小兴安岭 · 伊春',
@@ -21,10 +22,9 @@ export async function seedDemoTrip(ownerName: string): Promise<string> {
     cover_image: null,
     budget: 8000,
     visibility: 'private',
-    share_token: null,
+    share_token: (me as any).owner || '',
   });
   const tripId = (trip as any).id as string;
-  const me = await ensureProfile();
 
   // 占位同伴（设计稿故事线 4 人）：owner + 李娜/王胖/陈晨
   const members = await createRows('gt_trip_members', [

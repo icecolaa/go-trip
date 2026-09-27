@@ -322,7 +322,7 @@ button[disabled] { opacity: 0.45; }
 .hero { padding: 0; overflow: hidden; }
 .hero-cover {
   position: relative;
-  padding: 36rpx 32rpx 30rpx;
+  padding: 36rpx 32rpx 104rpx;
   display: flex;
   align-items: flex-start;
   gap: 20rpx;
@@ -557,6 +557,8 @@ button[disabled] { opacity: 0.45; }
 /* ---------- 地图 ---------- */
 .map { width: 100%; height: 60vh; border-radius: 32rpx; }
 
+.tab-page { padding-bottom: calc(200rpx + env(safe-area-inset-bottom)); }
+
 /* ============================================================
    二轮改版：消息页（09）· 我的页（14）
    ============================================================ */
@@ -718,3 +720,26 @@ button[disabled] { opacity: 0.45; }
 .foot-brand { display: flex; flex-direction: column; align-items: center; gap: 10rpx; padding: 40rpx 0 60rpx; }
 .foot-brand .fb-logo { width: 96rpx; height: 96rpx; border-radius: 28rpx; box-shadow: var(--sh-card); }
 .foot-brand .fb-text { font-size: 22rpx; color: var(--ink-3); letter-spacing: 1rpx; }
+
+/* ---------- 三轮：行程页真背景 + 液态玻璃 tabBar ---------- */
+.hero-bg { position: absolute; left: 0; top: 0; right: 0; bottom: 0; width: 100%; height: 100%; }
+.hero-scrim {
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  height: 60%;
+  background: linear-gradient(180deg, rgba(12, 40, 70, 0), rgba(12, 40, 70, 0.55));
+}
+.hero-tools { position: absolute; left: 32rpx; bottom: 22rpx; display: flex; gap: 14rpx; z-index: 2; }
+.hero-tool {
+  width: 64rpx;
+  height: 64rpx;
+  padding: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.85);
+  color: var(--ink);
+  font-size: 30rpx;
+  line-height: 64rpx;
+  box-shadow: 0 8rpx 20rpx rgba(12, 40, 70, 0.25);
+  border: none;
+}
+.map-tools { display: flex; gap: 14rpx; margin: 20rpx 0; flex-wrap: wrap; }

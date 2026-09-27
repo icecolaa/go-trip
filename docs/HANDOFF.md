@@ -1,7 +1,8 @@
 # 交接文档（HANDOFF）
 
 > 面向下一个接手的开发者或 AI 会话。先读根目录 `CLAUDE.md`（规则手册），再读本文（现状、过程与经验）。
-> 更新：2026-09-27（条目 49：二轮改版——原生 tabBar 三栏(行程/消息/我的)、消息页/我的页、飞哪儿入我的页、伊春演示行程、行程长按删除、1.3.0 上传）。
+> 更新：2026-09-27（条目 50：三轮改版——液态玻璃 custom-tab-bar、行程页真背景(上传+AI 生成)、微信 API 矩阵、**models.list 空结果平台怪癖与 custom-tab-bar chunk 竞态两大坑**、1.4.0 上传）。
+> 上一条：2026-09-27（条目 49：二轮改版——原生 tabBar 三栏(行程/消息/我的)、消息页/我的页、飞哪儿入我的页、伊春演示行程、行程长按删除、1.3.0 上传）。
 > 上一条：2026-09-27（条目 48：小程序 UI 改版「晴空航线」落地——12 页全换肤、journal 白屏预存 bug 修复、1.2.0 上传；新窗口读状态一览 + 48/49 + `docs/miniprogram-design.md`）。
 > 上一条：2026-09-27（条目 47：会话收尾快照——gotrip-018 上线、1.1.5 已传待设体验版、工具上传通道适配新版异步 API、改版底稿就绪待拍板方向）。
 > 上一条：2026-09-26（条目 45：Web 账密注册通道证实不可用并移除——平台 501 + SDK 吞错双实锤；登录页改登录+游客双通道）。
@@ -24,6 +25,8 @@
 | 待办 Top3 | ① **1.1.5 设体验版** → 真机：行程卡点入（46 修复主验）、日志图片上传、AI 解析、锦囊、飞哪儿 ② **控制台建 Web 账号**（身份认证→用户管理）→ 线上登录自测（唯一没验的成功路径）③ **拍板改版方向 A/B** → 按 miniprogram-features.md 出 DESIGN 规范→确认→实施（第一刀：app.css 去重 894→~223 行 + token 化）。可选：清理 gt_users 测试行（备份 work/incident-0115/ 同目录参考条目 45 操作单） |
 
 ## 2026-08~09 主要交付（按主题）
+
+50. **三轮改版：液态玻璃 tabBar + 真背景 + 微信 API（2026-09-27，1.4.0）**：① `custom-tab-bar` 液态玻璃（浮岛圆角+backdrop-filter，wxss 走 copy.patterns——Taro 不编译 custom-tab-bar 的 CSS import）；② 行程页 hero 真背景：cover_image fileID 直显/📸chooseMedia 上传/✨AI 生成（容器 `/api/ai/gen-cover/submit|result` 异步 job 调 CogView-3-flash，base64→FSM→云存储，**需重部容器**）；③ 微信 API 矩阵：useShareAppMessage×4、openLocation 导航、getLocation 定位、小红书=复制搜索词（无可靠 appid）、OfficialAccount 组件；④ **两大坑**：**(a) 页面 chunk import custom-tab-bar 的导出在 chunk 加载完成前是 undefined，useDidShow 里调用即同步抛错打断整页 load（三 tab 页全空假象）——syncTabBar 移独立 tab-sync.ts+全 try/catch；**(b) 平台 models.list 空条件（无 where）返回空记录（gt_trips 19 行挂/空、gt_users 8 行正常，疑似当日平台变更）——全量列表必须带显式 where，listTrips 用 share_token 挪用锚点（=profile.owner 值 weda_<openid>，createTrip/seed 显式写入）。**排查方法论**：automator 的 console/storage 通道只通 evaluate 环境，页面侧用 globalThis 变量+evaluate 读（getCurrentPages 可用证明同环境）。验收 92/92+console 0 错。遗留：AI 封面待容器重部；模拟器 models.list 间歇空待真机复验。
 
 49. **二轮改版：tabBar 三栏 + 消息/我的页（2026-09-27，1.3.0，提交 9846afb）**：按设计稿加原生 tabBar（行程/消息/我的；图标=设计稿 ic-home/chat/user SVG 经 Chrome headless 渲染 PNG，灰#93A5B8/蓝#2E92ED）。**消息页**＝gt_activity_log 跨行程动态流（逐行程拉取合并、按行程分组、组间按最新动态倒序、空态黄色引导卡）。**我的页**＝资料卡（editable showModal 改昵称走 updateProfile）+4 格统计（全部来自 listTrips 的 TripCardInfo，零额外查询）+菜单（我的行程/飞哪儿/编辑资料/关于），**按要求无自托管板块与「自托管版」脚注**；飞哪儿从首页横幅迁入。**新功能：行程卡长按删除**（ops.deleteTrip 级联清 11 张子表+主行——补上行程无删除入口的功能缺口）。**演示种子=图一「国庆伊春深度游」**（2026-10-01~07 固定档期、7 天 23 项安排含团餐 notes、4 占位同伴、5 笔支出 ¥2,844、动态 4 条）。**修复真 bug：trip 页返回不刷新**（子页保存后列表不更新/编辑定位失效）→ useDidShow 重拉。验收 90 项断言全过（87 本轮+B9/B11 探针复绿+D7 数据饱和复核），报告 acceptance/REPORT-miniprogram-ui.md 二轮章节。遗留：演示行程日期写死国庆档（过期显示已结束属预期）；云写入 10~45s 时延未优化。
 

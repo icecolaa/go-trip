@@ -5,6 +5,8 @@ export type MemberRole = 'owner' | 'admin' | 'editor' | 'viewer';
 
 export interface Profile {
   id: string
+  /** 平台自动维护的属主标识（weda_<openid>），列表查询的稳定锚点 */
+  owner?: string
   nickname: string
   avatarColor: string
   bio: string
@@ -28,6 +30,7 @@ export interface TripMember {
 
 export interface Trip {
   id: string
+
   title: string
   destination: string
   description: string
@@ -38,6 +41,7 @@ export interface Trip {
   coverImage: string | null // 云存储 fileID
   budget: number
   visibility: 'private' | 'link'
+  /** 平台属主标识 weda_<openid>（业务挪用：列表查询锚点，见 rdb/trip.ts listTrips 注释） */
   shareToken: string | null
   createdAt?: number
   updatedAt?: number

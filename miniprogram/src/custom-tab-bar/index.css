@@ -1,0 +1,38 @@
+/* 液态玻璃 tabBar：浮岛圆角 + 毛玻璃（backdrop-filter），对齐「晴空航线」主题 */
+.tab-bar {
+  position: fixed;
+  left: 30rpx;
+  right: 30rpx;
+  bottom: calc(24rpx + env(safe-area-inset-bottom));
+  height: 116rpx;
+  border-radius: 58rpx;
+  background: rgba(255, 255, 255, 0.72);
+  -webkit-backdrop-filter: blur(32px) saturate(180%);
+  backdrop-filter: blur(32px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.65);
+  box-shadow: 0 16rpx 48rpx rgba(23, 84, 153, 0.18), 0 2rpx 0 rgba(255, 255, 255, 0.6) inset;
+  display: flex;
+  align-items: center;
+  z-index: 999;
+}
+.tab-item {
+  flex: 1;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4rpx;
+}
+.tab-item image { width: 52rpx; height: 52rpx; }
+.tab-item .tab-label {
+  font-size: 20rpx;
+  color: #93A5B8;
+  font-weight: 600;
+  line-height: 1.1;
+}
+.tab-item.on .tab-label { color: var(--sky-600, #1B78D8); font-weight: 800; }
+.tab-item.on image {
+  transform: translateY(-4rpx) scale(1.08);
+  transition: transform 0.2s ease;
+}

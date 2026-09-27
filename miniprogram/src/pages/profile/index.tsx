@@ -1,6 +1,7 @@
 import { useState } from 'react'
-import { View, Text, Image } from '@tarojs/components'
-import Taro, { useDidShow, usePullDownRefresh } from '@tarojs/taro'
+import { View, Text, Image, OfficialAccount } from '@tarojs/components'
+import Taro, { useDidShow, usePullDownRefresh, useShareAppMessage } from '@tarojs/taro'
+import { syncTabBar } from '../../tab-sync'
 import { ensureProfile, listTrips, updateProfile } from '../../rdb/trip'
 import type { Profile, TripCardInfo } from '../../types'
 
@@ -24,8 +25,11 @@ export default function Profile() {
   }
 
   useDidShow(() => {
+    syncTabBar(2)
     load()
   })
+
+  useShareAppMessage(() => ({ title: '出发吧 GoTrip · 和同伴一起，把旅程安排明白', path: '/pages/trips/index' }))
 
   usePullDownRefresh(() => {
     load().finally(() => Taro.stopPullDownRefresh())
@@ -72,7 +76,7 @@ export default function Profile() {
   const ingCount = trips.filter(t => t.startDate <= todayStr() && t.endDate >= todayStr()).length
 
   return (
-    <View className="page">
+    <View className="page tab-page">
       {error && <View className="error">{error}</View>}
 
       <View className="card profile-card">
@@ -145,6 +149,8 @@ export default function Profile() {
         <Text className="mc-arrow">›</Text>
       </View>
 
+      {/* 绑定同主体公众号后，特定场景进入自动显示；未绑定时不渲染，无副作用 */}
+      <OfficialAccount />
       <View className="foot-brand">
         <Image className="fb-logo" src="/assets/logo.png" mode="aspectFill" />
         <Text className="fb-text">出发吧 GoTrip · {APP_VERSION}</Text>

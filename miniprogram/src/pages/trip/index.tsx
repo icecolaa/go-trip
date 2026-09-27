@@ -1,7 +1,10 @@
 import { useRef, useState } from 'react'
-import { View, Text, Button } from '@tarojs/components'
-import Taro, { useDidShow, usePullDownRefresh } from '@tarojs/taro'
+import { View, Text, Button, Image } from '@tarojs/components'
+import Taro, { useDidShow, usePullDownRefresh, useShareAppMessage } from '@tarojs/taro'
 import { loadTripBundle } from '../../rdb/trip'
+import { updateRow } from '../../rdb/entities'
+import { uploadImage } from '../../rdb/storage'
+import { api } from '../../api/request'
 import type { TripBundle, Activity } from '../../types'
 
 const KIND_EMOJI: Record<string, string> = {
@@ -12,6 +15,7 @@ const KIND_EMOJI: Record<string, string> = {
 export default function Trip() {
   const [bundle, setBundle] = useState<TripBundle | null>(null)
   const [error, setError] = useState('')
+  const [coverBusy, setCoverBusy] = useState('')
   const tripId = String(Taro.getCurrentInstance().router?.params.id || '')
   const reloading = useRef(false)
 
@@ -39,6 +43,81 @@ export default function Trip() {
   useState(() => {
     load()
   })
+
+  // 分享给朋友（右上角菜单 / hero 分享按钮）；imageUrl 支持云 fileID
+  useShareAppMessage(() => {
+    const t = bundle?.trip
+    return {
+      title: t ? `${t.title} · 一起出发吧` : '出发吧 GoTrip',
+      path: `/pages/trip/index?id=${tripId}`,
+      imageUrl: t?.coverImage || undefined,
+    }
+  })
+
+  /** 上传自定义背景（chooseMedia → 压缩 → 云存储 → cover_image 入库） */
+  const uploadCover = () => {
+    Taro.chooseMedia({
+      count: 1,
+      mediaType: ['image'],
+      sizeType: ['compressed'],
+      success: async (res) => {
+        const p = res.tempFiles?.[0]?.tempFilePath
+        if (!p) return
+        setCoverBusy('upload')
+        try {
+          let src = p
+          try { const c = await Taro.compressImage({ src: p, quality: 80 }); src = c.tempFilePath } catch { /* 压缩失败用原图 */ }
+          const fileID = await uploadImage(src, 'cover')
+          await updateRow('gt_trips', tripId, { cover_image: fileID })
+          Taro.showToast({ title: '背景已更新', icon: 'success' })
+          await load()
+        } catch (e) {
+          Taro.showToast({ title: e instanceof Error ? e.message : '上传失败', icon: 'none' })
+        } finally {
+          setCoverBusy('')
+        }
+      },
+    })
+  }
+
+  /** AI 生成封面（容器 CogView 异步 job → base64 → 临时文件 → 云存储） */
+  const genCover = async () => {
+    const t = bundle?.trip
+    if (!t || coverBusy) return
+    setCoverBusy('ai')
+    try {
+      Taro.showLoading({ title: 'AI 正在绘制封面…' })
+      const { jobId } = await api.post<{ jobId: string }>('/api/ai/gen-cover/submit', {
+        prompt: `旅行摄影风格插图：${t.destination || '中国'}的风景，行程「${t.title}」，明亮晴空蓝天空与温暖秋色，清新通透，无文字，无水印`,
+      })
+      const deadline = Date.now() + 150000
+      let image64 = ''
+      while (Date.now() < deadline) {
+        await new Promise(r => setTimeout(r, 2500))
+        const st = await api.get<{ status: string; image?: string; error?: string }>(`/api/ai/gen-cover/result?jobId=${jobId}`)
+        if (st.status === 'done') { image64 = st.image || ''; break }
+        if (st.status === 'error') throw new Error(st.error || '生成失败')
+      }
+      if (!image64) throw new Error('生成超时，请重试')
+      const filePath = `${Taro.env.USER_DATA_PATH}/cover-${Date.now()}.jpg`
+      await new Promise<void>((resolve, reject) => {
+        Taro.getFileSystemManager().writeFile({
+          filePath, data: image64, encoding: 'base64',
+          success: () => resolve(), fail: (err: unknown) => reject(new Error('写入临时文件失败')),
+        })
+      })
+      const fileID = await uploadImage(filePath, 'cover')
+      await updateRow('gt_trips', tripId, { cover_image: fileID })
+      Taro.hideLoading()
+      Taro.showToast({ title: 'AI 封面已生成', icon: 'success' })
+      await load()
+    } catch (e) {
+      Taro.hideLoading()
+      Taro.showToast({ title: e instanceof Error ? e.message : '生成失败', icon: 'none' })
+    } finally {
+      setCoverBusy('')
+    }
+  }
 
   const goBudget = () => Taro.navigateTo({ url: `/pages/budget/index?tripId=${tripId}` })
   const goPacking = () => Taro.navigateTo({ url: `/pages/packing/index?tripId=${tripId}` })
@@ -82,7 +161,9 @@ export default function Trip() {
   return (
     <View className="page">
       <View className="card hero">
-        <View className="hero-cover" style={{ background: `linear-gradient(135deg, ${tint(trip.coverColor, 0.3)}, ${trip.coverColor || '#3B6EA5'})` }}>
+        <View className="hero-cover" style={trip.coverImage ? undefined : { background: `linear-gradient(135deg, ${tint(trip.coverColor, 0.3)}, ${trip.coverColor || '#3B6EA5'})` }}>
+          {!!trip.coverImage && <Image className="hero-bg" src={trip.coverImage} mode="aspectFill" />}
+          <View className="hero-scrim" />
           <View className="hero-emoji"><Text>{trip.coverEmoji}</Text></View>
           <View style={{ flex: 1, minWidth: 0 }}>
             <Text className="hero-title">{trip.title}</Text>
@@ -90,6 +171,11 @@ export default function Trip() {
             <View className="hero-meta"><Text>{trip.startDate} ~ {trip.endDate}</Text></View>
           </View>
           <View className="date-chip">{statusChip}</View>
+          <View className="hero-tools">
+            <Button className="hero-tool" size="mini" loading={coverBusy === 'ai'} onClick={genCover}>✨</Button>
+            <Button className="hero-tool" size="mini" loading={coverBusy === 'upload'} onClick={uploadCover}>📸</Button>
+            <Button className="hero-tool" size="mini" openType="share">🔗</Button>
+          </View>
         </View>
         <View className="hero-body">
           <View className="progress"><View className="progress-in" style={{ width: `${progress}%` }} /></View>

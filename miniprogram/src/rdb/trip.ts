@@ -36,7 +36,13 @@ export async function updateProfile(id: string, patch: Partial<Profile>): Promis
 /* ---------------- 行程列表 ---------------- */
 
 export async function listTrips(): Promise<TripCardInfo[]> {
-  const trips = (await listRows('gt_trips', {}, [{ created_at: 'desc' }])) as unknown as Trip[];
+  // 平台限制（2026-09-27 实测）：无过滤条件的 models.list 一律返回空记录，必须带显式 where。
+// 锚点 = share_token 字段（模型已登记但业务未使用，挪用存 profile 行的 owner 值——
+// 平台自动维护的属主标识 weda_<openid>，跨会话稳定）。devtools 下 list 的行级过滤
+// 身份与 create 不一致（模拟器行为），业务锚点可同时绕开两处平台怪癖。真机同逻辑成立。
+const meRow = await ensureProfile() as unknown as Profile & { owner?: string };
+const anchor = meRow.owner || '';
+const trips = (await listRows('gt_trips', anchor ? { share_token: { $eq: anchor } } : {}, [{ createdAt: 'desc' }])) as unknown as Trip[];
   if (!trips.length) return [];
   const out: TripCardInfo[] = [];
   for (const t of trips) {
@@ -125,6 +131,8 @@ export async function createTrip(input: {
   startDate: string; endDate: string; budget: number;
   coverEmoji: string; coverColor: string;
 }, ownerName: string): Promise<string> {
+  // share_token 挪用作属主锚点（见 listTrips 注释）；业务本身未使用该字段
+  const meForAnchor = (await ensureProfile()) as unknown as Profile & { owner?: string };
   const trip = await createRow('gt_trips', {
     title: input.title,
     destination: input.destination,
@@ -136,7 +144,7 @@ export async function createTrip(input: {
     cover_image: null,
     budget: input.budget,
     visibility: 'private',
-    share_token: null,
+    share_token: meForAnchor.owner || '',
   });
   await createRow('gt_trip_members', {
     trip_id: trip.id,

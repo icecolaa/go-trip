@@ -1,3 +1,5 @@
+declare const wx: any
+
 /** 数据模型通用行操作（全部返回 camelCase 视图；写入口接受 camelCase）。
  * 权限由模型层强制：list/get 只见自己的行（_openid 隔离），无需显式 where 自己。 */
 import { model } from './client';

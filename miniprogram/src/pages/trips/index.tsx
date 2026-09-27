@@ -1,10 +1,13 @@
 import { useState } from 'react'
 import { View, Text, Button, Image } from '@tarojs/components'
-import Taro, { useDidShow, usePullDownRefresh } from '@tarojs/taro'
+import Taro, { useDidShow, usePullDownRefresh, useShareAppMessage } from '@tarojs/taro'
+import { syncTabBar } from '../../tab-sync'
 import { ensureProfile, listTrips } from '../../rdb/trip'
 import { seedDemoTrip } from '../../rdb/seed'
 import { deleteTrip } from '../../rdb/ops'
 import type { Profile, TripCardInfo } from '../../types'
+
+
 
 /** 我的旅程：rdb 直连（数据模型），无登录概念——原生身份静默建档。 */
 export default function Trips() {
@@ -25,8 +28,11 @@ export default function Trips() {
   }
 
   useDidShow(() => {
+    syncTabBar(0)
     load()
   })
+
+  useShareAppMessage(() => ({ title: '出发吧 GoTrip · 和同伴一起，把旅程安排明白', path: '/pages/trips/index' }))
 
   usePullDownRefresh(() => {
     load().finally(() => Taro.stopPullDownRefresh())
@@ -73,7 +79,7 @@ export default function Trips() {
   }
 
   return (
-    <View className="page">
+    <View className="page tab-page">
       <View className="brand-row">
         <Image className="brand-logo" src="/assets/logo.png" mode="aspectFill" />
         <View>
