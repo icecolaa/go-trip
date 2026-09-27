@@ -36,7 +36,7 @@ export default function Handbook() {
     if (busy) return
     setBusy(true)
     try {
-      Taro.showLoading({ title: 'AI 整理锦囊中…' })
+      Taro.showLoading({ title: '整理锦囊中…' })
       const fresh = await api.post<any[]>(`/api/trips/${tripId}/handbook/generate`, { interests })
       // 兼容新旧容器：旧容器服务端已插入，这里先清掉非自建卡再写客户端副本，最终只有一份
       for (const c of cards) if (c.source !== 'custom') await deleteGuideCard(tripId, c.id, '我')

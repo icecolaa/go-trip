@@ -86,7 +86,7 @@ export default function Trip() {
     if (!t || coverBusy) return
     setCoverBusy('ai')
     try {
-      Taro.showLoading({ title: 'AI 正在绘制封面…' })
+      Taro.showLoading({ title: '正在生成封面…' })
       const { jobId } = await api.post<{ jobId: string }>('/api/ai/gen-cover/submit', {
         prompt: `旅行摄影风格插图：${t.destination || '中国'}的风景，行程「${t.title}」，明亮晴空蓝天空与温暖秋色，清新通透，无文字，无水印`,
       })
@@ -109,7 +109,7 @@ export default function Trip() {
       const fileID = await uploadImage(filePath, 'cover')
       await updateRow('gt_trips', tripId, { cover_image: fileID })
       Taro.hideLoading()
-      Taro.showToast({ title: 'AI 封面已生成', icon: 'success' })
+      Taro.showToast({ title: '封面已生成', icon: 'success' })
       await load()
     } catch (e) {
       Taro.hideLoading()
@@ -155,7 +155,7 @@ export default function Trip() {
     { icon: '📖', label: '锦囊', onTap: () => Taro.navigateTo({ url: `/pages/handbook/index?tripId=${tripId}` }) },
     { icon: '👥', label: '伙伴', onTap: () => Taro.navigateTo({ url: `/pages/members/index?tripId=${tripId}` }) },
     { icon: '🗺️', label: '地图', onTap: () => Taro.navigateTo({ url: `/pages/map/index?tripId=${tripId}` }) },
-    { icon: '✨', label: 'AI 解析', onTap: () => Taro.navigateTo({ url: `/pages/trip-ai/index?tripId=${tripId}&maxDay=${bundle.days.length}` }) },
+    { icon: '📑', label: '攻略导入', onTap: () => Taro.navigateTo({ url: `/pages/trip-ai/index?tripId=${tripId}&maxDay=${bundle.days.length}` }) },
   ]
 
   return (

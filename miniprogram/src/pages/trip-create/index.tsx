@@ -121,7 +121,7 @@ export default function TripCreate() {
       </View>
 
       <Button className="submit" loading={busy} onClick={create}>创建旅程</Button>
-      <View className="hint"><Text>创建后可在行程页逐天添加安排，粘贴攻略文本由 AI 一键解析</Text></View>
+      <View className="hint"><Text>创建后可在行程页逐天添加安排，粘贴攻略文本可一键生成行程</Text></View>
     </View>
   )
 }
