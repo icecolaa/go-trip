@@ -38,7 +38,7 @@
   display: flex; align-items: center; gap: 16rpx; padding: 24rpx 26rpx;
   background: linear-gradient(135deg, #FFFDF4, #FFF3C8); border: 2rpx solid #FFE9A8;
   border-radius: 32rpx; box-shadow: 0 16rpx 40rpx rgba(255,196,20,.18);
-  margin: 0 0 4rpx;
+  margin: 2rpx 32rpx 0;
 }
 .fl-left { flex: 1; display: flex; align-items: center; gap: 18rpx; min-width: 0; }
 .fl-ic { width: 76rpx; height: 76rpx; border-radius: 24rpx; background: var(--yel400); display: flex; align-items: center; justify-content: center; flex: none; box-shadow: var(--sh-yellow); }

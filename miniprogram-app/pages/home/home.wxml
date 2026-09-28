@@ -9,7 +9,7 @@
   </nav-bar>
 
   <view class="greet">
-    <text class="h1">{{greet}}，旅行家 ☀︎</text>
+    <text class="h1">{{greet}}，旅行家 </text>
     <text class="sub">{{sub}}</text>
   </view>
 
