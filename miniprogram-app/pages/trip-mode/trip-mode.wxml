@@ -1,6 +1,6 @@
 <!-- 出发模式 Trip Mode：全屏当天视图 · 逐站勾选 · 下一站高亮 · 距离估算 · 离线手绘图 -->
 <view class="screen tmode {{themeClass}}">
-  <nav-bar float="{{true}}" back="{{false}}" photo="{{true}}" />
+  <nav-bar back="{{false}}" />
 
   <!-- 无行程空态 -->
   <view wx:if="{{!hasTrip}}" style="margin:200rpx 32rpx">
@@ -35,7 +35,7 @@
       </view>
     </view>
 
-    <view wx:if="{{!dayStops.length}}" style="padding:60rpx 0;display:flex;flex-direction:column;align-items:center;gap:16rpx;color:#93A5B8;font-size:26rpx">
+    <view wx:if="{{!dayStops.length}}" style="padding:60rpx 0;display:flex;flex-direction:column;align-items:center;gap:16rpx;color:var(--ink3);font-size:26rpx">
       <text>这一天还没有安排</text>
       <text class="tag blue">去日程页「＋安排」补齐</text>
     </view>
