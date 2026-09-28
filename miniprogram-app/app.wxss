@@ -34,7 +34,7 @@ view, text, image, input, button, textarea { box-sizing: border-box; }
 button::after { border: none; }
 
 /* ---------- 页面画布 ---------- */
-.screen { position: relative; width: 100vw; height: 100vh; overflow: hidden; background: var(--bg); display: flex; flex-direction: column; }
+.screen { position: relative; width: 100vw; height: 100vh; overflow: hidden; background: var(--bg); color: var(--ink); display: flex; flex-direction: column; }
 .scroll { flex: 1; overflow: hidden; position: relative; }
 
 /* ---------- 字级 ---------- */

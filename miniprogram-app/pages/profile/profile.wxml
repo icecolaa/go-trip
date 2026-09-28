@@ -19,10 +19,10 @@
     </view>
 
     <view class="card stats anim-rise d1">
-      <view class="stat-c"><text class="v num">{{statTrips}}</text><text class="k">共同旅行</text></view>
-      <view class="stat-c"><text class="v num">{{statCities}}</text><text class="k">足迹城市</text></view>
-      <view class="stat-c"><text class="v num">{{statStops}}</text><text class="k">打卡地点</text></view>
-      <view class="stat-c"><text class="v num">{{statSpent}}</text><text class="k">一起记的账</text></view>
+      <view class="stat-c"><text class="v num">{{statTrips}}</text><text class="k">旅行</text></view>
+      <view class="stat-c"><text class="v num">{{statCities}}</text><text class="k">城市</text></view>
+      <view class="stat-c"><text class="v num">{{statStops}}</text><text class="k">地点</text></view>
+      <view class="stat-c"><text class="v num">{{statSpent}}</text><text class="k">记账</text></view>
     </view>
 
     <view class="grp">
@@ -30,15 +30,6 @@
         <view class="cell-ic sky"><view class="ic ic-chat" style="color:#2E92ED"></view></view>
         <view class="cell-main">
           <text class="h">消息</text>
-          <text class="p">邀请 · 协作动态 · 系统提醒</text>
-        </view>
-        <view class="cell-right"><view class="ic ic-right"></view></view>
-      </view>
-      <view class="cell" hover-class="press" bindtap="goTrips">
-        <view class="cell-ic sky"><view class="ic ic-route" style="color:#2E92ED"></view></view>
-        <view class="cell-main">
-          <text class="h">我的行程</text>
-          <text class="p">共 {{statTrips}} 个行程 · 点击管理</text>
         </view>
         <view class="cell-right"><view class="ic ic-right"></view></view>
       </view>
@@ -58,8 +49,7 @@
       <view class="cell" hover-class="press" bindtap="goGuidebook">
         <view class="cell-ic yel"><view class="ic ic-compass" style="color:#FFC414"></view></view>
         <view class="cell-main">
-          <text class="h">旅行锦囊库</text>
-          <text class="p">全国 20+ 目的地 · 美食/贴士/语言/拍摄</text>
+          <text class="h">旅行锦囊</text>
         </view>
         <view class="cell-right"><view class="ic ic-right"></view></view>
       </view>
@@ -67,19 +57,10 @@
 
     <view class="grp-title"><text>通用</text><view class="line"></view></view>
     <view class="grp">
-      <view class="cell" hover-class="press" bindtap="editNickname">
-        <view class="cell-ic sky"><view class="ic ic-edit" style="color:#2E92ED"></view></view>
-        <view class="cell-main">
-          <text class="h">编辑资料</text>
-          <text class="p">修改你的昵称</text>
-        </view>
-        <view class="cell-right"><view class="ic ic-right"></view></view>
-      </view>
       <view class="cell" hover-class="press" bindtap="goSettings">
         <view class="cell-ic gray"><view class="ic ic-gear" style="color:#51637A"></view></view>
         <view class="cell-main">
           <text class="h">设置</text>
-          <text class="p">通知 · 隐私 · 深色模式 · 关于</text>
         </view>
         <view class="cell-right"><view class="ic ic-right"></view></view>
       </view>
@@ -97,6 +78,5 @@
       <image src="/assets/logo.png" mode="aspectFill" />
       <text>出发吧 GoTrip · v1.5.0</text>
     </view>
-    <view style="height:260rpx"></view>
   </view>
 </view>
