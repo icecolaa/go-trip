@@ -1,7 +1,8 @@
 # 交接文档（HANDOFF）
 
 > 面向下一个接手的开发者或 AI 会话。先读根目录 `CLAUDE.md`（规则手册），再读本文（现状、过程与经验）。
-> 更新：2026-09-29（条目 60：**二轮验收+P0 修复+发版 1.5.9**。验收揪出 **P0：api.js 漏 X-WX-SERVICE 头——原生版全部容器 API 自迁移以来 404**（AI/锦囊/飞哪儿/POI/天气/编码全挂）已修；容器 geocode 形状兼容（gotrip-020）；autoGeocodeOnce 死代码接通；53 断言全过（报告 acceptance/REPORT-native-0929-round2.md））
+> 更新：2026-09-29（条目 61：**会话收官——原生版功能收官七连发（1.5.4→1.5.10）+ 行程数据重建（小兴安岭七日×2账号）+ 验收体系成型（11 段 78 断言，六轮全过）**。GitHub 积 17 提交待补推；1.5.10 待设体验版）
+> 上一条：2026-09-29（条目 60：**二轮验收+P0 修复+发版 1.5.9**。验收揪出 **P0：api.js 漏 X-WX-SERVICE 头——原生版全部容器 API 自迁移以来 404**（AI/锦囊/飞哪儿/POI/天气/编码全挂）已修；容器 geocode 形状兼容（gotrip-020）；autoGeocodeOnce 死代码接通；53 断言全过（报告 acceptance/REPORT-native-0929-round2.md））
 > 上一条：2026-09-29（条目 59：**验收轮+发版 1.5.3**。滚动容器同类修复 14 处收官；review 修 P1 删行程脏内存态；automator 分段自愈验收 **39/39 全过、console 零错误**（报告 acceptance/REPORT-native-0929.md）；1.5.3 已上传待设体验版）
 > 上一条：2026-09-28（条目 58：**原生版三修——tabBar 停靠贴底 + 深色模式全量令牌化 + 设计规范过一遍**。codemod 116 处硬编码色→var()；悬浮岛 tab 栏改停靠式并三页避让；行程卡两行截断+次级文字对比度提升；待 devtools 切深色目验）
 > 上一条：2026-09-28（条目 57：**收尾部署轮——容器 gotrip-019 上线**。gen-cover/regeo 路由生效、OpenAccessTypes 修回 PUBLIC+MINIAPP、GitHub 补推 9 提交；余用户侧待办=1.5.2 设体验版→真机验收）
@@ -14,23 +15,29 @@
 > 上一条：2026-09-26（条目 45：Web 账密注册通道证实不可用并移除——平台 501 + SDK 吞错双实锤；登录页改登录+游客双通道）。
 > 上一条：2026-09-25（条目 42：第三个环境 + SQL 库接通 + H5 双端）。
 
-## 当前状态一览（2026-09-26，阶段二收官）
+## 当前状态一览（2026-09-29，原生版功能收官）
 
 | 项 | 值 |
 |---|---|
-| **生产环境** | CloudBase `gotrip-d1gb187o991f5260a`（个人版，付费至 2027-03-25）。云托管 gotrip 容器 = **gotrip-019 无状态代理**（2026-09-28 部署，含 45/46 Web 修复 + gen-cover/regeo 路由；OpenAccessTypes=PUBLIC+MINIAPP，OA 已移除；EnvParams 10 键/VpcConf 空/MaxNum=1 原样保留），`/health` 探针 `{"ok":true,"db":"none","mode":"proxy"}`。公网开着（Web 直连需要）。**已合入 master**（Gitee/GitHub 同步；master=5198351，feat 领先 master 21 个提交，下次合并即齐） |
-| **架构（原生化完成）** | 全栈数据模型直连：小程序 `@cloudbase/wx-cloud-client-sdk` models.*（openid 身份）；Web `@cloudbase/js-sdk` 3.10.1（其 `./model` 子路径 **re-export wx-cloud-client-sdk**，两端 API 同构）+ 身份认证（账密+匿名已开启）。14 个 gt_* 模型 `_openid` 行级隔离。设计/映射/进度全在 `docs/native-migration.md`（接手先读它和条目 43/44） |
-| 小程序 | **1.5.2 已上传**（发布主体=miniprogram-app 原生 21 页，条目 56；Taro 版冻结在 miniprogram/）**待设体验版+真机验收**。21 页 rdb 直连、飞哪儿异步 job（容器 regeo 已上线供识别出发地） |
-| Web/H5 | **已恢复可用（阶段二完成，浏览器实测 ✓）**：游客/账密登录 → 建档 → 建行程/导入演示（9 项安排 ✓）→ 13 板块。域名=云托管公网 + 风险提示页（绑自定义域名可去掉）。**Web 与小程序身份不互通**（CloudBase uid vs openid，各一套数据，既定设计）。**条目 45 后：注册入口已移除**（平台不支持纯账密自助注册），正式账号=云控制台「身份认证→用户管理」手动创建；登录页=账密登录+游客模式。条目 46 修复待随容器部署上线 |
-| 容器身份门（双通道） | x-wx-source（小程序 callContainer，公网剥离实测）OR x-gotrip-key=WEB_PROXY_KEY（Web/H5 共享密钥，随 bundle 可见属可接受风险）。环境变量已配在 gotrip-017 |
-| 数据库 | 云开发自带 TDSQL-C MySQL 8.0（端点已由用户经「数据库连接配置」建成公网 43.179.225.7:24735，容器不再需要）；**行程相关 12 表已清空重来**（旧测试数据含丢失活动的行程），当前库内仅浏览器验证产生的 1 匿名用户+1 演示行程（可清） |
-| 仓库 | Gitee+GitHub 双端已同步（feat=fa350f7 含 gitignore 修正，master=5198351）；GitHub push 需本机代理（时好时坏） |
-| 冒烟 | `scripts/smoke.sh` **10/0**（容器代理 9 断言 + shared 纯函数）；旧 111 项 CRUD 冒烟已退役 |
-| **改版底稿** | `docs/miniprogram-features.md`（12 页功能事实+与 Web 差距+现状体检+硬约束，2026-09-27 逐页核对）；**改版方向待拍板：A 对齐 Web DESIGN.md / B 保留 flywhere 暖调做精** |
-| 本地 skill | ip-as-logo 已装 `.zcode/skills/`（`.zcode*/skills-lock.json` 已 gitignore 不入库，用户拍板） |
+| **生产环境** | CloudBase `gotrip-d1gb187o991f5260a`（个人版，付费至 2027-03-25）。云托管 gotrip 容器 = **gotrip-020 无状态代理**（2026-09-29 部署，geocode 兼容双入参形状；EnvParams 10 键/MaxNum=1/PUBLIC+MINIAPP 保留），`/health` 探针 `{"ok":true,"db":"none","mode":"proxy"}`。公网开着（Web 直连需要）。feat 分支=1.5.10 全部修复，**Gitee 同步至 9b89e88，GitHub 积 17 提交待代理补推**（恢复后 `git push origin feat/miniprogram` 一条补齐） |
+| **架构（原生化完成）** | 小程序 `@cloudbase/wx-cloud-client-sdk` models.*（openid 行级隔离）+ `utils/api.js` callContainer（**必须带 X-WX-SERVICE 头**，条目 60 P0）；容器=无状态代理（AI/飞哪儿/POI/天气/编码）。设计/映射/进度在 `docs/native-migration.md` |
+| 小程序 | **1.5.10 已上传待设体验版**（发布主体=miniprogram-app 原生 21 页；Taro 版冻结在 miniprogram/）。**1.5.3→1.5.10 版本线见条目 61**（底部遮挡/转发按钮/卡片编辑/背景图+同伴管理/站点坐标/P0 容器头/编码内存同步） |
+| 数据库 | TDSQL-C MySQL 8.0（MCP 可直写：`queryMysqlDatabase`/`manageMysqlDatabase`，库名=`<envId>` schema）。**当前仅 2 条行程**：小兴安岭七日×2（真机号 EBZKAZJUGG + 工具号 EC38PUC1S8，各 7 天/30 安排/全坐标；**同名同内容分属两账号，改动要考虑双账号**）。EC38PUC1S8 名下有演示支出 5 笔（¥2,844）/打包 4 条与新征程不匹配——是否清理待用户拍板 |
+| 验收 | `work/accept-0929.js` **11 段 78 断言**分段自愈框架（ONLY=S6,S7 段选重跑；段失败自动重启工具重放）。六轮 39→53→58→70→79→78 全过。**每轮验收会真实写库——跑后跨账号清理「验收占位/验收同伴」残留** |
+| 冒烟 | `scripts/smoke.sh` **10/0**（容器代理 9 断言 + shared 纯函数）；rdb 数据层改动一律 `npm run build:rdb`（含 process.env 防护门） |
+| 仓库 | Gitee=origin 主同步（最新）；GitHub 积 17 提交待代理。分支 feat/miniprogram，master 严重落后（合并待拍板） |
+| 待办 Top3 | ① **1.5.10 设体验版** → 真机重点验容器链路（AI 解析/锦囊/飞哪儿/天气——P0 修复后首次真正可用）+ 地图自动定位 + 卡片编辑/背景图/同伴管理 ② GitHub 补推（代理）③ 功能缺口拍板：「修改行程」（目的地/日期/预算）入口原生版缺失；EC38PUC1S8 演示支出是否清理 |
 | 待办 Top3 | ① **1.5.2 设体验版** → 真机：21 页全流程（行程建删/记账/攻略导入/AI 生成封面/锦囊/飞哪儿识别出发地/位置选点）② **Web 账号成功路径自测**（控制台建号→线上登录，条目 45 尾巴仍未闭环）③ 可选：云写入时延优化（ensureProfile 缓存+动态日志并行写）。已完成收尾：容器 gotrip-019（gen-cover/regeo 上线）、OA 移除、GitHub 补推（条目 57） |
 
 ## 2026-08~09 主要交付（按主题）
+
+61. **会话收官：原生版功能收官七连发 + 数据重建 + 验收体系成型（2026-09-29，1.5.10）**：条目 60 之后同一会话的连续交付全景。**版本线**：1.5.3（四轮 review 修复+首次 automator 验收）→ 1.5.4 底部浮动栏遮挡（settle/places/ledger/schedule/create 五页占位不足，统一 calc(200rpx+safe)）→ 1.5.5 设置页转发按钮宽度（button UA 样式覆盖全局 cell flex——open-type=share 必须用 button，显式补布局）→ 1.5.6 **行程卡片编辑**（长按 actionSheet：标题/12 图标/6 封面色弹层 + 封面图上传链 chooseMedia→压缩→云存储→tempUrls 换链直显；listTrips 补 coverImage + store.updateTripMeta）→ 1.5.7 **背景图+同伴管理**（overview hero 相机钮：上传/恢复默认；邀请页改造为真实同伴管理：添加/改名/移除占位同伴+头像色轮转+同步内存；协作文案诚实化）→ 1.5.8 **站点坐标链路**（日程「＋安排」升级表单弹层：名称/分类/地点/腾讯地图选点，坐标随行入库+地点文字异步高德编码兜底；地图空态加立即定位/去日程）→ 1.5.9 **P0**（条目 60）→ 1.5.10 日程编码后内存同步（条目 60 第四轮）。
+    **行程数据重建（重要现状）**：应用内「国庆伊春深度游」已按用户七日详规**全量重建为「小兴安岭七日 · 红松林与界江秋色」**（标题/30 安排/全部坐标/6 餐 6 宿），且**两条同名行程分属两个微信账号**（真机号 EBZKAZJUGG + 工具号 EC38PUC1S8，_openid 不同——数据模型行级隔离所致），**两条都重建了相同内容**，改哪条都要考虑双账号。重建走 SQL 直写（MCP queryMysqlDatabase runStatement），教训：① INSERT...SELECT 迁移行程时 **trip_id 若从 SELECT 原样带过去会插错账号**（必须 SELECT 列表写常量）；② 重建后 EC38PUC1S8 名下种子支出 5 笔（¥2,844）/打包 4 条与新征程内容不匹配——已向用户报告，用户未答复是否清理，**动账目前先问**。
+    **测试数据清理（两轮）**：行程外的测试数据已清零——「超长验收」「验收占位安排」类活动/行程/成员全删（含历轮漏网的 6 条验收占位活动——**每轮验收后要清理，且清理范围要全账号扫描而非仅当轮账号**）；当前云端仅 2 条伊春新行程+各自子表，无测试残留。
+    **验收体系（本轮最大资产）**：`work/accept-0929.js` 分段自愈框架，**11 段 78 断言**（S1 启动链/S2 出发页+S2 profile/S3 九次级页/S4 create 空值超长建删/S5 卡片编辑/S6 日程表单+编码/S7 同伴管理/S8 背景图+地图上图/S9 容器链路真调（AI 解析真调 GLM+飞哪儿真实搜索，多日期探测）/S10 次级页按钮/S11 按钮全覆盖补遗）。六轮结果：39→53→58→70→79→78 全过（78=79 项中飞哪儿断言合并为多日期探测 4 项）。用法：`ONLY=S6,S7 node accept-0929.js` 段选重跑；段失败自动 quit+重启工具+重放（≤3 次）。
+    **踩坑增量（接条目 60）**：① callContainer 漏 X-WX-SERVICE 报 **404 非 500**（条目 60）；② **curl -d 中文 body 被 Git Bash 按 GBK 发送**——geocode 探针恒空是探针自身污染的假阴性，服务端 DBG 日志对照收到的字节是决定性手段（红线 3 变体，UTF-8 文件+--data-binary 重测即命中）；③ **外部数据依赖断言要写多日期/多样本探测**（飞哪儿 +5 天当日无票属正常波动）；④ **写库后页面不更新**：updateRow 只写云端，store 内存数组要同步（geocodeOne 修复）；⑤ 每轮验收会真实写库——跑前核对清单、跑后跨账号全量清残留（本轮补删 6 条漏网）；⑥ node -e 内联 replace 的 `$$` 被 shell 转义静默吞——改脚本用 Edit 工具；⑦ UI tap() 偶发不触发改 callMethod 直驱；⑧ 云写穿透 3~10s+，断言一律轮询。
+    **GitHub 积压**：代理持续断开，**feat/miniprogram 领先 GitHub 17 个提交**（f333273..9b89e88 等），代理恢复后 `git push origin feat/miniprogram` 一条补齐；Gitee 全程同步至最新。
+    **待用户**：① mp 后台把 **1.5.10** 设体验版 → 真机重点验容器链路（AI 解析/锦囊/飞哪儿/天气——P0 修复后首次真正可用）+ 地图自动定位 + 卡片编辑/背景图/同伴管理；② GitHub 补推；③ 决定是否清理 EC38PUC1S8 的演示支出 5 笔/打包 4 条；④ 功能缺口待拍板：「修改行程」（目的地/日期/预算）入口原生版缺失（Taro 版有）。
 
 60. **二轮验收 + P0 修复 + 发版 1.5.9（2026-09-29）**：用户三连（清单验收 / review / 发版）。**review 揪出本轮最大鱼——[P0] `utils/api.js` 的 callContainer 漏传 `X-WX-SERVICE: gotrip` 服务头**：原生版重写时从 Taro 版 src/api/request.ts 迁移丢失，**全部容器 API（AI 解析/行程生成/锦囊/使用助手/飞哪儿/POI 搜索/天气/地理编码）自条目 55 原生迁移以来一直 404**，此前未暴露是因为容器调用链路从未被端到端验收过。修复后 automator 直调 `geocodeOne`：404 → 高德命中（五营→48.228,129.275）→ 落库成功。
     **其余修复**：① [P1] 容器 `/api/poi/geocode` 只认 `it.title`（Taro 形状），原生端 `it.query` 全被滤空——兼容双形状，**gotrip-020 已部署**（线上 UTF-8 探针命中）；② [P1] 地图页 `autoGeocodeOnce` 死代码（定义未调用）——boot 接通 + 空态「立即定位/去日程」按钮；③ [P2] geocodeOne 落库后补 `refresh()`（否则页面快照不含新坐标）；④ [P2] chooseOnMap 运算优先级丢坐标；⑤ [P3] store.js 格式损坏。
