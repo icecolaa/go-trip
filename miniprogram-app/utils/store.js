@@ -49,6 +49,9 @@ function timeText(ts) {
 /* ---------------- 内存态（data.js 同形） ---------------- */
 const store = {
     _ready: false,
+    _warmId: '', // 已预热/预热中的行程 id
+    _inflight: null, // 进行中的 loadTrip Promise（去重复用）
+    _inflightId: '',
     profile: null,
     trips: [],
     trip: null, // {id,title,city,start,days[],budgetTotal,members[],destination,endDate,budget,coverEmoji}
@@ -97,13 +100,22 @@ function tripVM(t, days, members) {
 async function ready(force = false) {
     if (store._ready && !force)
         return;
+    // 首屏只需身份 + 行程列表（两个都吃到 ensureProfile 会话缓存，~2 轮模型调用）
     store.profile = await rdbTrip.ensureProfile();
     store.trips = await rdbTrip.listTrips();
+    store._ready = true;
+    // 当前行程 bundle 后台预热：welcome 不再阻塞在 11 表聚合读上
     const cur = currentTripId();
     const target = store.trips.find(t => t.id === cur) || store.trips[0];
     if (target)
-        await loadTrip(target.id);
-    store._ready = true;
+        warmTrip(target.id);
+}
+/** 后台预热当前行程 bundle；openTrip / trip-mode 经 loadTrip 复用同一 in-flight */
+function warmTrip(tripId) {
+    if (store._warmId === tripId)
+        return;
+    store._warmId = tripId;
+    loadTrip(tripId).catch(() => { store._warmId = ''; });
 }
 async function listTripsSafe() {
     // 平台间歇：models.list 偶发空返回（devtools 实测），空结果延迟重试一次
@@ -132,9 +144,14 @@ function setCurrentTrip(id) {
     catch (e) { /* ignore */ }
 }
 async function loadTrip(tripId) {
-    const b = await rdbTrip.loadTripBundle(tripId);
-    setCurrentTrip(tripId);
-    store.days = b.days || [];
+    // in-flight 去重：预热与用户点击并发时复用同一 Promise（welcome→home 快速点卡场景）
+    if (store._inflightId === tripId && store._inflight)
+        return store._inflight;
+    store._inflightId = tripId;
+    const p = (async () => {
+        const b = await rdbTrip.loadTripBundle(tripId);
+        setCurrentTrip(tripId);
+        store.days = b.days || [];
     store.members = (b.members || []).map(memberVM);
     store.trip = tripVM(b.trip, b.days, b.members);
     // 活动 → stops
@@ -221,6 +238,17 @@ async function loadTrip(tripId) {
     store.guideCards = (b.guideCards || []).map(c => ({ ...c, items: parseItems(c.items) }));
     store.links = b.links || [];
     store.places = b.places || [];
+    })();
+    store._inflight = p;
+    try {
+        return await p;
+    }
+    finally {
+        if (store._inflightId === tripId) {
+            store._inflight = null;
+            store._inflightId = '';
+        }
+    }
 }
 function memberName(id) {
     const m = store.members.find(x => x.id === id);

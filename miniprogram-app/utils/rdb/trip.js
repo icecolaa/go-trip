@@ -29,19 +29,27 @@ function parseJsonField(v, fallback) {
     }
 }
 /* ---------------- profile ---------------- */
+let _meRow = null; // 会话内缓存：冷启动 ready 里 ensureProfile 会被 listTrips 重复触发
 async function ensureProfile() {
+    if (_meRow)
+        return _meRow;
     const rows = await (0, entities_1.listRows)('gt_users');
-    if (rows.length)
-        return rows[0];
-    return (0, entities_1.createRow)('gt_users', {
+    if (rows.length) {
+        _meRow = rows[0];
+        return _meRow;
+    }
+    _meRow = await (0, entities_1.createRow)('gt_users', {
         nickname: '微信用户',
         avatarColor: '#2f6e4f',
         bio: '',
         avatarUrl: null,
     });
+    return _meRow;
 }
 async function updateProfile(id, patch) {
     await (0, entities_1.updateRow)('gt_users', id, patch);
+    if (_meRow && _meRow.id === id)
+        _meRow = { ..._meRow, ...patch };
 }
 /* ---------------- 行程列表 ---------------- */
 async function listTrips() {
@@ -54,15 +62,11 @@ async function listTrips() {
     const trips = (await (0, entities_1.listRows)('gt_trips', anchor ? { share_token: { $eq: anchor } } : {}, [{ createdAt: 'desc' }]));
     if (!trips.length)
         return [];
-    const out = [];
-    for (const t of trips) {
-        const [members, expenses, activities] = await Promise.all([
-            (0, entities_1.listRows)('gt_trip_members', { trip_id: { $eq: t.id } }),
-            (0, entities_1.listRows)('gt_expenses', { trip_id: { $eq: t.id } }),
-            (0, entities_1.listRows)('gt_activities', { trip_id: { $eq: t.id } }),
-        ]);
-        const mem = members;
-        out.push({
+    // 首屏列表只需卡片字段（安排数来自 activities 一项查询）；行程间并行取代逐个串行——
+    // 34 行程 × 3 表串行曾是启动页 ~100 次串行模型调用的主因。成员/支出由 bundle 路径按需加载。
+    const out = await Promise.all(trips.map(async (t) => {
+        const activities = await (0, entities_1.listRows)('gt_activities', { trip_id: { $eq: t.id } });
+        return {
             id: t.id,
             title: t.title,
             destination: t.destination,
@@ -72,11 +76,9 @@ async function listTrips() {
             coverEmoji: t.coverEmoji,
             coverColor: t.coverColor,
             budget: t.budget,
-            memberPreview: mem.slice(0, 3).map(m => ({ displayName: m.displayName, avatarColor: m.avatarColor })),
-            totalSpent: Math.round(expenses.reduce((s, e) => s + e.amount, 0) * 100) / 100,
             activityCount: activities.length,
-        });
-    }
+        };
+    }));
     return out;
 }
 /* ---------------- 行程聚合读 ---------------- */

@@ -18,19 +18,26 @@ function parseJsonField<T>(v: any, fallback: T): T {
 
 /* ---------------- profile ---------------- */
 
+let _meRow: Profile | null = null; // 会话内缓存：ready 里 ensureProfile 会被 listTrips 重复触发
 export async function ensureProfile(): Promise<Profile> {
+  if (_meRow) return _meRow;
   const rows = await listRows('gt_users');
-  if (rows.length) return rows[0] as unknown as Profile;
-  return createRow('gt_users', {
+  if (rows.length) {
+    _meRow = rows[0] as unknown as Profile;
+    return _meRow;
+  }
+  _meRow = await createRow('gt_users', {
     nickname: '微信用户',
     avatarColor: '#2f6e4f',
     bio: '',
     avatarUrl: null,
   }) as unknown as Profile;
+  return _meRow;
 }
 
 export async function updateProfile(id: string, patch: Partial<Profile>): Promise<void> {
   await updateRow('gt_users', id, patch);
+  if (_meRow && (_meRow as unknown as { id: string }).id === id) _meRow = { ..._meRow, ...patch };
 }
 
 /* ---------------- 行程列表 ---------------- */
@@ -44,15 +51,11 @@ const meRow = await ensureProfile() as unknown as Profile & { owner?: string };
 const anchor = meRow.owner || '';
 const trips = (await listRows('gt_trips', anchor ? { share_token: { $eq: anchor } } : {}, [{ createdAt: 'desc' }])) as unknown as Trip[];
   if (!trips.length) return [];
-  const out: TripCardInfo[] = [];
-  for (const t of trips) {
-    const [members, expenses, activities] = await Promise.all([
-      listRows('gt_trip_members', { trip_id: { $eq: t.id } }),
-      listRows('gt_expenses', { trip_id: { $eq: t.id } }),
-      listRows('gt_activities', { trip_id: { $eq: t.id } }),
-    ]);
-    const mem = members as unknown as TripMember[];
-    out.push({
+  // 首屏列表只需卡片字段（安排数来自 activities 一项查询）；行程间并行取代逐个串行——
+  // 34 行程 × 3 表串行曾是启动页 ~100 次串行模型调用的主因。成员/支出由 bundle 路径按需加载。
+  const out = await Promise.all(trips.map(async (t) => {
+    const activities = (await listRows('gt_activities', { trip_id: { $eq: t.id } })) as unknown as Array<{ id: string }>;
+    return {
       id: t.id,
       title: t.title,
       destination: t.destination,
@@ -62,11 +65,9 @@ const trips = (await listRows('gt_trips', anchor ? { share_token: { $eq: anchor 
       coverEmoji: t.coverEmoji,
       coverColor: t.coverColor,
       budget: t.budget,
-      memberPreview: mem.slice(0, 3).map(m => ({ displayName: m.displayName, avatarColor: m.avatarColor })),
-      totalSpent: Math.round((expenses as unknown as Expense[]).reduce((s, e) => s + e.amount, 0) * 100) / 100,
       activityCount: activities.length,
-    });
-  }
+    } as unknown as TripCardInfo;
+  }));
   return out;
 }
 

@@ -33,7 +33,13 @@ Page({
   async boot() {
     try {
       await store.ready()
-      const t = store.trip
+      let t = store.trip
+      if (!t && store.trips.length) {
+        // ready 的 bundle 预热在后台进行；此处 await 复用同一 in-flight（去重后零额外请求）
+        const cur = store.trips.find(x => x.id === store.currentTripId()) || store.trips[0]
+        await store.loadTrip(cur.id)
+        t = store.trip
+      }
       if (!t) {
         this.setData({ loading: false, hasTrip: false, days: [], dayStops: [] })
         return
