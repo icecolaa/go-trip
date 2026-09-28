@@ -1,7 +1,7 @@
 <!-- 旅行锦囊：四类手册卡片 · 内置内容库 · 自定义卡片 -->
 <view class="screen guidebook {{themeClass}}">
   <nav-bar float="{{true}}" back="{{true}}" />
-  <view class="scroll">
+  <scroll-view class="scroll" scroll-y>
     <view class="sec" style="margin-top:12rpx"><text class="h">目的地</text><text class="tag yellow">内置 {{cityCount}}+ 目的地</text></view>
     <scroll-view class="city-rail" scroll-x>
       <view class="city-chip {{city === item ? 'on' : ''}}" wx:for="{{cities}}" wx:key="*this"
@@ -37,5 +37,5 @@
       <view class="btn ghost btn-block" hover-class="press" bindtap="addCustom"><view class="ic ic-plus" style="width:30rpx;height:30rpx"></view><text>加一张自定义卡片</text></view>
     </view>
     <view style="height:60rpx"></view>
-  </view>
+  </scroll-view>
 </view>

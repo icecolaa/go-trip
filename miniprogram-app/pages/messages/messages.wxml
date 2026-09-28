@@ -2,7 +2,7 @@
 <view class="screen messages {{themeClass}}">
   <nav-bar float="{{true}}" back="{{true}}" />
 
-  <view class="scroll">
+  <scroll-view class="scroll" scroll-y>
     <view class="trip-chip-row">
       <view class="tc" hover-class="press" bindtap="goOverview"><image src="{{tripCover}}" mode="aspectFill" /><text>{{tripTitle || '当前行程'}}</text></view>
       <view class="line"></view>
@@ -34,5 +34,5 @@
     </block>
 
     <view style="height:40rpx"></view>
-  </view>
+  </scroll-view>
 </view>

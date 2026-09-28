@@ -1,7 +1,7 @@
 <!-- 设置：夜间模式 / 使用助手 / 对外分享 -->
 <view class="screen settings {{themeClass}}">
   <nav-bar float="{{true}}" back="{{true}}" />
-  <view class="scroll">
+  <scroll-view class="scroll" scroll-y>
     <view class="card st-card anim-rise">
       <view class="st-head"><text class="t">夜间模式</text><text class="tag {{themeSetting === 'auto' ? 'blue' : 'yellow'}}">{{themeLabel}}</text></view>
       <view class="st-opts">
@@ -45,5 +45,5 @@
       <text>出发吧 GoTrip · v1.5.0</text>
     </view>
     <view style="height:60rpx"></view>
-  </view>
+  </scroll-view>
 </view>

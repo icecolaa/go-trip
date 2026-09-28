@@ -10,7 +10,7 @@
     </view>
   </view>
 
-  <view class="scroll" wx:if="{{hasTrip}}">
+  <scroll-view class="scroll" scroll-y wx:if="{{hasTrip}}">
     <view class="days-bar">
       <view class="day-pill {{dayIdx === index ? 'on' : ''}}" wx:for="{{days}}" wx:key="d"
             hover-class="press" bindtap="pickDay" data-i="{{index}}">
@@ -58,7 +58,7 @@
       </view>
     </view>
     <view class="cta-space"></view>
-  </view>
+  </scroll-view>
 
   <view class="bottom-cta" wx:if="{{hasTrip}}">
     <view class="map-btn" hover-class="press" bindtap="goTripMode"><view class="ic ic-compass"></view></view>

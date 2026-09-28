@@ -10,7 +10,7 @@
   display: flex; background: var(--card); border-radius: 34rpx; padding: 6rpx;
   box-shadow: 0 8rpx 28rpx rgba(23,84,153,.14);
 }
-.day-seg text { font-size: 24rpx; font-weight: 700; color: var(--ink2); padding: 10rpx 22rpx; border-radius: 26rpx; }
+.day-seg text { width:48px;font-size: 24rpx; font-weight: 700; color: var(--ink2); padding: 10rpx 22rpx; border-radius: 26rpx; }
 .day-seg .on { background: #2E92ED; color: #fff; }
 
 .float-ctrl { position: fixed; right: 24rpx; top: 420rpx; z-index: 10; display: flex; flex-direction: column; gap: 18rpx; }

@@ -5,7 +5,7 @@
     <text class="big-title">我的</text>
   </nav-bar>
 
-  <view class="scroll">
+  <scroll-view class="scroll" scroll-y>
     <view class="card profile-card anim-rise">
       <view class="avatar av-blue xl">{{initial}}</view>
       <view class="mid">
@@ -76,5 +76,5 @@
       <image src="/assets/logo.png" mode="aspectFill" />
       <text>出发吧 GoTrip · v1.5.0</text>
     </view>
-  </view>
+  </scroll-view>
 </view>

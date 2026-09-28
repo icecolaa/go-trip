@@ -1,7 +1,7 @@
 <!-- 攻略收藏：小红书 / 链接 · 备注标题 · 长按删除 -->
 <view class="screen linkspg {{themeClass}}">
   <nav-bar float="{{true}}" back="{{true}}" />
-  <view class="scroll">
+  <scroll-view class="scroll" scroll-y>
     <view wx:if="{{noTrip}}" class="anim-rise" style="padding:140rpx 40rpx;text-align:center;">
       <text style="font-size:30rpx;color:var(--ink3)">请先从首页选择行程</text>
     </view>
@@ -31,5 +31,5 @@
     </view>
     <view style="height:60rpx"></view>
     </block>
-  </view>
+  </scroll-view>
 </view>

@@ -17,12 +17,12 @@
   </view>
 
   <!-- 无行程空态 -->
-  <view class="scroll" wx:if="{{!hasTrip}}">
+  <scroll-view class="scroll" scroll-y wx:if="{{!hasTrip}}">
     <view class="card" style="margin:200rpx 32rpx;padding:64rpx 40rpx;display:flex;flex-direction:column;align-items:center;gap:16rpx">
       <text class="t-sec">还没有选定行程</text>
       <text class="t-sub">请先从首页选择行程</text>
     </view>
-  </view>
+  </scroll-view>
 
   <block wx:if="{{hasTrip}}">
   <!-- 成员条（负 margin 叠在头图上） -->
@@ -37,7 +37,7 @@
     </view>
   </view>
 
-  <view class="scroll">
+  <scroll-view class="scroll" scroll-y>
     <!-- 功能入口 -->
     <view class="actions anim-rise d1">
       <view class="act" hover-class="press" bindtap="go" data-url="/pages/schedule/schedule">
@@ -131,6 +131,6 @@
       <text class="tag yellow" wx:if="{{item.count === 0}}">待补充</text>
     </view>
     <view style="height:60rpx"></view>
-  </view>
+  </scroll-view>
   </block>
 </view>

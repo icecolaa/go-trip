@@ -1,7 +1,7 @@
 <!-- 打包清单：云端清单 · 数量备注 · 勾选进度 -->
 <view class="screen packing {{themeClass}}">
   <nav-bar float="{{true}}" back="{{true}}" />
-  <view class="scroll">
+  <scroll-view class="scroll" scroll-y>
     <view wx:if="{{noTrip}}" class="anim-rise" style="padding:140rpx 40rpx;text-align:center;">
       <text style="font-size:30rpx;color:var(--ink3)">请先从首页选择行程</text>
     </view>
@@ -43,5 +43,5 @@
     </view>
     <view style="height:60rpx"></view>
     </block>
-  </view>
+  </scroll-view>
 </view>

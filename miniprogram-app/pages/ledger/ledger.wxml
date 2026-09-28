@@ -2,7 +2,7 @@
 <view class="screen ledger {{themeClass}}">
   <nav-bar float="{{true}}" back="{{true}}" />
 
-  <view class="scroll">
+  <scroll-view class="scroll" scroll-y>
     <view wx:if="{{noTrip}}" class="anim-rise" style="padding:140rpx 40rpx;text-align:center;">
       <text style="font-size:30rpx;color:var(--ink3)">请先从首页选择行程</text>
     </view>
@@ -68,7 +68,7 @@
     </view>
     <view style="height:220rpx"></view>
     </block>
-  </view>
+  </scroll-view>
 
   <view class="fab" style="bottom:120rpx" hover-class="press" bindtap="openSheet">
     <view class="ic ic-plus"></view><text>记一笔</text>

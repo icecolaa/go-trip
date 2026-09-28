@@ -1,7 +1,7 @@
 <!-- 飞哪儿：机票低价探索 · 按人数计价 · 天气与出行建议 -->
 <view class="screen flightspg {{themeClass}}">
   <nav-bar float="{{true}}" back="{{true}}" />
-  <view class="scroll">
+  <scroll-view class="scroll" scroll-y>
     <view class="fl-form card anim-rise">
       <view class="chips" style="margin:4rpx 0 20rpx">
         <view class="chip {{trip === 'round' ? 'on' : ''}}" hover-class="press" bindtap="setTrip" data-v="round">往返</view>
@@ -102,5 +102,5 @@
       </view>
     </block>
     <view style="height:60rpx"></view>
-  </view>
+  </scroll-view>
 </view>

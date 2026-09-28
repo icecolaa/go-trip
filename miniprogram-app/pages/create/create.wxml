@@ -2,7 +2,7 @@
 <view class="screen create {{themeClass}}">
   <nav-bar float="{{true}}" back="{{true}}" />
 
-  <view class="scroll" style="overflow-y:auto">
+  <scroll-view class="scroll" scroll-y>
     <view class="steps">
       <view class="step on"><view class="n">1</view><text>基本信息</text></view>
       <view class="line"></view>
@@ -80,7 +80,7 @@
     </view>
 
     <view class="cta-space"></view>
-  </view>
+  </scroll-view>
 
   <view class="bottom-cta">
     <view class="btn btn-block {{submitting ? 'ghost' : ''}}" hover-class="press" bindtap="submit">

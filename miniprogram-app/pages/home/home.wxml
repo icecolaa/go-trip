@@ -15,14 +15,14 @@
 
   <scroll-view class="scroll" scroll-y refresher-enabled="{{true}}" refresher-triggered="{{refreshing}}" bindrefresherrefresh="onRefresherRefresh" refresher-default-style="black">
     <!-- 新建入口 -->
-    <view class="create-btn anim-rise" hover-class="press" bindtap="goCreate">
+    <view wx:if="{{!loading && trips.length !== 0}}" class="create-btn anim-rise" hover-class="press" bindtap="goCreate">
       <view class="plus-ring"><view class="ic ic-plus"></view></view>
-      <text>＋ 新建旅程</text>
+      <text>新建旅程</text>
     </view>
 
     <!-- 空态 -->
     <view wx:if="{{!loading && trips.length === 0}}" class="card anim-rise d1" style="margin:28rpx 32rpx 0;padding:56rpx 40rpx;display:flex;flex-direction:column;align-items:center;gap:16rpx">
-      <text style="font-size:96rpx;line-height:1.2">🧭</text>
+      <text style="font-size:96rpx;line-height:1.2">✈️</text>
       <text class="t-title" style="margin-top:8rpx">还没有旅程</text>
       <text class="t-sub" style="text-align:center">创建第一段旅程，或先导入演示行程看看效果</text>
       <view class="btn yellow btn-block" style="margin-top:24rpx" hover-class="press" bindtap="importDemo">
@@ -45,7 +45,7 @@
     </block>
 
     <!-- 旅程列表 -->
-    <block wx:if="{{!loading}}">
+    <block wx:if="{{!loading && trips.length !== 0}}">
       <view class="sec">
         <text class="h">我的旅程</text>
         <view class="more"><text>长按卡片可删除</text></view>

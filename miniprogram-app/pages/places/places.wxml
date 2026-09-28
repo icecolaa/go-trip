@@ -10,7 +10,7 @@
     </view>
   </view>
 
-  <view class="scroll" wx:if="{{hasTrip}}">
+  <scroll-view class="scroll" scroll-y wx:if="{{hasTrip}}">
     <view class="search-wrap">
       <view class="input" hover-class="press" bindtap="onAdd">
         <view class="ic ic-search"></view>
@@ -61,7 +61,7 @@
       </view>
     </view>
     <view style="height:220rpx"></view>
-  </view>
+  </scroll-view>
 
   <view class="bottom-bar" wx:if="{{hasTrip}}">
     <view class="sel">
