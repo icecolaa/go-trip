@@ -44,6 +44,8 @@ Page({
   },
   /** 无坐标时批量地理编码一次（容器高德 POI，限流内）：成功即落库并刷新 */
   async autoGeocodeOnce() {
+    if (this._geocoding) return
+    this._geocoding = true
     try {
       const pending = store.stops.filter(s2 => (s2.lat == null || s2.lng == null) && (s2.name || s2.place))
       if (!pending.length || this.data.hasCoords) return
@@ -63,10 +65,14 @@ Page({
       }
       wx.hideLoading()
       if (hit > 0) { wx.showToast({ title: '已定位 ' + hit + ' 个地点', icon: 'none' }); await store.reload(); this.boot() }
+      else { wx.showToast({ title: '没定位到，去日程补地点名称再试', icon: 'none' }) }
     } catch (e) {
       try { wx.hideLoading() } catch (e2) { /* ignore */ }
+    } finally {
+      this._geocoding = false
     }
   },
+  goSchedule() { wx.navigateTo({ url: '/pages/schedule/schedule' }) },
 
   async boot() {
     try {
@@ -86,6 +92,8 @@ Page({
         dateLabel
       })
       this.applyFilter()
+      // 站点缺坐标时自动批量编码一次（容器高德 POI）；成功会落库并刷新
+      if (!this.data.hasCoords) this.autoGeocodeOnce()
     } catch (e) {
       this.setData({ loading: false })
       wx.showToast({ title: (e && e.message) || '加载失败', icon: 'none' })

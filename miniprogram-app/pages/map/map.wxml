@@ -19,9 +19,11 @@
 
   <!-- 无坐标空态 -->
   <view wx:if="{{!hasCoords}}" style="position:absolute;left:0;top:0;right:0;bottom:0;display:flex;align-items:center;justify-content:center">
-    <view class="card" style="margin:0 64rpx;padding:64rpx 40rpx;display:flex;flex-direction:column;align-items:center;gap:16rpx">
+    <view class="card" style="margin:0 64rpx;padding:56rpx 40rpx;display:flex;flex-direction:column;align-items:center;gap:16rpx">
       <text class="t-sec">站点还没有坐标</text>
-      <text class="t-sub">在日程中给安排补充地点坐标后即可上图</text>
+      <text class="t-sub" style="text-align:center">日程安排填了地点名称会自动解析定位；添加安排时也可直接地图选点</text>
+      <view class="btn small" style="margin-top:10rpx" hover-class="press" bindtap="autoGeocodeOnce"><text>立即定位</text></view>
+      <view class="btn ghost small" hover-class="press" bindtap="goSchedule"><text>去日程补充地点</text></view>
     </view>
   </view>
 

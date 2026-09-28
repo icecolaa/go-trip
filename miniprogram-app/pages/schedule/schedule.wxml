@@ -70,4 +70,27 @@
       <view class="ic ic-search"></view><text>添加地点</text>
     </view>
   </view>
+
+  <!-- ＋安排 表单弹层：名称 / 分类 / 地点(地图选点) -->
+  <view wx:if="{{formShow}}" class="sheet-mask" bindtap="closeForm"></view>
+  <view wx:if="{{formShow}}" class="sheet" catchtap="noop">
+    <view class="grab"></view>
+    <view class="edit-head"><text class="t">安排 · {{formDay.d}} {{formDay.date}}</text><view class="x" hover-class="press" bindtap="closeForm"><view class="ic ic-close"></view></view></view>
+    <view class="edit-lab">名称</view>
+    <view class="input">
+      <view class="ic ic-flag"></view>
+      <input value="{{formTitle}}" maxlength="40" placeholder="如：酒店入住 / 五营森林公园" placeholder-class="ph" bindinput="onFormTitle" style="flex:1;font-size:28rpx" />
+    </view>
+    <view class="edit-lab">分类</view>
+    <view class="form-cats">
+      <view wx:for="{{catItems}}" wx:key="*this" class="form-cat {{formKindIdx === index ? 'on' : ''}}" hover-class="press" bindtap="pickKind" data-i="{{index}}">{{item}}</view>
+    </view>
+    <view class="edit-lab">地点（选点后地图可规划路线）</view>
+    <view class="input">
+      <view class="ic ic-pin"></view>
+      <input value="{{formPlace}}" maxlength="40" placeholder="地点名称，或右侧地图选点" placeholder-class="ph" bindinput="onFormPlace" style="flex:1;font-size:28rpx" />
+      <view class="pick-btn" hover-class="press" bindtap="chooseOnMap"><view class="ic ic-loc" style="width:28rpx;height:28rpx;color:#fff"></view><text>选点</text></view>
+    </view>
+    <view class="btn btn-block" style="margin:30rpx 0 8rpx" hover-class="press" bindtap="saveForm"><text>添加安排</text></view>
+  </view>
 </view>

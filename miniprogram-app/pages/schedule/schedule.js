@@ -1,6 +1,8 @@
 const store = require('../../utils/store')
 const engine = require('../../utils/engine')
 const theme = require('../../utils/theme')
+const api = require('../../utils/api')
+const entities = require('../../utils/rdb/entities')
 
 const TYPE_ICONS = {
   '餐饮': 'food', '住宿': 'bed', '门票': 'ticket', '交通': 'car',
@@ -18,6 +20,14 @@ Page({
     loading: true,
     hasTrip: false,
     days: [],
+    catItems: CAT_ITEMS,
+    formShow: false,
+    formDay: null,
+    formTitle: '',
+    formKindIdx: 0,
+    formPlace: '',
+    formLat: null,
+    formLng: null,
     dayIdx: 0,
     dayStops: [],
     dayCost: 0
@@ -134,39 +144,77 @@ Page({
       }
     })
   },
-  // 「＋安排」：输入标题 → 选分类 → 写入当天
+  // 「＋安排」：底部弹层表单（名称 / 分类 / 地点 / 地图选点）
   addPlan() {
     const days = this.data.days
     if (!days.length) return
     const cur = days[this.data.dayIdx]
-    wx.showModal({
-      title: '安排 · D' + cur.d + ' ' + cur.date,
-      editable: true,
-      placeholderText: '输入安排名称（如：酒店入住）',
-      success: res => {
-        const title = (res.content || '').trim()
-        if (!res.confirm || !title) return
-        wx.showActionSheet({
-          itemList: CAT_ITEMS,
-          success: r => {
-            const kind = CAT_KINDS[r.tapIndex] || 'other'
-            this.doAdd(title, kind)
-          }
+    this.setData({
+      formShow: true,
+      formDay: cur,
+      formTitle: '',
+      formKindIdx: CAT_ITEMS.indexOf('游玩') >= 0 ? CAT_ITEMS.indexOf('游玩') : 0,
+      formPlace: '',
+      formLat: null,
+      formLng: null
+    })
+  },
+  closeForm() { this.setData({ formShow: false }) },
+  noop() { },
+  onFormTitle(e) { this.setData({ formTitle: e.detail.value || '' }) },
+  onFormPlace(e) {
+    // 手动改地点文字时清掉旧选点坐标（文字与坐标须一致）
+    this.setData({ formPlace: e.detail.value || '', formLat: null, formLng: null })
+  },
+  pickKind(e) { this.setData({ formKindIdx: Number(e.currentTarget.dataset.i) }) },
+  chooseOnMap() {
+    wx.chooseLocation({
+      success: (r) => {
+        if (!r || !r.name && !r.address) return
+        this.setData({
+          formPlace: r.name || r.address || '',
+          formLat: r.latitude,
+          formLng: r.longitude
         })
+      },
+      fail: (e) => {
+        if (e && /auth/.test(e.errMsg || '')) wx.showToast({ title: '未授权位置，请到设置开启', icon: 'none' })
       }
     })
   },
-  async doAdd(title, kind) {
-    const days = this.data.days
-    if (!days.length) return
-    const day = days[this.data.dayIdx].d
+  async saveForm() {
+    if (this._saving) return
+    const { formDay, formTitle, formKindIdx, formPlace, formLat, formLng } = this.data
+    const title = (formTitle || '').trim()
+    if (!title) { wx.showToast({ title: '请填写安排名称', icon: 'none' }); return }
+    this._saving = true
     try {
-      await store.addActivity(day, { title, kind }) // 写穿透（内部已重拉）
-      wx.showToast({ title: '已添加到 D' + day, icon: 'success' })
+      const payload = { title, kind: CAT_KINDS[formKindIdx] || 'other', place: (formPlace || '').trim() }
+      if (formLat != null && formLng != null) { payload.lat = formLat; payload.lng = formLng }
+      await store.addActivity(formDay.d, payload) // 写穿透（内部已重拉）
+      this.setData({ formShow: false })
+      wx.showToast({ title: '已添加到 D' + formDay.d, icon: 'success' })
+      // 未选点但填了地点文字：后台地理编码兜底（容器高德），不阻塞
+      if (formLat == null && payload.place) {
+        const row = [...(store.stops || [])].reverse().find(s => s.name === title && s.lat == null)
+        if (row) this.geocodeOne(payload.place, row.id)
+      }
     } catch (e) {
-      wx.showToast({ title: '添加失败，请重试', icon: 'none' })
+      wx.showToast({ title: (e && e.message) || '添加失败，请重试', icon: 'none' })
+    } finally {
+      this._saving = false
     }
     this.refresh()
+  },
+  /** 单条兜底编码：命中即落库（复用地图页同款容器接口） */
+  async geocodeOne(place, actId) {
+    try {
+      const geo = await api.post('/api/poi/geocode', {
+        items: [{ id: actId, query: String(place).replace(/^(穿越|游览|前往|到达|入住|返回|集合)/, '').slice(0, 30), city: (store.trip && store.trip.city) || '' }]
+      })
+      const c = geo.coords && geo.coords[actId]
+      if (c) await entities.updateRow('gt_activities', actId, { lat: c.lat, lng: c.lng })
+    } catch (e) { /* 兜底失败静默 */ }
   },
   goTripMode() { wx.switchTab({ url: '/pages/trip-mode/trip-mode' }) },
   goMap() { wx.navigateTo({ url: '/pages/map/map' }) },

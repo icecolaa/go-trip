@@ -83,3 +83,14 @@
 .tl-node .dot.stay { border-color: #2BB8A8; }
 .empty { display: flex; flex-direction: column; align-items: center; gap: 16rpx; padding: 80rpx 0; color: var(--ink3); font-size: 26rpx; }
 .grow { flex: 1; }
+
+/* ＋安排 表单弹层 */
+.edit-head { display: flex; align-items: center; justify-content: space-between; margin: 8rpx 0 20rpx; }
+.edit-head .t { font-size: 33rpx; font-weight: 800; color: var(--ink); }
+.edit-head .x { width: 52rpx; height: 52rpx; border-radius: 50%; background: var(--sky50); display: flex; align-items: center; justify-content: center; }
+.edit-head .x .ic { width: 26rpx; height: 26rpx; color: var(--ink2); }
+.edit-lab { font-size: 24rpx; font-weight: 700; color: var(--ink2); margin: 22rpx 0 12rpx; }
+.form-cats { display: flex; flex-wrap: wrap; gap: 14rpx; }
+.form-cat { height: 64rpx; padding: 0 28rpx; border-radius: 32rpx; background: var(--sky50); color: var(--ink2); font-size: 25rpx; font-weight: 600; display: flex; align-items: center; border: 3rpx solid transparent; }
+.form-cat.on { background: var(--sky500); color: #fff; border-color: var(--sky500); font-weight: 700; }
+.pick-btn { flex: none; display: flex; align-items: center; gap: 8rpx; height: 56rpx; padding: 0 22rpx; border-radius: 28rpx; background: var(--sky500); color: #fff; font-size: 24rpx; font-weight: 700; }
