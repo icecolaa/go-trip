@@ -1,6 +1,7 @@
 const theme = require('../../utils/theme')
 const engine = require('../../utils/engine')
 const store = require('../../utils/store')
+const storage = require('../../utils/rdb/storage')
 
 function pad(n) { return String(n).padStart(2, '0') }
 function todayStr() {
@@ -164,6 +165,52 @@ Page({
     else wx.navigateTo({ url })
   },
   invite() { wx.navigateTo({ url: '/pages/invite/invite' }) },
+  /* ---- 背景图：更换 / 恢复默认 ---- */
+  changeCoverBg() {
+    const t = store.trip
+    if (!t) return
+    wx.showActionSheet({
+      itemList: t.coverImage ? ['更换背景图', '恢复默认背景'] : ['更换背景图'],
+      success: (res) => {
+        if (res.tapIndex === 1) {
+          (async () => {
+            try {
+              wx.showLoading({ title: '处理中…', mask: true })
+              await store.updateTripMeta(t.id, { coverImage: '' })
+              wx.hideLoading()
+              this.setData({ coverSrc: '/assets/yichun-lake.jpg' })
+              wx.showToast({ title: '已恢复默认', icon: 'success' })
+            } catch (e) {
+              wx.hideLoading()
+              wx.showToast({ title: (e && e.message) || '操作失败', icon: 'none' })
+            }
+          })()
+          return
+        }
+        wx.chooseMedia({
+          count: 1, mediaType: ['image'], sizeType: ['compressed'],
+          success: async (r) => {
+            const src = r.tempFiles && r.tempFiles[0] && r.tempFiles[0].tempFilePath
+            if (!src) return
+            try {
+              wx.showLoading({ title: '上传中…', mask: true })
+              let up = src
+              try { const c = await wx.compressImage({ src, quality: 80 }); up = c.tempFilePath } catch (e) { /* 原图兜底 */ }
+              const fileID = await storage.uploadImage(up, 'covers')
+              await store.updateTripMeta(t.id, { coverImage: fileID })
+              const map = await storage.tempUrls([fileID]).catch(() => ({}))
+              wx.hideLoading()
+              this.setData({ coverSrc: map[fileID] || src })
+              wx.showToast({ title: '背景已更新', icon: 'success' })
+            } catch (e) {
+              wx.hideLoading()
+              wx.showToast({ title: (e && e.message) || '上传失败', icon: 'none' })
+            }
+          }
+        })
+      }
+    })
+  },
   onShareAppMessage() {
     const t = store.trip
     return {

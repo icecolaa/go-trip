@@ -14,6 +14,7 @@
         <view class="ic ic-route" wx:if="{{stopsCount}}"></view><text wx:if="{{stopsCount}}">共 {{stopsCount}} 个安排</text>
       </view>
     </view>
+    <view class="bg-edit" hover-class="press" catchtap="changeCoverBg"><view class="ic ic-camera"></view></view>
   </view>
 
   <!-- 无行程空态 -->

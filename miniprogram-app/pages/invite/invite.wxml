@@ -11,8 +11,8 @@
   <view class="sheet invite-sheet">
     <view class="grab"></view>
     <view class="head">
-      <text class="t">邀请同伴</text>
-      <text class="hint">成员可编辑日程与记账</text>
+      <text class="t">同伴与邀请</text>
+      <text class="hint">同伴用于分账与指派 · 数据按账号私有</text>
       <view class="x" hover-class="press" bindtap="close"><view class="ic ic-close"></view></view>
     </view>
 
@@ -21,7 +21,7 @@
       <view style="padding:48rpx 8rpx;display:flex;flex-direction:column;align-items:center;gap:18rpx">
         <text style="font-size:88rpx">🧭</text>
         <text class="t-title">还没有选定行程</text>
-        <text class="t-sub" style="text-align:center">先从首页选择一段旅程，再来邀请同伴</text>
+        <text class="t-sub" style="text-align:center">先从首页选择一段旅程，再来管理同伴</text>
         <view class="btn btn-block" style="margin-top:20rpx" hover-class="press" bindtap="goHome">
           <text>回首页选择行程</text>
         </view>
@@ -33,7 +33,7 @@
         <view class="cover" style="background:{{coverColor}};display:flex;align-items:center;justify-content:center;font-size:60rpx;color:#fff;border-radius:20rpx">{{coverEmoji}}</view>
         <view class="mid">
           <text class="t">{{tripTitle}}</text>
-          <text class="s">{{range}}{{memberCount > 0 ? ' · ' + memberCount + ' 位同伴已加入' : ''}}</text>
+          <text class="s">{{range}}{{memberCount > 0 ? ' · ' + memberCount + ' 位同伴' : ' · 还没有同伴'}}</text>
           <view class="src">
             <image class="mini" src="/assets/logo.png" mode="aspectFill" />
             <text>出发吧 GoTrip 小程序</text>
@@ -42,31 +42,36 @@
         <text class="tag blue">卡片预览</text>
       </view>
 
-      <view style="padding:32rpx 4rpx 8rpx;display:flex;flex-direction:column;align-items:center">
-        <button open-type="share" class="btn btn-block" hover-class="press" style="width:100%;padding:0;margin:0;border-radius:48rpx">
-          <view class="ic ic-wechat" style="width:36rpx;height:36rpx;color:#fff"></view>
-          <text>转发给朋友</text>
-        </button>
-        <text class="t-cap" style="margin-top:18rpx;text-align:center">好友点开分享卡片，即可一起规划这段旅程</text>
+      <!-- 同伴列表：点名字改称呼，长按移除 -->
+      <view class="mem-title"><text class="b">本次同伴</text><text class="s">点名字改称呼 · 长按移除</text></view>
+      <view class="mem-row" wx:for="{{members}}" wx:key="id" hover-class="press"
+            bindtap="renameMember" bindlongpress="removeMember"
+            data-id="{{item.id}}" data-name="{{item.name}}">
+        <view class="avatar {{item.av}}">{{item.initial}}</view>
+        <view class="m-info">
+          <view class="l1"><text class="n">{{item.name}}</text><text class="role">同伴</text></view>
+          <text class="d">用于记账分摊与行程指派</text>
+        </view>
+        <view class="ic ic-edit" style="width:28rpx;height:28rpx;color:var(--ink3)"></view>
+      </view>
+      <view wx:if="{{!members.length}}" class="mem-row">
+        <view class="avatar av-gray">＋</view>
+        <view class="m-info"><view class="l1"><text class="n">还没有同伴</text></view><text class="d">在下方输入称呼添加</text></view>
       </view>
 
-      <view class="mem-title">
-        <text class="b">怎么邀请</text>
-        <text class="s">分享卡片给微信好友</text>
+      <!-- 添加同伴 -->
+      <view class="add-row">
+        <input class="add-input" value="{{newName}}" maxlength="20" placeholder="同伴称呼，如：老王" placeholder-class="ph" bindinput="onNewName" confirm-type="done" />
+        <view class="btn small" hover-class="press" bindtap="addMember"><text>添加</text></view>
       </view>
-      <view class="mem-row">
-        <view class="avatar av-blue">1</view>
-        <view class="m-info">
-          <view class="l1"><text class="n">点「转发给朋友」</text></view>
-          <text class="d">在微信里选一位或多位好友发送</text>
-        </view>
-      </view>
-      <view class="mem-row">
-        <view class="avatar av-yellow">2</view>
-        <view class="m-info">
-          <view class="l1"><text class="n">好友点开卡片进入行程</text></view>
-          <text class="d">即可查看日程、添加安排与一起记账</text>
-        </view>
+
+      <!-- 分享 -->
+      <view style="padding:30rpx 4rpx 4rpx;display:flex;flex-direction:column;align-items:center">
+        <button open-type="share" class="btn btn-block" hover-class="press" style="width:100%;padding:0;margin:0;border-radius:48rpx">
+          <view class="ic ic-wechat" style="width:36rpx;height:36rpx;color:#fff"></view>
+          <text>分享小程序给朋友</text>
+        </button>
+        <text class="t-cap" style="margin-top:18rpx;text-align:center">行程数据按微信账号独立——朋友打开是 TA 自己的空间，暂不支持跨账号共同编辑</text>
       </view>
     </block>
     <view style="height:60rpx"></view>

@@ -51,3 +51,9 @@
 .m-info .l1 { display: flex; align-items: center; gap: 12rpx; }
 .m-info .n { font-size: 27rpx; font-weight: 700; color: var(--ink); }
 .m-info .d { font-size: 21rpx; color: var(--ink3); margin-top: 2rpx; }
+
+/* 同伴管理补充样式 */
+.m-info .role { font-size: 19rpx; color: var(--sky600); background: var(--sky100); border-radius: 8rpx; padding: 2rpx 12rpx; font-weight: 600; }
+.add-row { display: flex; align-items: center; gap: 18rpx; margin-top: 18rpx; }
+.add-input { flex: 1; height: 76rpx; border-radius: 38rpx; background: var(--card); border: 2rpx solid var(--line); padding: 0 30rpx; font-size: 27rpx; color: var(--ink); }
+.add-input.ph { color: var(--ink3); }
