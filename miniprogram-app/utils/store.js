@@ -286,6 +286,9 @@ async function deleteTripById(id) {
             wx.removeStorageSync('gotrip:current-trip');
         }
         catch (e) { /* ignore */ }
+        // 清内存态：否则「出发」tab 仍会渲染已删行程（ready 已就位不会再拉数据）
+        store.trip = null;
+        store._warmId = '';
     }
     await refreshTrips();
 }

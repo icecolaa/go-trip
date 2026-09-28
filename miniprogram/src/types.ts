@@ -269,7 +269,8 @@ export interface TripCardInfo {
   coverEmoji: string
   coverColor: string
   budget: number
-  memberPreview: { displayName: string; avatarColor: string }[]
-  totalSpent: number
+  // listTrips 已裁剪（首屏提速，2026-09-28）：不再输出，保留可选仅为旧调用方兼容
+  memberPreview?: { displayName: string; avatarColor: string }[]
+  totalSpent?: number
   activityCount: number
 }

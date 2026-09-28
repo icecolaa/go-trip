@@ -1,7 +1,8 @@
 # 交接文档（HANDOFF）
 
 > 面向下一个接手的开发者或 AI 会话。先读根目录 `CLAUDE.md`（规则手册），再读本文（现状、过程与经验）。
-> 更新：2026-09-28（条目 58：**原生版三修——tabBar 停靠贴底 + 深色模式全量令牌化 + 设计规范过一遍**。codemod 116 处硬编码色→var()；悬浮岛 tab 栏改停靠式并三页避让；行程卡两行截断+次级文字对比度提升；待 devtools 切深色目验）
+> 更新：2026-09-29（条目 59：**验收轮+发版 1.5.3**。滚动容器同类修复 14 处收官；review 修 P1 删行程脏内存态；automator 分段自愈验收 **39/39 全过、console 零错误**（报告 acceptance/REPORT-native-0929.md）；1.5.3 已上传待设体验版）
+> 上一条：2026-09-28（条目 58：**原生版三修——tabBar 停靠贴底 + 深色模式全量令牌化 + 设计规范过一遍**。codemod 116 处硬编码色→var()；悬浮岛 tab 栏改停靠式并三页避让；行程卡两行截断+次级文字对比度提升；待 devtools 切深色目验）
 > 上一条：2026-09-28（条目 57：**收尾部署轮——容器 gotrip-019 上线**。gen-cover/regeo 路由生效、OpenAccessTypes 修回 PUBLIC+MINIAPP、GitHub 补推 9 提交；余用户侧待办=1.5.2 设体验版→真机验收）
 > 上一条：2026-09-28（条目 56：**九轮收官——Taro→原生迁移全量交付**。miniprogram-app 21 页真数据（rdb 直连）+ 液态玻璃 tabBar + 位置 API + 审核合规去 AI 化 + 表单遮挡修复 + 动画打磨；1.5.2 已上传；Taro 版冻结在 miniprogram/）
 > 上一条：2026-09-27（条目 51：四轮——位置类微信 API 矩阵（chooseLocation/getLocation/onLocationChange/chooseAddress/choosePoi + 容器 regeo）、**tab 高亮不更新真根因（getTabBar 包装器无类方法，React 实例在 $taroInstances）**、＋新建按钮固定尺寸、1.4.1 上传）。
@@ -29,6 +30,13 @@
 | 待办 Top3 | ① **1.5.2 设体验版** → 真机：21 页全流程（行程建删/记账/攻略导入/AI 生成封面/锦囊/飞哪儿识别出发地/位置选点）② **Web 账号成功路径自测**（控制台建号→线上登录，条目 45 尾巴仍未闭环）③ 可选：云写入时延优化（ensureProfile 缓存+动态日志并行写）。已完成收尾：容器 gotrip-019（gen-cover/regeo 上线）、OA 移除、GitHub 补推（条目 57） |
 
 ## 2026-08~09 主要交付（按主题）
+
+59. **验收轮 + 发版 1.5.3（2026-09-29）**：用户三连（按清单验收 / review 工作区 / 发新版）。
+    **review（先列表后修复）**：① **P1 真 Bug——`deleteTripById` 删当前行程不清 `store.trip`/`_warmId`**，之后「出发」tab 用已删行程的内存数据渲染（ready 已就位不再拉）→ 删除时置空两字段；② TripCardInfo 的 memberPreview/totalSpent 标记 optional（listTrips 已裁剪）；③ map 天分段 48px→96rpx（项目约定）。确认无问题：project.private libVersion 工具自动升级、create 编译报错截图=脚本中间态误改已修（全库 wxml/wxss 配平校验通过）。
+    **滚动容器同类修复收官**：用户 packing 页先修（view→scroll-view）后，同款扫描发现 13 处（journal/create/ledger/guidebook/links/flights/settings/profile/messages/settle/schedule/places/overview×2）全部为 overflow:hidden 普通 view（内容超高即裁切不可滚），codemod 按标签配对统一转 `<scroll-view scroll-y>`（保留 wx:if/内联属性；create 的 overflow-y:auto 内联补丁收编）；invite（全屏弹层）/welcome（固定 hero）确认无需改。
+    **自动化验收（39/39 全过，console 零错误）**：automator 直连 devtools——启动链自动进 home、home/overview/trip-mode/profile/guidebook 全入口真实 tap、9 个次级页遍历截图、settings 深色三档切换、journal 空态、create 空值拦截+60 字超长标题建行程+真实提交+云上级联删除+P1 回归断言。截图 40 张 work/accept-0929/，报告 **acceptance/REPORT-native-0929.md**。**脚本架构沉淀（work/accept-0929.js）**：① automator 长会话桥必超时（本机顽疾）——**分段自愈**：4 段各自独立连接，失败自动 `cli quit`+`auto` 重启工具重放该段（≤3 次）；② `element.input()` 直写绕过 maxlength（真实键盘不受影响），断言写「注入>60 → setData 截 60」；③ 长按删除 touch 模拟不可靠——改 `page.callMethod('removeTrip', {currentTarget:{dataset:{id}}})`+mock showModal confirm；④ picker 不可自动化——`page.setData` 写同源日期走真实提交；⑤ 云上级联删除 11 表需轮询等待（12 次 round trip 2.5s 不够，轮询至 10s）；⑥ 断言预期必须跟布局走（用户把锦囊入口移到统计卡下后，按 DOM 序点 cells[0] 就点错——按文本定位）。
+    **发版**：**1.5.3 已上传**（工具通道，发布者=用户账号）——含 tabBar 停靠、深色全量适配、滚动容器统一、首屏提速、P1 修复。**待用户**：mp 后台把 1.5.3 设体验版 → 真机过一遍（重点：底部无遮挡、深色可读、出发页长标题两行截断）。
+    **踩坑补一条**：验收脚本会真实建行程——上一轮「提交后返回 FAIL」其实建成功了，残留空行程把后续 trip-mode 断言（默认选 trips[0]）全带歪；**跑验收前先核对云端行程清单**，跑完核对副作用清零。
 
 58. **原生版三修：tabBar 停靠 + 深色模式令牌化 + 设计规范（2026-09-28）**：用户三连需求（截图实锤底部遮挡/深色看不清/按官方设计规范优化）。
     **① 底部遮挡（根因：悬浮岛 tab 栏浮在内容上，profile 页零预留实锤）**：`custom-tab-bar/index.wxss` 从悬浮岛（left/right 32rpx、bottom 88rpx+safe、高 128rpx 圆角胶囊）重写为**停靠式**——贴底 `bottom:0`、内容高 112rpx（56px 对齐原生 tabBar）+ `padding-bottom: env(safe-area-inset-bottom)`、顶部发丝线+上投影、保留毛玻璃；中央「出发」CTA 缩为 84rpx 药丸；色值用**字面量+媒体查询**（不依赖页面令牌继承，组件层稳）。三 tab 页根各加 `padding-bottom: calc(140rpx + env(safe-area-inset-bottom))`（home/profile/.tmode），home `.bottom-space` 300→40rpx（避让改由根 padding 承担），trip-mode 的文档流 CTA 随 flex 收缩自动上移到 tab 栏上方。
