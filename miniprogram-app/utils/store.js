@@ -278,8 +278,18 @@ async function createTrip(payload) {
     await loadTrip(id);
     return id;
 }
-async function deleteTripById(id) {
-    const opsAny = ops;
+/** 卡片元信息编辑（标题/图标/封面色/封面图）：更新后刷新列表，当前行程同步内存态 */
+async function updateTripMeta(id, patch) {
+    await rdbTrip.updateTrip(id, patch);
+    await refreshTrips();
+    if (store.trip && store.trip.id === id) {
+        if (patch.title !== undefined) store.trip.title = patch.title;
+        if (patch.coverEmoji !== undefined) store.trip.coverEmoji = patch.coverEmoji;
+        if (patch.coverColor !== undefined) store.trip.coverColor = patch.coverColor;
+        if (patch.coverImage !== undefined) store.trip.coverImage = patch.coverImage;
+    }
+}
+async function deleteTripById(id) {    const opsAny = ops;
     await opsAny.deleteTrip(id);
     if (currentTripId() === id) {
         try {
@@ -492,6 +502,7 @@ store.setCurrentTrip = setCurrentTrip;
 store.currentTripId = currentTripId;
 store.reload = reload;
 store.createTrip = createTrip;
+store.updateTripMeta = updateTripMeta;
 store.deleteTripById = deleteTripById;
 store.importDemo = importDemo;
 store.addActivity = addActivity;

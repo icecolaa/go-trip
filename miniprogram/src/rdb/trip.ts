@@ -64,6 +64,7 @@ const trips = (await listRows('gt_trips', anchor ? { share_token: { $eq: anchor 
       endDate: t.endDate,
       coverEmoji: t.coverEmoji,
       coverColor: t.coverColor,
+      coverImage: t.coverImage || '',
       budget: t.budget,
       activityCount: activities.length,
     } as unknown as TripCardInfo;

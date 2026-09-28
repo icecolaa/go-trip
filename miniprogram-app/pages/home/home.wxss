@@ -30,7 +30,20 @@
   display: flex; gap: 24rpx; align-items: center; background: var(--card);
   border-radius: 28rpx; box-shadow: var(--sh-card); padding: 20rpx; margin: 0 32rpx 20rpx;
 }
-.trip-row .thumb { width: 144rpx; height: 128rpx; border-radius: 20rpx; flex: none; }
+.trip-row .thumb { width: 144rpx; height: 128rpx; border-radius: 20rpx; flex: none; overflow: hidden; }
+.thumb-img { width: 100%; height: 100%; }
+
+/* 卡片编辑弹层 */
+.edit-head { display: flex; align-items: center; justify-content: space-between; margin: 8rpx 0 20rpx; }
+.edit-head .t { font-size: 33rpx; font-weight: 800; color: var(--ink); }
+.edit-head .x { width: 52rpx; height: 52rpx; border-radius: 50%; background: var(--sky50); display: flex; align-items: center; justify-content: center; }
+.edit-head .x .ic { width: 26rpx; height: 26rpx; color: var(--ink2); }
+.edit-lab { font-size: 24rpx; font-weight: 700; color: var(--ink2); margin: 22rpx 0 12rpx; }
+.edit-chips { display: flex; flex-wrap: wrap; gap: 14rpx; }
+.edit-chip { width: 88rpx; height: 72rpx; border-radius: 18rpx; background: var(--sky50); border: 3rpx solid transparent; display: flex; align-items: center; justify-content: center; }
+.edit-chip.on { border-color: var(--sky500); background: var(--sky100); }
+.edit-dots { display: flex; gap: 26rpx; flex-wrap: wrap; }
+.edit-dot { width: 60rpx; height: 60rpx; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
 .trip-row .info { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 .trip-row .t { font-size: 29rpx; font-weight: 700; color: var(--ink); display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
 .trip-row .s { font-size: 23rpx; color: var(--ink3); margin-top: 6rpx; }
