@@ -215,8 +215,10 @@ Page({
       const c = geo.coords && geo.coords[actId]
       if (c) {
         await entities.updateRow('gt_activities', actId, { lat: c.lat, lng: c.lng })
-        // 刷新本地快照：让站间距离估算与地图数据立刻生效
-        this.refresh()
+        // 同步内存：store.stops 是 refresh 的数据源，只写库不更新内存则坐标永远刷不出
+        const row = (store.stops || []).find(s => s.id === actId)
+        if (row) { row.lat = c.lat; row.lng = c.lng }
+        setTimeout(() => this.refresh(), 1500)
       }
     } catch (e) { /* 兜底失败静默：地图页进入时会再自动编码一次 */ }
   },
