@@ -1,7 +1,7 @@
 # 交接文档（HANDOFF）
 
 > 面向下一个接手的开发者或 AI 会话。先读根目录 `CLAUDE.md`（规则手册），再读本文（现状、过程与经验）。
-> 更新：2026-09-27（条目 52：五轮——表单输入文字遮挡修复（.input 显式高度 88rpx+flex 居中，根因纵向 padding 挤压原生 input）、对齐 gotrip-miniprogram 参考工程规格（input 药丸 40rpx/双层投影/卡片 40rpx/封面 260rpx/全局 box-sizing）、1.4.2 上传）。
+> 更新：2026-09-28（条目 56：**九轮收官——Taro→原生迁移全量交付**。miniprogram-app 21 页真数据（rdb 直连）+ 液态玻璃 tabBar + 位置 API + 审核合规去 AI 化 + 表单遮挡修复 + 动画打磨；1.5.1 已上传；Taro 版冻结在 miniprogram/）
 > 上一条：2026-09-27（条目 51：四轮——位置类微信 API 矩阵（chooseLocation/getLocation/onLocationChange/chooseAddress/choosePoi + 容器 regeo）、**tab 高亮不更新真根因（getTabBar 包装器无类方法，React 实例在 $taroInstances）**、＋新建按钮固定尺寸、1.4.1 上传）。
 > 上一条：2026-09-27（条目 50：三轮改版——液态玻璃 custom-tab-bar、行程页真背景(上传+AI 生成)、微信 API 矩阵、**models.list 空结果平台怪癖与 custom-tab-bar chunk 竞态两大坑**、1.4.0 上传）。
 > 上一条：2026-09-27（条目 49：二轮改版——原生 tabBar 三栏(行程/消息/我的)、消息页/我的页、飞哪儿入我的页、伊春演示行程、行程长按删除、1.3.0 上传）。
@@ -28,6 +28,13 @@
 
 ## 2026-08~09 主要交付（按主题）
 
+## 2026-08~09 主要交付（按主题）
+
+56. **九轮收官：Taro→原生迁移全量交付（2026-09-28，1.5.1）**：发布主体从 Taro+React（miniprogram/）切换为原生 WXML/WXSS/JS（miniprogram-app/，源自设计稿翻译工程 gotrip-miniprogram，21 页）。rdb 数据层 tsc 编译注入 utils/rdb/；utils/store.js 真数据中枢（module.exports=store 防绑定二义）；@cloudbase/wx-cloud-client-sdk 手工 vendor 进 miniprogram_npm/。新增 9 页（trip-mode/settle/links/places/invite/helper/settings/ai/独立 guidebook）。全部用户可见文案零 AI 字样。地图 marker 专用 pin。液态玻璃 custom-tab-bar。输入 confirm-type/cursor-spacing/focus-within。交互动画 d1-d4 交错入场+press 回弹+FAB 弹性。**验收：35 项断言全过（含空值拦截/超长内容/发布上榜/勾选翻转/键盘记账/解析预览/搜索结果 39 目的地），console 零错误，截图 60+ 张**。
+    **本轮修复**：① 参考工程 packOptions.ignore 剔除 pages/ai（ai 页从未生效过）→移除；② rdb trip.js shared 路径扁平化错误→./shared/；③ app.js 调试钩子字符串内嵌换行→语法错误→App 未注册→全屏白→重写；④ Taro copy.patterns to 相对项目根需 dist/ 前缀；⑤ webpack 缓存+工具文件监视器双失效→改动后必须清缓存+重启工具；⑥ automator 元素查询会话僵尸化→重启恢复；⑦ getTabBar() 返回原生包装器无类方法→React 实例在 $taroInstances。**Taro 版冻结在 miniprogram/**。
+    **下一步**：① mp 后台 1.5.1 设体验版→真机验收；② 容器重部署（加 gen-cover/regeo 路由）；③ GitHub 补推需代理。
+
+## 2026-08~09 主要交付（按主题）
 55. **八轮：迁移到原生参考工程（2026-09-27，1.5.0）**：用户拍板选 C——采用 `E:\code\picture\gotrip-miniprogram`（设计稿全量原生翻译，21 页含 Taro 版没有的 trip-mode 出发模式/settle 最少转账/links 攻略收藏/places 候选/invite/helper/settings 夜间模式等 9 个新页面）。落地：① 参考工程拷入 `miniprogram-app/`（appid 改 wxea1150、projectname 改 gotrip-miniprogram-native）；② **rdb 数据层 tsc 编译接入**（`miniprogram/tsconfig.rdb.json` → utils/rdb/*.js CommonJS + @cloudbase/wx-cloud-client-sdk 手工 vendor 进 miniprogram_npm/）；③ `utils/store.js` 真数据中枢（**module.exports = store 数据对象+方法挂载**，防绑定二义；ready/reload/importDemo/写穿透全套）；④ 21 页全部换真数据（4 个子代理并行接线）；⑤ 修复：**参考工程 project.config.json 的 packOptions.ignore 本来就剔除了 pages/ai 文件夹**（这正是参考版 app.json 不注册 ai 的原因——ai 页在参考工程中从未生效过！）→ 移除该排除项；rdb trip.js 的 shared 路径扁平化修正。**Taro 版冻结在 miniprogram/**（不再演进，历史可回溯）。验收：原生版探针 T1-T6 + 13 页巡检全过（31 场行程、overview 23 安排、ledger ¥2844、schedule 7 天、packing 2/4）；截图 shots/n-*.png、v2-*.png、w-*.png。
 
 54. **七轮：审核合规改名（2026-09-27，1.4.4）**：个人主体审核驳回「AI 深度合成服务类目未开放」，驳回截图指向「AI 解析攻略」页 → **全部用户可见文案去 AI 化**：trip-ai 标题改「攻略导入」、行程页功能格「📑攻略导入」、解析/锦囊/封面 loading 与完成文案、来源标注（智能解析/规则解析）、动态流写入（按攻略重写了…）共 8 处；页面路径与容器 /api/ai/* 路由不改（审核只看界面）。验收：合规探针 5/5（功能格与攻略页全文无 AI 字样、解析功能真实可用）+ 全量回归。**后续新功能严禁在用户可见文案出现「AI/深度合成」字样**（个人主体类目限制）。
