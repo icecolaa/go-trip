@@ -67,3 +67,6 @@
   background: var(--card); border-top: 2rpx solid var(--line);
 }
 .tm-cta-btn { flex: 1; height: 88rpx; }
+
+/* 底部让位停靠式 TabBar（112rpx）+ 安全区：CTA 随文档流整体上移 */
+.tmode { padding-bottom: calc(140rpx + env(safe-area-inset-bottom)); }

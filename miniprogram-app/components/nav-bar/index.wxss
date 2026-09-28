@@ -4,7 +4,7 @@
 
 .nb-title {
   position: absolute; left: 0; right: 174rpx; text-align: center;
-  font-size: 33rpx; font-weight: 700; color: #182A3D; pointer-events: none;
+  font-size: 33rpx; font-weight: 700; color: var(--ink); pointer-events: none;
 }
 .nb-title.on-photo { color: #fff; }
 /* float 模式的极淡标题（可选），不挡内容 */
@@ -20,7 +20,7 @@
   background: rgba(255,255,255,.9); box-shadow: 0 4rpx 16rpx rgba(23,84,153,.10);
   display: flex; align-items: center; justify-content: center;
 }
-.nb-back .ic { width: 32rpx; height: 32rpx; color: #182A3D; }
+.nb-back .ic { width: 32rpx; height: 32rpx; color: var(--ink); }
 .nb-back.on-photo { background: rgba(24,42,61,.30); }
 .nb-back.on-photo .ic { color: #fff; }
 
@@ -32,8 +32,15 @@
   display: flex; align-items: center; overflow: hidden;
 }
 .nb-capsule .cap-cell { flex: 1; display: flex; align-items: center; justify-content: center; }
-.nb-capsule .cap-cell .ic { width: 36rpx; height: 36rpx; color: #182A3D; }
+.nb-capsule .cap-cell .ic { width: 36rpx; height: 36rpx; color: var(--ink); }
 .nb-capsule .cap-div { width: 2rpx; height: 36rpx; background: rgba(24,42,61,.12); }
 .nb-capsule.dark { background: rgba(24,42,61,.28); border-color: rgba(255,255,255,.14); box-shadow: none; }
 .nb-capsule.dark .cap-cell .ic { color: #fff; }
 .nb-capsule.dark .cap-div { background: rgba(255,255,255,.28); }
+
+/* 深色：返回键/胶囊转暗玻璃；标题与图标随 --ink 令牌翻亮 */
+@media (prefers-color-scheme: dark) {
+  .nb-back { background: rgba(36,56,80,.92); box-shadow: 0 4rpx 16rpx rgba(0,0,0,.3); }
+  .nb-capsule { background: rgba(36,56,80,.9); border-color: rgba(255,255,255,.1); box-shadow: none; }
+  .nb-capsule .cap-div { background: rgba(255,255,255,.16); }
+}

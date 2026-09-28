@@ -24,13 +24,13 @@
 .pair { display: flex; align-items: center; flex: 1; min-width: 0; }
 .who { display: flex; flex-direction: column; align-items: center; gap: 6rpx; width: 104rpx; flex: none; }
 .who .avatar { border-width: 0; }
-.who text { font-size: 20rpx; color: #51637A; white-space: nowrap; }
+.who text { font-size: 20rpx; color: var(--ink2); white-space: nowrap; }
 .arrow { flex: 1; display: flex; align-items: center; gap: 10rpx; padding: 0 8rpx; }
 .arrow .line { flex: 1; height: 4rpx; border-radius: 2rpx; background: repeating-linear-gradient(90deg, var(--sky400) 0 12rpx, transparent 12rpx 22rpx); }
 .arrow .ic { width: 30rpx; height: 30rpx; }
 .money { text-align: right; flex: none; display: flex; flex-direction: column; }
 .money .v { font-size: 36rpx; font-weight: 900; color: var(--sky700); }
-.money .k { font-size: 19rpx; color: #93A5B8; margin-top: 2rpx; }
+.money .k { font-size: 19rpx; color: var(--ink3); margin-top: 2rpx; }
 .act { flex: none; margin-left: 16rpx; height: 56rpx; padding: 0 24rpx; border-radius: 28rpx; display: flex; align-items: center; font-size: 24rpx; }
 .act.mark { background: linear-gradient(135deg, #FFDE5C, var(--yel500)); color: #6B5200; font-weight: 800; }
 .act.paid { border: 3rpx solid var(--line); color: var(--green); font-weight: 700; }
@@ -40,8 +40,8 @@
 .detail-row:last-child { border-bottom: none; }
 .detail-row .avatar { width: 60rpx; height: 60rpx; font-size: 22rpx; }
 .n-wrap { flex: 1; display: flex; flex-direction: column; }
-.n-wrap .n { font-size: 26rpx; font-weight: 600; color: #182A3D; }
-.n-wrap .calc { font-size: 21rpx; color: #93A5B8; }
+.n-wrap .n { font-size: 26rpx; font-weight: 600; color: var(--ink); }
+.n-wrap .calc { font-size: 21rpx; color: var(--ink3); }
 .net { font-size: 28rpx; font-weight: 800; width: 128rpx; text-align: right; }
 .net.pos { color: var(--green); }
 .net.neg { color: var(--red); }
@@ -51,8 +51,8 @@
   padding: 20rpx 24rpx; background: var(--card); border-radius: 28rpx; box-shadow: var(--sh-card);
 }
 .foot-note image { width: 60rpx; height: 60rpx; border-radius: 50%; }
-.foot-note .txt { flex: 1; font-size: 23rpx; color: #51637A; line-height: 1.45; }
-.foot-note .b { font-weight: 800; color: #182A3D; }
+.foot-note .txt { flex: 1; font-size: 23rpx; color: var(--ink2); line-height: 1.45; }
+.foot-note .b { font-weight: 800; color: var(--ink); }
 
 .bottom-cta {
   position: fixed; left: 0; right: 0; bottom: 0; z-index: 35;

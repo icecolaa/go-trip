@@ -3,12 +3,12 @@
 .steps { display: flex; align-items: center; gap: 12rpx; padding: 16rpx 32rpx 28rpx; }
 .step { display: flex; align-items: center; gap: 12rpx; }
 .step .n {
-  width: 40rpx; height: 40rpx; border-radius: 50%; background: #DDE9F4; color: #8DA0B5;
+  width: 40rpx; height: 40rpx; border-radius: 50%; background: var(--sky100); color: var(--ink3);
   font-size: 22rpx; font-weight: 800; display: flex; align-items: center; justify-content: center;
 }
-.step text { font-size: 24rpx; color: #93A5B8; font-weight: 600; }
+.step text { font-size: 24rpx; color: var(--ink3); font-weight: 600; }
 .step.on .n { background: #2E92ED; color: #fff; box-shadow: 0 8rpx 20rpx rgba(46,146,237,.35); }
-.step.on text { color: #1663B4; }
+.step.on text { color: var(--sky700); }
 .line { flex: 1; height: 4rpx; background: #DCE7F2; border-radius: 2rpx; min-width: 28rpx; }
 
 .search-wrap { padding: 0 32rpx; }
@@ -38,16 +38,16 @@
 .date-row { display: flex; align-items: center; gap: 24rpx; }
 .date-box { flex: 1; display: flex; flex-direction: column; }
 .date-box.right { align-items: flex-end; text-align: right; }
-.date-box .lab { font-size: 22rpx; color: #93A5B8; font-weight: 600; }
-.date-box .d { font-size: 34rpx; font-weight: 800; color: #182A3D; margin-top: 6rpx; }
-.date-box .w { font-size: 22rpx; color: #51637A; }
+.date-box .lab { font-size: 22rpx; color: var(--ink3); font-weight: 600; }
+.date-box .d { font-size: 34rpx; font-weight: 800; color: var(--ink); margin-top: 6rpx; }
+.date-box .w { font-size: 22rpx; color: var(--ink2); }
 .date-arrow {
   width: 68rpx; height: 68rpx; border-radius: 50%; background: var(--sky100);
   display: flex; align-items: center; justify-content: center; flex: none;
 }
 .date-arrow .ic { width: 30rpx; height: 30rpx; }
 .weekday { display: flex; justify-content: space-between; padding: 24rpx 12rpx 4rpx; border-top: 2rpx dashed var(--line); margin-top: 26rpx; }
-.weekday text { font-size: 21rpx; color: #93A5B8; text-align: center; width: 60rpx; padding: 4rpx 0; border-radius: 16rpx; }
+.weekday text { font-size: 21rpx; color: var(--ink3); text-align: center; width: 60rpx; padding: 4rpx 0; border-radius: 16rpx; }
 .weekday .on { color: #fff; background: #2E92ED; font-weight: 700; }
 .weekday .go { color: #6B5200; background: var(--yel400); font-weight: 800; }
 

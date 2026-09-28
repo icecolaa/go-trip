@@ -26,7 +26,7 @@
   margin-left: -18rpx; flex: none;
 }
 .invite-add .ic { width: 26rpx; height: 26rpx; }
-.invite-txt { font-size: 23rpx; color: #93A5B8; flex: 1; margin-left: 4rpx; }
+.invite-txt { font-size: 23rpx; color: var(--ink3); flex: 1; margin-left: 4rpx; }
 
 .actions { display: flex; gap: 20rpx; margin: 24rpx 32rpx 0; }
 .act {
@@ -41,7 +41,7 @@
 .act .big .ic { width: 40rpx; height: 40rpx; }
 .act .big.blue .ic { color: var(--sky500); }
 .act .big.yellow .ic { color: var(--yel500); }
-.act text { font-size: 23rpx; font-weight: 600; color: #51637A; }
+.act text { font-size: 23rpx; font-weight: 600; color: var(--ink2); }
 .bubble-tip {
   position: absolute; top: -14rpx; right: 16rpx; background: var(--red); color: #fff;
   font-size: 19rpx; font-weight: 700; border-radius: 999rpx; padding: 4rpx 12rpx; border: 4rpx solid #fff;
@@ -58,7 +58,7 @@
 .progress-card { margin: 24rpx 32rpx 0; padding: 26rpx 30rpx; }
 .progress-card .row { display: flex; justify-content: space-between; align-items: center; }
 .progress-card .t { font-size: 27rpx; font-weight: 800; }
-.progress-card .r { font-size: 22rpx; color: #93A5B8; }
+.progress-card .r { font-size: 22rpx; color: var(--ink3); }
 .progress-card .progress { margin-top: 18rpx; }
 .progress-card .tags { display: flex; gap: 12rpx; margin-top: 18rpx; flex-wrap: wrap; }
 
@@ -70,8 +70,8 @@
   width: 92rpx; height: 92rpx; border-radius: 28rpx; background: var(--sky100);
   display: flex; flex-direction: column; align-items: center; justify-content: center; flex: none;
 }
-.day-badge .b { font-size: 30rpx; font-weight: 900; color: #1B78D8; }
-.day-badge .s { font-size: 18rpx; color: #2E92ED; font-weight: 600; }
+.day-badge .b { font-size: 30rpx; font-weight: 900; color: var(--sky600); }
+.day-badge .s { font-size: 18rpx; color: var(--sky500); font-weight: 600; }
 .day-card.done .day-badge { background: #E4F6EC; }
 .day-card.done .day-badge .b { color: #2FA96E; }
 .day-card.today { border: 3rpx solid var(--yel400); box-shadow: 0 16rpx 40rpx rgba(255,196,20,.22); }
@@ -79,9 +79,9 @@
 .day-card.today .day-badge .b { color: #6B5200; }
 .day-card.today .day-badge .s { color: #8A6D1A; }
 .day-main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
-.day-main .h { font-size: 29rpx; font-weight: 700; color: #182A3D; display: flex; align-items: center; gap: 12rpx; }
+.day-main .h { font-size: 29rpx; font-weight: 700; color: var(--ink); display: flex; align-items: center; gap: 12rpx; }
 .day-main .h .ic { width: 28rpx; height: 28rpx; }
-.day-main .s { font-size: 23rpx; color: #93A5B8; margin-top: 4rpx; }
+.day-main .s { font-size: 23rpx; color: var(--ink3); margin-top: 4rpx; }
 .day-thumbs { display: flex; }
 .day-thumbs image { width: 52rpx; height: 52rpx; border-radius: 16rpx; border: 3rpx solid #fff; margin-left: -14rpx; }
 .day-thumbs image:first-child { margin-left: 0; }

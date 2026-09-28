@@ -12,7 +12,7 @@ page {
   /* 那不勒斯黄 ramp */
   --yel100: #FFF6D9; --yel200: #FFE9A8; --yel400: #FFD23F; --yel500: #FFC414; --yel600: #E0A800;
   /* 墨色 */
-  --ink: #182A3D; --ink2: #51637A; --ink3: #93A5B8; --line: #E6EEF6;
+  --ink: #182A3D; --ink2: #51637A; --ink3: #7A8FA5; --line: #E6EEF6;
   /* 功能色 */
   --green: #2FA96E; --red: #F0655A; --wechat: #07C160;
   --coral: #FF8A5C; --violet: #7B8CFF; --teal: #2BB8A8;
@@ -82,7 +82,7 @@ button::after { border: none; }
   font-size: 22rpx; font-weight: 800; border-radius: 999rpx; padding: 8rpx 20rpx; box-shadow: var(--sh-yellow);
 }
 .trip-body { padding: 26rpx 32rpx 28rpx; }
-.trip-body .tt { font-size: 34rpx; font-weight: 800; }
+.trip-body .tt { font-size: 34rpx; font-weight: 800; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
 .trip-meta { display: flex; align-items: center; gap: 16rpx; margin-top: 8rpx; font-size: 24rpx; color: var(--ink2); }
 
 /* ---------- 头像 ---------- */
@@ -326,7 +326,7 @@ page {
 }
 
 .theme-light {
-  --bg: #F3F8FC; --card: #FFFFFF; --ink: #182A3D; --ink2: #51637A; --ink3: #93A5B8; --line: #E6EEF6;
+  --bg: #F3F8FC; --card: #FFFFFF; --ink: #182A3D; --ink2: #51637A; --ink3: #7A8FA5; --line: #E6EEF6;
   --sky50: #F1F8FE; --sky100: #E3F0FD; --sky200: #C6E2FB;
   --yel100: #FFF6D9; --yel200: #FFE9A8;
   --sh-card: 0 2rpx 8rpx rgba(23,84,153,.04), 0 12rpx 36rpx rgba(23,84,153,.08);
@@ -352,3 +352,13 @@ page {
 .home.theme-dark { background: linear-gradient(180deg, #132433 0%, #0D1724 600rpx); }
 .profile.theme-dark .bg-tint { background: linear-gradient(180deg, #132433 0%, var(--bg) 100%); }
 .mapscreen.theme-dark { background: #0C141D; }
+
+/* 深色补丁：固定亮底改半透明深色调，避免深色下刺眼或文字失效 */
+@media (prefers-color-scheme: dark) {
+  .tag.green { background: rgba(47,169,110,.16); }
+  .tag.red { background: rgba(240,101,90,.16); }
+  .tag.gray { background: rgba(159,179,200,.16); }
+  .tag.yellow { background: rgba(255,196,20,.16); color: #F2D488; }
+  .sheet .grab { background: var(--line); }
+  .skeleton { background: linear-gradient(90deg, #17293D 25%, #1E334B 37%, #17293D 63%); background-size: 800rpx 100%; }
+}

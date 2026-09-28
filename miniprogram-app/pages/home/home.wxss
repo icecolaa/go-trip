@@ -1,18 +1,22 @@
-.home { background: linear-gradient(180deg, #D8ECFC 0%, #EDF6FE 416rpx, var(--bg) 600rpx); }
+.home {
+  background: linear-gradient(180deg, #D8ECFC 0%, #EDF6FE 416rpx, var(--bg) 600rpx);
+  /* 底部让位停靠式 TabBar（112rpx）+ 安全区 */
+  padding-bottom: calc(140rpx + env(safe-area-inset-bottom));
+}
 
 .brandbar { display: flex; align-items: center; gap: 16rpx; }
 .brandbar .logo { width: 56rpx; height: 56rpx; border-radius: 18rpx; box-shadow: 0 6rpx 16rpx rgba(23,84,153,.2); }
-.brandbar .cn { font-size: 38rpx; font-weight: 900; letter-spacing: 1rpx; color: #182A3D; }
-.brandbar .en { font-style: italic; font-size: 24rpx; font-weight: 800; color: #1B78D8; margin-left: -8rpx; }
+.brandbar .cn { font-size: 38rpx; font-weight: 900; letter-spacing: 1rpx; color: var(--ink); }
+.brandbar .en { font-style: italic; font-size: 24rpx; font-weight: 800; color: var(--sky600); margin-left: -8rpx; }
 
 .greet { padding: 20rpx 32rpx 28rpx; display: flex; flex-direction: column; }
-.greet .h1 { font-size: 42rpx; font-weight: 900; color: #182A3D; }
-.greet .sub { font-size: 25rpx; color: #51637A; margin-top: 6rpx; }
+.greet .h1 { font-size: 42rpx; font-weight: 900; color: var(--ink); }
+.greet .sub { font-size: 25rpx; color: var(--ink2); margin-top: 6rpx; }
 
 .hero { margin: 0 32rpx; }
 .p-row { display: flex; align-items: center; gap: 20rpx; margin: 24rpx 0 28rpx; }
 .p-row .progress { flex: 1; }
-.p-txt { font-size: 23rpx; color: #1663B4; font-weight: 700; flex: none; }
+.p-txt { font-size: 23rpx; color: var(--sky700); font-weight: 700; flex: none; }
 .foot-row { display: flex; align-items: center; justify-content: space-between; }
 .foot-row .btn.small {
   background: linear-gradient(135deg, var(--sky400), var(--sky600));
@@ -28,15 +32,15 @@
 }
 .trip-row .thumb { width: 144rpx; height: 128rpx; border-radius: 20rpx; flex: none; }
 .trip-row .info { flex: 1; min-width: 0; display: flex; flex-direction: column; }
-.trip-row .t { font-size: 29rpx; font-weight: 700; color: #182A3D; }
-.trip-row .s { font-size: 23rpx; color: #93A5B8; margin-top: 6rpx; }
+.trip-row .t { font-size: 29rpx; font-weight: 700; color: var(--ink); display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
+.trip-row .s { font-size: 23rpx; color: var(--ink3); margin-top: 6rpx; }
 .trip-row .tags { display: flex; gap: 10rpx; margin-top: 12rpx; }
-.trip-row .arrow { width: 28rpx; height: 28rpx; color: #93A5B8; }
+.trip-row .arrow { width: 28rpx; height: 28rpx; color: var(--ink3); }
 
 .create-btn {
   margin: 12rpx 32rpx 0; height: 112rpx; border-radius: 36rpx; border: 4rpx dashed #93CBF7;
   display: flex; align-items: center; justify-content: center; gap: 16rpx;
-  color: #1B78D8; font-size: 30rpx; font-weight: 700; background: rgba(255,255,255,.6);
+  color: var(--sky600); font-size: 30rpx; font-weight: 700; background: rgba(255,255,255,.6);
 }
 .plus-ring {
   width: 44rpx; height: 44rpx; border-radius: 50%; background: var(--yel400);
@@ -44,5 +48,9 @@
 }
 .plus-ring .ic { width: 24rpx; height: 24rpx; color: #6B5200; }
 
-/* 悬浮胶囊 TabBar 高约 128rpx + 底距，内容预留 */
-.bottom-space { height: 300rpx; }
+/* 停靠式 TabBar 避让由页面根 padding-bottom 承担，此处仅留滚动到底的呼吸空隙 */
+.bottom-space { height: 40rpx; }
+
+@media (prefers-color-scheme: dark) {
+  .create-btn { background: rgba(23,48,75,.6); color: var(--sky400); }
+}
