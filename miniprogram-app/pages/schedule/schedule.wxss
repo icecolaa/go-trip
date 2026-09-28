@@ -58,12 +58,12 @@
 .drive-chip .d-ic { width: 44rpx; height: 44rpx; border-radius: 50%; background: var(--sky100); display: flex; align-items: center; justify-content: center; }
 .drive-chip .d-ic .ic { width: 24rpx; height: 24rpx; color: var(--sky600); }
 
-.cta-space { height: 40rpx; }
+.cta-space { height: calc(200rpx + env(safe-area-inset-bottom)); }
 .bottom-cta {
   position: fixed; left: 0; right: 0; bottom: 0; z-index: 35;
   padding: 20rpx 32rpx calc(44rpx + env(safe-area-inset-bottom));
   display: flex; gap: 20rpx;
-  background: linear-gradient(180deg, rgba(243,248,252,0), var(--bg) 40%);
+  background: linear-gradient(180deg, transparent, var(--bg) 40%);
 }
 .map-btn {
   width: 96rpx; height: 96rpx; border-radius: 50%; background: var(--card);

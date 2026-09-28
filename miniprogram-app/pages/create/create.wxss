@@ -51,9 +51,9 @@
 .weekday .on { color: #fff; background: #2E92ED; font-weight: 700; }
 .weekday .go { color: #6B5200; background: var(--yel400); font-weight: 800; }
 
-.cta-space { height: 60rpx; }
+.cta-space { height: calc(200rpx + env(safe-area-inset-bottom)); }
 .bottom-cta {
   position: fixed; left: 0; right: 0; bottom: 0; z-index: 35;
   padding: 20rpx 32rpx calc(44rpx + env(safe-area-inset-bottom));
-  background: linear-gradient(180deg, rgba(243,248,252,0), var(--bg) 38%);
+  background: linear-gradient(180deg, transparent, var(--bg) 38%);
 }

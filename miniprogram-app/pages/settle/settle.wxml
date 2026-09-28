@@ -63,7 +63,7 @@
       <image src="/assets/logo.png" mode="aspectFill" />
       <text class="txt">全部结清后自动生成 <text class="b">行程账单报告</text>，可导出 Excel 存档或分享到微信群留念。</text>
     </view>
-    <view style="height:220rpx"></view>
+    <view style="height:calc(200rpx + env(safe-area-inset-bottom))"></view>
     </block>
   </scroll-view>
 

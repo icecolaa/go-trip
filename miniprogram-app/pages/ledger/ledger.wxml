@@ -66,7 +66,7 @@
       <text>最少转账结算</text>
       <view class="ic ic-right" style="width:28rpx;height:28rpx"></view>
     </view>
-    <view style="height:220rpx"></view>
+    <view style="height:calc(200rpx + env(safe-area-inset-bottom))"></view>
     </block>
   </scroll-view>
 

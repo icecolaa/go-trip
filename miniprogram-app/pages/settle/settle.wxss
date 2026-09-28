@@ -58,7 +58,7 @@
   position: fixed; left: 0; right: 0; bottom: 0; z-index: 35;
   padding: 20rpx 32rpx calc(44rpx + env(safe-area-inset-bottom));
   display: flex; gap: 20rpx;
-  background: linear-gradient(180deg, rgba(243,248,252,0), var(--bg) 40%);
+  background: linear-gradient(180deg, transparent, var(--bg) 40%);
 }
 .grow { flex: 1; }
 .remind { flex: 1.6; }

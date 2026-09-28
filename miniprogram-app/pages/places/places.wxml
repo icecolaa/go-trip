@@ -60,7 +60,7 @@
         </view>
       </view>
     </view>
-    <view style="height:220rpx"></view>
+    <view style="height:calc(200rpx + env(safe-area-inset-bottom))"></view>
   </scroll-view>
 
   <view class="bottom-bar" wx:if="{{hasTrip}}">
