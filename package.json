@@ -14,7 +14,8 @@
     "dev:client": "npm run dev -w client",
     "build": "npm run build -w client",
     "start": "npm run start -w server",
-    "check": "npm run check -w client"
+    "check": "npm run check -w client",
+    "build:rdb": "bash scripts/build-rdb.sh"
   },
   "devDependencies": {
     "concurrently": "^9.1.2"

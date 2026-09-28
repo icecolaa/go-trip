@@ -5,7 +5,10 @@
  * - H5（阶段二）：浏览器无 wx.cloud，走 CLOUD_RUN_URL + CORS（暂未切换）。
  */
 
-const isH5 = process.env.TARO_ENV === 'h5'
+// 原生小程序运行时无 process 对象——必须写死字面量，禁用 process.env.*
+// （Taro H5 构建已弃用，见 HANDOFF 条目 43/56；2026-09-28 白屏事故：tsc 重编译把
+//   process.env.TARO_ENV 带回产物，require 即抛 ReferenceError 全局白屏）
+const isH5 = false
 
 /** 云开发环境 ID（数据模型 + 云托管共用） */
 export const CLOUD_ENV: string = 'gotrip-d1gb187o991f5260a'
