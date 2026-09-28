@@ -1,8 +1,8 @@
 # 交接文档（HANDOFF）
 
 > 面向下一个接手的开发者或 AI 会话。先读根目录 `CLAUDE.md`（规则手册），再读本文（现状、过程与经验）。
-> 更新：2026-09-28（条目 57：**收尾部署轮——容器 gotrip-019 上线**。gen-cover/regeo 路由生效、OpenAccessTypes 修回 PUBLIC+MINIAPP、GitHub 补推 9 提交；余用户侧待办=1.5.1 设体验版→真机验收）
-> 上一条：2026-09-28（条目 56：**九轮收官——Taro→原生迁移全量交付**。miniprogram-app 21 页真数据（rdb 直连）+ 液态玻璃 tabBar + 位置 API + 审核合规去 AI 化 + 表单遮挡修复 + 动画打磨；1.5.1 已上传；Taro 版冻结在 miniprogram/）
+> 更新：2026-09-28（条目 57：**收尾部署轮——容器 gotrip-019 上线**。gen-cover/regeo 路由生效、OpenAccessTypes 修回 PUBLIC+MINIAPP、GitHub 补推 9 提交；余用户侧待办=1.5.2 设体验版→真机验收）
+> 上一条：2026-09-28（条目 56：**九轮收官——Taro→原生迁移全量交付**。miniprogram-app 21 页真数据（rdb 直连）+ 液态玻璃 tabBar + 位置 API + 审核合规去 AI 化 + 表单遮挡修复 + 动画打磨；1.5.2 已上传；Taro 版冻结在 miniprogram/）
 > 上一条：2026-09-27（条目 51：四轮——位置类微信 API 矩阵（chooseLocation/getLocation/onLocationChange/chooseAddress/choosePoi + 容器 regeo）、**tab 高亮不更新真根因（getTabBar 包装器无类方法，React 实例在 $taroInstances）**、＋新建按钮固定尺寸、1.4.1 上传）。
 > 上一条：2026-09-27（条目 50：三轮改版——液态玻璃 custom-tab-bar、行程页真背景(上传+AI 生成)、微信 API 矩阵、**models.list 空结果平台怪癖与 custom-tab-bar chunk 竞态两大坑**、1.4.0 上传）。
 > 上一条：2026-09-27（条目 49：二轮改版——原生 tabBar 三栏(行程/消息/我的)、消息页/我的页、飞哪儿入我的页、伊春演示行程、行程长按删除、1.3.0 上传）。
@@ -17,7 +17,7 @@
 |---|---|
 | **生产环境** | CloudBase `gotrip-d1gb187o991f5260a`（个人版，付费至 2027-03-25）。云托管 gotrip 容器 = **gotrip-019 无状态代理**（2026-09-28 部署，含 45/46 Web 修复 + gen-cover/regeo 路由；OpenAccessTypes=PUBLIC+MINIAPP，OA 已移除；EnvParams 10 键/VpcConf 空/MaxNum=1 原样保留），`/health` 探针 `{"ok":true,"db":"none","mode":"proxy"}`。公网开着（Web 直连需要）。**已合入 master**（Gitee/GitHub 同步；master=5198351，feat 领先 master 21 个提交，下次合并即齐） |
 | **架构（原生化完成）** | 全栈数据模型直连：小程序 `@cloudbase/wx-cloud-client-sdk` models.*（openid 身份）；Web `@cloudbase/js-sdk` 3.10.1（其 `./model` 子路径 **re-export wx-cloud-client-sdk**，两端 API 同构）+ 身份认证（账密+匿名已开启）。14 个 gt_* 模型 `_openid` 行级隔离。设计/映射/进度全在 `docs/native-migration.md`（接手先读它和条目 43/44） |
-| 小程序 | **1.5.1 已上传**（发布主体=miniprogram-app 原生 21 页，条目 56；Taro 版冻结在 miniprogram/）**待设体验版+真机验收**。21 页 rdb 直连、飞哪儿异步 job（容器 regeo 已上线供识别出发地） |
+| 小程序 | **1.5.2 已上传**（发布主体=miniprogram-app 原生 21 页，条目 56；Taro 版冻结在 miniprogram/）**待设体验版+真机验收**。21 页 rdb 直连、飞哪儿异步 job（容器 regeo 已上线供识别出发地） |
 | Web/H5 | **已恢复可用（阶段二完成，浏览器实测 ✓）**：游客/账密登录 → 建档 → 建行程/导入演示（9 项安排 ✓）→ 13 板块。域名=云托管公网 + 风险提示页（绑自定义域名可去掉）。**Web 与小程序身份不互通**（CloudBase uid vs openid，各一套数据，既定设计）。**条目 45 后：注册入口已移除**（平台不支持纯账密自助注册），正式账号=云控制台「身份认证→用户管理」手动创建；登录页=账密登录+游客模式。条目 46 修复待随容器部署上线 |
 | 容器身份门（双通道） | x-wx-source（小程序 callContainer，公网剥离实测）OR x-gotrip-key=WEB_PROXY_KEY（Web/H5 共享密钥，随 bundle 可见属可接受风险）。环境变量已配在 gotrip-017 |
 | 数据库 | 云开发自带 TDSQL-C MySQL 8.0（端点已由用户经「数据库连接配置」建成公网 43.179.225.7:24735，容器不再需要）；**行程相关 12 表已清空重来**（旧测试数据含丢失活动的行程），当前库内仅浏览器验证产生的 1 匿名用户+1 演示行程（可清） |
@@ -25,17 +25,17 @@
 | 冒烟 | `scripts/smoke.sh` **10/0**（容器代理 9 断言 + shared 纯函数）；旧 111 项 CRUD 冒烟已退役 |
 | **改版底稿** | `docs/miniprogram-features.md`（12 页功能事实+与 Web 差距+现状体检+硬约束，2026-09-27 逐页核对）；**改版方向待拍板：A 对齐 Web DESIGN.md / B 保留 flywhere 暖调做精** |
 | 本地 skill | ip-as-logo 已装 `.zcode/skills/`（`.zcode*/skills-lock.json` 已 gitignore 不入库，用户拍板） |
-| 待办 Top3 | ① **1.5.1 设体验版** → 真机：21 页全流程（行程建删/记账/攻略导入/AI 生成封面/锦囊/飞哪儿识别出发地/位置选点）② **Web 账号成功路径自测**（控制台建号→线上登录，条目 45 尾巴仍未闭环）③ 可选：云写入时延优化（ensureProfile 缓存+动态日志并行写）。已完成收尾：容器 gotrip-019（gen-cover/regeo 上线）、OA 移除、GitHub 补推（条目 57） |
+| 待办 Top3 | ① **1.5.2 设体验版** → 真机：21 页全流程（行程建删/记账/攻略导入/AI 生成封面/锦囊/飞哪儿识别出发地/位置选点）② **Web 账号成功路径自测**（控制台建号→线上登录，条目 45 尾巴仍未闭环）③ 可选：云写入时延优化（ensureProfile 缓存+动态日志并行写）。已完成收尾：容器 gotrip-019（gen-cover/regeo 上线）、OA 移除、GitHub 补推（条目 57） |
 
 ## 2026-08~09 主要交付（按主题）
 
 57. **收尾部署轮：容器 gotrip-019 上线 + 访问类型收口 + GitHub 补推（2026-09-28）**：承接条目 56「下一步」②③。**① 容器重部署**：staging（work/cloudrun-deploy）从 HEAD `de7f222` 重建（六项：Dockerfile/package.json/package-lock.json/client/server/shared，排除 node_modules/dist/data，diff 归零核对）；本地先起 HEAD server 预验（冒烟 10/0 + regeo 真逆地理 + gen-cover 业务 404 形状）再部。MCP `manageCloudRun deploy` 走 staging 通道，配置零改动（RMW 保留 EnvParams 10 键/VpcConf 空/MaxNum=1），gotrip-019 发布任务 finished、流量 100%。**线上探针全过**：公网 /health proxy 模式；无头 403 门；x-gotrip-key Web 通道 `configured:true`；`/api/ai/gen-cover/result` 业务 404（018 上此路由不存在，冻结 Taro 版 trip 页 AI 封面由此恢复可用）；`/api/poi/regeo` 真实逆地理（原生版 flights.js 识别出发地的依赖）；天气/POI 代理。Web bundle hash 不变（index-CPmExgbn.js）属预期——本轮只有 server 侧变化。**② OpenAccessTypes 修回 PUBLIC+MINIAPP**（条目 42 遗留的 OA 残留，`updateConfig` 热更新生效，公网复验不受影响，EnvParams 原样）。**③ GitHub 补推**：feat/miniprogram `395faf4→de7f222` 9 个提交一次过（代理可用窗口；Gitee 直连本就已同步）。
     **本轮踩坑沉淀**：① 本地 8787 挂着上会话旧 server 时，`npm start` 会因端口占用失败但 curl 仍通（响应来自旧进程）——先 `netstat -ano | grep :8787` 找 PID 精准 taskkill 再起，且探针要区分「路由 404（`接口不存在`）」与「业务 404（`任务不存在或已过期`）」，光看状态码会误判；② 本地 `.env` 没有 WEB_PROXY_KEY 是常态——Web 密钥硬编码在 `client/src/config.ts` 随 bundle 走（设计如此，非机密边界），线上 Web 通道验证直接用 bundle 内密钥；③ MCP 凭据不跨会话持久（`~/.config/.cloudbase/auth.json` 的 refreshToken 虽未过期但 MCP 不认），每次新会话要设备码重扫；④ MCP deploy 返回的 buildId 可能是旧版本的，真实 buildId 以 getDeployRecords 为准。
-    **余下待办**：① 1.5.1 设体验版→真机验收（用户侧，唯一硬门槛）；② Web 账号成功路径自测（条目 45 尾巴）；③ 可选：云写入时延优化、master 合并（feat 领先 21 提交）。
+    **余下待办**：① 1.5.2 设体验版→真机验收（用户侧，唯一硬门槛）；② Web 账号成功路径自测（条目 45 尾巴）；③ 可选：云写入时延优化、master 合并（feat 领先 21 提交）。
 
-56. **九轮收官：Taro→原生迁移全量交付（2026-09-28，1.5.1）**：发布主体从 Taro+React（miniprogram/）切换为原生 WXML/WXSS/JS（miniprogram-app/，源自设计稿翻译工程 gotrip-miniprogram，21 页）。rdb 数据层 tsc 编译注入 utils/rdb/；utils/store.js 真数据中枢（module.exports=store 防绑定二义）；@cloudbase/wx-cloud-client-sdk 手工 vendor 进 miniprogram_npm/。新增 9 页（trip-mode/settle/links/places/invite/helper/settings/ai/独立 guidebook）。全部用户可见文案零 AI 字样。地图 marker 专用 pin。液态玻璃 custom-tab-bar。输入 confirm-type/cursor-spacing/focus-within。交互动画 d1-d4 交错入场+press 回弹+FAB 弹性。**验收：35 项断言全过（含空值拦截/超长内容/发布上榜/勾选翻转/键盘记账/解析预览/搜索结果 39 目的地），console 零错误，截图 60+ 张**。
+56. **九轮收官：Taro→原生迁移全量交付（2026-09-28，1.5.2）**：发布主体从 Taro+React（miniprogram/）切换为原生 WXML/WXSS/JS（miniprogram-app/，源自设计稿翻译工程 gotrip-miniprogram，21 页）。rdb 数据层 tsc 编译注入 utils/rdb/；utils/store.js 真数据中枢（module.exports=store 防绑定二义）；@cloudbase/wx-cloud-client-sdk 手工 vendor 进 miniprogram_npm/。新增 9 页（trip-mode/settle/links/places/invite/helper/settings/ai/独立 guidebook）。全部用户可见文案零 AI 字样。地图 marker 专用 pin。液态玻璃 custom-tab-bar。输入 confirm-type/cursor-spacing/focus-within。交互动画 d1-d4 交错入场+press 回弹+FAB 弹性。**验收：35 项断言全过（含空值拦截/超长内容/发布上榜/勾选翻转/键盘记账/解析预览/搜索结果 39 目的地），console 零错误，截图 60+ 张**。
     **本轮修复**：① 参考工程 packOptions.ignore 剔除 pages/ai（ai 页从未生效过）→移除；② rdb trip.js shared 路径扁平化错误→./shared/；③ app.js 调试钩子字符串内嵌换行→语法错误→App 未注册→全屏白→重写；④ Taro copy.patterns to 相对项目根需 dist/ 前缀；⑤ webpack 缓存+工具文件监视器双失效→改动后必须清缓存+重启工具；⑥ automator 元素查询会话僵尸化→重启恢复；⑦ getTabBar() 返回原生包装器无类方法→React 实例在 $taroInstances。**Taro 版冻结在 miniprogram/**。
-    **下一步**：① mp 后台 1.5.1 设体验版→真机验收；② 容器重部署（加 gen-cover/regeo 路由）；③ GitHub 补推需代理。
+    **下一步**：① mp 后台 1.5.2 设体验版→真机验收；② 容器重部署（加 gen-cover/regeo 路由）；③ GitHub 补推需代理。
 
 55. **八轮：迁移到原生参考工程（2026-09-27，1.5.0）**：用户拍板选 C——采用 `E:\code\picture\gotrip-miniprogram`（设计稿全量原生翻译，21 页含 Taro 版没有的 trip-mode 出发模式/settle 最少转账/links 攻略收藏/places 候选/invite/helper/settings 夜间模式等 9 个新页面）。落地：① 参考工程拷入 `miniprogram-app/`（appid 改 wxea1150、projectname 改 gotrip-miniprogram-native）；② **rdb 数据层 tsc 编译接入**（`miniprogram/tsconfig.rdb.json` → utils/rdb/*.js CommonJS + @cloudbase/wx-cloud-client-sdk 手工 vendor 进 miniprogram_npm/）；③ `utils/store.js` 真数据中枢（**module.exports = store 数据对象+方法挂载**，防绑定二义；ready/reload/importDemo/写穿透全套）；④ 21 页全部换真数据（4 个子代理并行接线）；⑤ 修复：**参考工程 project.config.json 的 packOptions.ignore 本来就剔除了 pages/ai 文件夹**（这正是参考版 app.json 不注册 ai 的原因——ai 页在参考工程中从未生效过！）→ 移除该排除项；rdb trip.js 的 shared 路径扁平化修正。**Taro 版冻结在 miniprogram/**（不再演进，历史可回溯）。验收：原生版探针 T1-T6 + 13 页巡检全过（31 场行程、overview 23 安排、ledger ¥2844、schedule 7 天、packing 2/4）；截图 shots/n-*.png、v2-*.png、w-*.png。
 
