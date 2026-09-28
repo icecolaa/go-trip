@@ -289,7 +289,8 @@ async function updateTripMeta(id, patch) {
         if (patch.coverImage !== undefined) store.trip.coverImage = patch.coverImage;
     }
 }
-async function deleteTripById(id) {    const opsAny = ops;
+async function deleteTripById(id) {
+    const opsAny = ops;
     await opsAny.deleteTrip(id);
     if (currentTripId() === id) {
         try {

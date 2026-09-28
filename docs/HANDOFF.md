@@ -1,7 +1,8 @@
 # 交接文档（HANDOFF）
 
 > 面向下一个接手的开发者或 AI 会话。先读根目录 `CLAUDE.md`（规则手册），再读本文（现状、过程与经验）。
-> 更新：2026-09-29（条目 59：**验收轮+发版 1.5.3**。滚动容器同类修复 14 处收官；review 修 P1 删行程脏内存态；automator 分段自愈验收 **39/39 全过、console 零错误**（报告 acceptance/REPORT-native-0929.md）；1.5.3 已上传待设体验版）
+> 更新：2026-09-29（条目 60：**二轮验收+P0 修复+发版 1.5.9**。验收揪出 **P0：api.js 漏 X-WX-SERVICE 头——原生版全部容器 API 自迁移以来 404**（AI/锦囊/飞哪儿/POI/天气/编码全挂）已修；容器 geocode 形状兼容（gotrip-020）；autoGeocodeOnce 死代码接通；53 断言全过（报告 acceptance/REPORT-native-0929-round2.md））
+> 上一条：2026-09-29（条目 59：**验收轮+发版 1.5.3**。滚动容器同类修复 14 处收官；review 修 P1 删行程脏内存态；automator 分段自愈验收 **39/39 全过、console 零错误**（报告 acceptance/REPORT-native-0929.md）；1.5.3 已上传待设体验版）
 > 上一条：2026-09-28（条目 58：**原生版三修——tabBar 停靠贴底 + 深色模式全量令牌化 + 设计规范过一遍**。codemod 116 处硬编码色→var()；悬浮岛 tab 栏改停靠式并三页避让；行程卡两行截断+次级文字对比度提升；待 devtools 切深色目验）
 > 上一条：2026-09-28（条目 57：**收尾部署轮——容器 gotrip-019 上线**。gen-cover/regeo 路由生效、OpenAccessTypes 修回 PUBLIC+MINIAPP、GitHub 补推 9 提交；余用户侧待办=1.5.2 设体验版→真机验收）
 > 上一条：2026-09-28（条目 56：**九轮收官——Taro→原生迁移全量交付**。miniprogram-app 21 页真数据（rdb 直连）+ 液态玻璃 tabBar + 位置 API + 审核合规去 AI 化 + 表单遮挡修复 + 动画打磨；1.5.2 已上传；Taro 版冻结在 miniprogram/）
@@ -30,6 +31,12 @@
 | 待办 Top3 | ① **1.5.2 设体验版** → 真机：21 页全流程（行程建删/记账/攻略导入/AI 生成封面/锦囊/飞哪儿识别出发地/位置选点）② **Web 账号成功路径自测**（控制台建号→线上登录，条目 45 尾巴仍未闭环）③ 可选：云写入时延优化（ensureProfile 缓存+动态日志并行写）。已完成收尾：容器 gotrip-019（gen-cover/regeo 上线）、OA 移除、GitHub 补推（条目 57） |
 
 ## 2026-08~09 主要交付（按主题）
+
+60. **二轮验收 + P0 修复 + 发版 1.5.9（2026-09-29）**：用户三连（清单验收 / review / 发版）。**review 揪出本轮最大鱼——[P0] `utils/api.js` 的 callContainer 漏传 `X-WX-SERVICE: gotrip` 服务头**：原生版重写时从 Taro 版 src/api/request.ts 迁移丢失，**全部容器 API（AI 解析/行程生成/锦囊/使用助手/飞哪儿/POI 搜索/天气/地理编码）自条目 55 原生迁移以来一直 404**，此前未暴露是因为容器调用链路从未被端到端验收过。修复后 automator 直调 `geocodeOne`：404 → 高德命中（五营→48.228,129.275）→ 落库成功。
+    **其余修复**：① [P1] 容器 `/api/poi/geocode` 只认 `it.title`（Taro 形状），原生端 `it.query` 全被滤空——兼容双形状，**gotrip-020 已部署**（线上 UTF-8 探针命中）；② [P1] 地图页 `autoGeocodeOnce` 死代码（定义未调用）——boot 接通 + 空态「立即定位/去日程」按钮；③ [P2] geocodeOne 落库后补 `refresh()`（否则页面快照不含新坐标）；④ [P2] chooseOnMap 运算优先级丢坐标；⑤ [P3] store.js 格式损坏。
+    **验收（53 断言全过，console 零错误）**：8 段覆盖启动链/三 tab/九次级页/深色/空值/超长/建删闭环 + 新四功能（卡片编辑 S5、日程表单 S6、同伴管理 S7、背景图按钮+地图上图 S8）。报告 **acceptance/REPORT-native-0929-round2.md**。
+    **踩坑沉淀（重要）**：① **红线 3 的变体**：curl `-d` 中文 JSON 在 Git Bash 按 GBK 发送 → geocode 探针恒空的「假阴性」——一度误导排查方向（以为高德连不通），UTF-8 文件 + `--data-binary @file` 重测即命中；**服务端加 DBG 日志对照「收到的字节」是定位此类问题的决定性手段**。② 云写穿透 3~10s：自动化断言一律轮询（固定 sleep 必假失败）；云写后 `updateRow` 落库也要触发页面 refresh。③ callContainer 无 X-WX-SERVICE 报 **404 而非报错**——极易误判为「路由不存在」；原生迁移清单里要包含「网络层头」。④ smoke 的 geocode 断言只查 `响应含 coords 字段`——`{"coords":{}}` 也 PASS，**弱断言让 P0 存活四轮**——接口断言要验证业务内容非空。⑤ 验收会真实写库：跑前核对清单、跑后清残留（本轮「验收占位安排」×3 已清、「验收同伴」增删闭环无残留）。
+    **发版**：**1.5.9 已上传**（工具通道）——含 api.js 修复。容器 gotrip-020 同日上线（geocode 兼容）。**待用户**：1.5.9 设体验版 → 真机重点验证 AI 解析/锦囊/飞哪儿/天气（容器链路首次真正可用）+ 地图自动定位。
 
 59. **验收轮 + 发版 1.5.3（2026-09-29）**：用户三连（按清单验收 / review 工作区 / 发新版）。
     **review（先列表后修复）**：① **P1 真 Bug——`deleteTripById` 删当前行程不清 `store.trip`/`_warmId`**，之后「出发」tab 用已删行程的内存数据渲染（ready 已就位不再拉）→ 删除时置空两字段；② TripCardInfo 的 memberPreview/totalSpent 标记 optional（listTrips 已裁剪）；③ map 天分段 48px→96rpx（项目约定）。确认无问题：project.private libVersion 工具自动升级、create 编译报错截图=脚本中间态误改已修（全库 wxml/wxss 配平校验通过）。

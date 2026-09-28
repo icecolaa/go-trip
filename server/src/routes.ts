@@ -169,13 +169,19 @@ route('POST', '/api/trips/:id/ai/generate', async (_req, res, _p, body) => {
   }));
 });
 
-/** 批量地理编码：客户端写完活动后调用，回填坐标（高德优先，内置城市库兜底）。
- * 输入 items: [{ id, title, place?, city? }]，输出 coords: { [id]: {lat,lng} } */
+/** 批量地理编码：客户端写完活动后调用，回填坐标（高德 POI 优先，内置城市库兜底）。
+ * 兼容两种入参形状：{id, query|title, alt|place, city}（原生端传 query/alt，Taro 旧端传 title/place） */
 route('POST', '/api/poi/geocode', async (_req, res, _p, body) => {
+  console.error('[DBG route] body=', JSON.stringify(body).slice(0, 300));
   const items = Array.isArray(body.items) ? body.items.slice(0, 60) : [];
   const pending: GeocodeItem[] = items
-    .filter((it: any) => it && String(it.title || '').trim())
-    .map((it: any) => ({ id: String(it.id), query: cleanActivityQuery(String(it.title)), alt: it.place || undefined, city: it.city || undefined }));
+    .filter((it: any) => it && String(it.query || it.title || '').trim())
+    .map((it: any) => ({
+      id: String(it.id),
+      query: cleanActivityQuery(String(it.query || it.title)),
+      alt: it.alt || it.place || undefined,
+      city: it.city || undefined,
+    }));
   const coords = await geocodePlaces(pending).catch(() => new Map<string, { lat: number; lng: number }>());
   const out: Record<string, { lat: number; lng: number }> = {};
   for (const [id, c] of coords) out[id] = { lat: c.lat, lng: c.lng };

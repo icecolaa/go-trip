@@ -170,7 +170,7 @@ Page({
   chooseOnMap() {
     wx.chooseLocation({
       success: (r) => {
-        if (!r || !r.name && !r.address) return
+        if (!(r && (r.name || r.address))) return
         this.setData({
           formPlace: r.name || r.address || '',
           formLat: r.latitude,
@@ -213,8 +213,12 @@ Page({
         items: [{ id: actId, query: String(place).replace(/^(穿越|游览|前往|到达|入住|返回|集合)/, '').slice(0, 30), city: (store.trip && store.trip.city) || '' }]
       })
       const c = geo.coords && geo.coords[actId]
-      if (c) await entities.updateRow('gt_activities', actId, { lat: c.lat, lng: c.lng })
-    } catch (e) { /* 兜底失败静默 */ }
+      if (c) {
+        await entities.updateRow('gt_activities', actId, { lat: c.lat, lng: c.lng })
+        // 刷新本地快照：让站间距离估算与地图数据立刻生效
+        this.refresh()
+      }
+    } catch (e) { /* 兜底失败静默：地图页进入时会再自动编码一次 */ }
   },
   goTripMode() { wx.switchTab({ url: '/pages/trip-mode/trip-mode' }) },
   goMap() { wx.navigateTo({ url: '/pages/map/map' }) },
