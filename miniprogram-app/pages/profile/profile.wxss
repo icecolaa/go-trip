@@ -1,4 +1,9 @@
 .profile .bg-tint { position: absolute; left: 0; top: 0; right: 0; height: 500rpx; background: linear-gradient(180deg, #D8ECFC 0%, var(--bg) 100%); }
+/* 深色：顶部亮色渐变整对翻暗（与 home 头部同款漏网） */
+@media (prefers-color-scheme: dark) {
+  .profile .bg-tint { background: linear-gradient(180deg, #14283D 0%, var(--bg) 100%); }
+}
+.profile.theme-dark .bg-tint { background: linear-gradient(180deg, #14283D 0%, var(--bg) 100%); }
 .big-title { font-size: 46rpx; font-weight: 900; color: var(--ink); }
 
 .profile-card { margin: 20rpx 32rpx 0; padding: 26rpx 28rpx; display: flex; align-items: center; gap: 28rpx; position: relative; z-index: 2; }

@@ -67,3 +67,11 @@
 @media (prefers-color-scheme: dark) {
   .create-btn { background: rgba(23,48,75,.6); color: var(--sky400); }
 }
+
+/* 深色：头部亮色天空渐变整对翻暗（渐变里的硬编码亮色曾逃过 codemod——白字压亮底不可读） */
+@media (prefers-color-scheme: dark) {
+  .home { background: linear-gradient(180deg, #14283D 0%, #0F1E30 416rpx, var(--bg) 600rpx); }
+  .home .brandbar .en { color: var(--sky400); }
+}
+.home.theme-dark { background: linear-gradient(180deg, #14283D 0%, #0F1E30 416rpx, var(--bg) 600rpx); }
+.home.theme-dark .brandbar .en { color: var(--sky400); }
