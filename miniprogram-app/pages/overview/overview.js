@@ -2,6 +2,7 @@ const theme = require('../../utils/theme')
 const engine = require('../../utils/engine')
 const store = require('../../utils/store')
 const storage = require('../../utils/rdb/storage')
+const api = require('../../utils/api')
 
 function pad(n) { return String(n).padStart(2, '0') }
 function todayStr() {
@@ -21,6 +22,22 @@ function rangeTxt(s, e) {
   const n = daysBetween(s, e)
   if (isNaN(n) || n < 0) return '请选择日期'
   return n === 0 ? '当天往返' : '共 ' + (n + 1) + ' 天 ' + n + ' 晚'
+}
+
+// 天气速览：boot 先渲染 engine.weather 本地占位，再由 loadWeather 异步换成容器真数据
+const WX_DAYS = 4
+const WX_TTL = 3 * 60 * 60 * 1000
+const weatherCache = {} // '城市|日期串' -> { at, rows }
+
+function isoAdd(baseISO, n) {
+  const d = new Date(baseISO + 'T00:00:00')
+  d.setDate(d.getDate() + n)
+  return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate())
+}
+function wxTip(label, hi, lo) {
+  if (label && (label.indexOf('雨') >= 0 || label.indexOf('雪') >= 0)) return '带雨具'
+  if (hi != null && lo != null && hi - lo > 9) return '早晚温差大'
+  return '适宜出行'
 }
 
 Page({
@@ -174,10 +191,39 @@ Page({
         packingTag,
         dayList
       })
+      // 真天气异步覆盖；失败或窗口外无数据时保留上方占位渲染
+      this.loadWeather(t)
     } catch (e) {
       this.setData({ loading: false })
       wx.showToast({ title: (e && e.message) || '加载失败', icon: 'none' })
     }
+  },
+  async loadWeather(t) {
+    const city = t.city || t.destination || ''
+    if (!city) return
+    const dates = []
+    for (let i = 0; i < WX_DAYS; i++) dates.push(isoAdd(t.start || todayStr(), i))
+    const key = city + '|' + dates.join(',')
+    const hit = weatherCache[key]
+    if (hit && Date.now() - hit.at < WX_TTL) {
+      if (hit.rows.length) this.setData({ weather: hit.rows })
+      return
+    }
+    try {
+      const list = await api.get('/api/weather?place=' + encodeURIComponent(city) + '&dates=' + dates.join(','))
+      // 无温度的行是预报窗口外占位（weatherCode=-1），渲染成 null~null°C 不如不显示
+      const rows = (Array.isArray(list) ? list : [])
+        .filter(d => d && d.tempMax != null && d.tempMin != null)
+        .map(d => ({
+          date: String(d.date || '').slice(5).replace('-', '.'),
+          icon: (d.icon || '—') + ' ' + (d.label || ''),
+          hi: d.tempMax,
+          lo: d.tempMin,
+          tip: wxTip(d.label, d.tempMax, d.tempMin)
+        }))
+      weatherCache[key] = { at: Date.now(), rows }
+      if (rows.length) this.setData({ weather: rows })
+    } catch (e) { /* 容器不可达，保留本地占位 */ }
   },
   go(e) {
     const url = e.currentTarget.dataset.url
