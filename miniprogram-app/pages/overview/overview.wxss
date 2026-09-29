@@ -127,3 +127,18 @@
 .tm-cta-txt { flex: 1; display: flex; flex-direction: column; }
 .tm-cta-txt .t { font-size: 28rpx; font-weight: 900; color: #6B5200; }
 .tm-cta-txt .s { font-size: 21rpx; color: #A97E00; margin-top: 2rpx; }
+
+/* 修改行程：hero 编辑钮 + 弹层 */
+.bg-edit.edit { bottom: 104rpx; }
+.edit-head { display: flex; align-items: center; justify-content: space-between; margin: 8rpx 0 20rpx; }
+.edit-head .t { font-size: 33rpx; font-weight: 800; color: var(--ink); }
+.edit-head .x { width: 52rpx; height: 52rpx; border-radius: 50%; background: var(--sky50); display: flex; align-items: center; justify-content: center; }
+.edit-head .x .ic { width: 26rpx; height: 26rpx; color: var(--ink2); }
+.edit-lab { font-size: 24rpx; font-weight: 700; color: var(--ink2); margin: 22rpx 0 12rpx; }
+.edit-dates { display: flex; gap: 20rpx; }
+.edit-dates .date-box {
+  flex: 1; height: 88rpx; border-radius: 24rpx; background: var(--sky50);
+  display: flex; align-items: center; padding: 0 24rpx; gap: 16rpx;
+}
+.edit-dates .date-box .lab { font-size: 24rpx; color: var(--ink3); font-weight: 600; flex: none; }
+.edit-dates .date-box .d { font-size: 28rpx; font-weight: 800; color: var(--ink); font-variant-numeric: tabular-nums; }

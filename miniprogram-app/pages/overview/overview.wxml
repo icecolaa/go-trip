@@ -14,6 +14,7 @@
         <view class="ic ic-route" wx:if="{{stopsCount}}"></view><text wx:if="{{stopsCount}}">共 {{stopsCount}} 个安排</text>
       </view>
     </view>
+    <view class="bg-edit edit" hover-class="press" catchtap="openEdit"><view class="ic ic-edit"></view></view>
     <view class="bg-edit" hover-class="press" catchtap="changeCoverBg"><view class="ic ic-camera"></view></view>
   </view>
 
@@ -134,4 +135,31 @@
     <view style="height:60rpx"></view>
   </scroll-view>
   </block>
+
+  <!-- 修改行程 弹层：目的地 / 出行日期 / 预算 -->
+  <view wx:if="{{editShow}}" class="sheet-mask" bindtap="closeEdit"></view>
+  <view wx:if="{{editShow}}" class="sheet" catchtap="noop">
+    <view class="grab"></view>
+    <view class="edit-head"><text class="t">修改行程</text><view class="x" hover-class="press" bindtap="closeEdit"><view class="ic ic-close"></view></view></view>
+    <view class="edit-lab">目的地</view>
+    <view class="input">
+      <view class="ic ic-pin"></view>
+      <input value="{{editDestination}}" maxlength="40" placeholder="如：伊春（选填）" placeholder-class="ph" bindinput="onEditDest" confirm-type="done" cursor-spacing="16" style="flex:1;font-size:28rpx" />
+    </view>
+    <view class="edit-lab">出行日期 · {{editRangeTxt}}</view>
+    <view class="edit-dates">
+      <picker mode="date" value="{{editStart}}" end="{{editEnd}}" bindchange="onEditStart" style="flex:1">
+        <view class="date-box"><text class="lab">出发</text><text class="d">{{editStartCn}}</text></view>
+      </picker>
+      <picker mode="date" value="{{editEnd}}" start="{{editStart}}" bindchange="onEditEnd" style="flex:1">
+        <view class="date-box"><text class="lab">返程</text><text class="d">{{editEndCn}}</text></view>
+      </picker>
+    </view>
+    <view class="edit-lab">预算（元，选填）</view>
+    <view class="input">
+      <view class="ic ic-wallet"></view>
+      <input value="{{editBudget}}" type="digit" placeholder="本程大概花多少" placeholder-class="ph" bindinput="onEditBudget" confirm-type="done" cursor-spacing="16" style="flex:1;font-size:28rpx" />
+    </view>
+    <view class="btn btn-block" style="margin:30rpx 0 8rpx" hover-class="press" bindtap="saveEdit"><text>{{editBusy ? '保存中…' : '保存修改'}}</text></view>
+  </view>
 </view>

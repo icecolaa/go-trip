@@ -12,6 +12,16 @@ function daysBetween(a, b) {
   return Math.round((new Date(b + 'T00:00:00') - new Date(a + 'T00:00:00')) / 86400000)
 }
 function money(n) { return '¥' + Number(n || 0).toLocaleString() }
+function md(isoStr) {
+  const p = (isoStr || '').split('-')
+  if (p.length < 3) return '—'
+  return parseInt(p[1], 10) + '月' + parseInt(p[2], 10) + '日'
+}
+function rangeTxt(s, e) {
+  const n = daysBetween(s, e)
+  if (isNaN(n) || n < 0) return '请选择日期'
+  return n === 0 ? '当天往返' : '共 ' + (n + 1) + ' 天 ' + n + ' 晚'
+}
 
 Page({
   data: {
@@ -40,7 +50,17 @@ Page({
     perHeadTxt: '',
     packingTag: '',
     // 每日安排
-    dayList: []
+    dayList: [],
+    // 修改行程弹层（目的地/日期/预算）
+    editShow: false,
+    editBusy: false,
+    editDestination: '',
+    editStart: '',
+    editEnd: '',
+    editStartCn: '',
+    editEndCn: '',
+    editBudget: '',
+    editRangeTxt: ''
   },
   onShow() {
     this.setData({ themeClass: theme.currentClass() })
@@ -218,5 +238,85 @@ Page({
       path: '/pages/overview/overview?ro=1',
       imageUrl: '/assets/yichun-road.jpg'
     }
+  },
+  noop() {},
+  /* ---- 修改行程：目的地 / 出行日期 / 预算 ---- */
+  openEdit() {
+    const t = store.trip
+    if (!t) return
+    const s = t.start || todayStr()
+    const e = t.endDate || s
+    this._orig = { start: s, end: e }
+    const budget = Number(t.budgetTotal) || 0
+    this.setData({
+      editShow: true,
+      editDestination: t.destination || '',
+      editStart: s,
+      editEnd: e,
+      editStartCn: md(s),
+      editEndCn: md(e),
+      editBudget: budget > 0 ? String(budget) : '',
+      editRangeTxt: rangeTxt(s, e)
+    })
+  },
+  closeEdit() { if (this.data.editBusy) return; this.setData({ editShow: false }) },
+  onEditDest(e) { this.setData({ editDestination: e.detail.value }) },
+  onEditBudget(e) { this.setData({ editBudget: e.detail.value }) },
+  onEditStart(ev) {
+    const v = ev.detail.value
+    const patch = { editStart: v, editStartCn: md(v) }
+    if (this.data.editEnd && this.data.editEnd < v) {
+      patch.editEnd = v
+      patch.editEndCn = md(v)
+    }
+    patch.editRangeTxt = rangeTxt(v, patch.editEnd || this.data.editEnd)
+    this.setData(patch)
+  },
+  onEditEnd(ev) {
+    const v = ev.detail.value
+    this.setData({
+      editEnd: v,
+      editEndCn: md(v),
+      editRangeTxt: rangeTxt(this.data.editStart, v)
+    })
+  },
+  async saveEdit() {
+    if (this.data.editBusy) return
+    const t = store.trip
+    if (!t) return
+    const s = this.data.editStart, e = this.data.editEnd
+    if (!s || !e) { wx.showToast({ title: '请选择出行日期', icon: 'none' }); return }
+    if (e < s) { wx.showToast({ title: '返程不能早于出发', icon: 'none' }); return }
+    const patch = {
+      destination: (this.data.editDestination || '').trim(),
+      startDate: s,
+      endDate: e,
+      budget: parseFloat(this.data.editBudget) || 0
+    }
+    const o = this._orig || {}
+    const datesChanged = o.start !== s || o.end !== e
+    const shrink = datesChanged && daysBetween(s, e) < daysBetween(o.start, o.end)
+    const go = async () => {
+      this.setData({ editBusy: true })
+      try {
+        await store.updateTripInfo(t.id, patch)
+        this.setData({ editShow: false, editBusy: false })
+        wx.showToast({ title: '行程已更新', icon: 'success' })
+        this.boot()
+      } catch (err) {
+        this.setData({ editBusy: false })
+        wx.showToast({ title: (err && err.message) || '保存失败，请重试', icon: 'none' })
+      }
+    }
+    if (shrink) {
+      wx.showModal({
+        title: '缩短行程日期',
+        content: '被移除日期内的安排将一并删除，确定继续吗？',
+        confirmText: '继续保存',
+        success: (r) => { if (r.confirm) go() }
+      })
+      return
+    }
+    go()
   }
 })

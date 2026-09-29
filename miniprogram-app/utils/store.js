@@ -289,6 +289,25 @@ async function updateTripMeta(id, patch) {
         if (patch.coverImage !== undefined) store.trip.coverImage = patch.coverImage;
     }
 }
+/** 行程本体编辑（目的地/日期/预算）：日期变更会重建天行，必须整包 loadTrip 重载 */
+async function updateTripInfo(id, patch) {
+    await rdbTrip.updateTrip(id, patch);
+    await refreshTrips();
+    if (store.trip && store.trip.id === id) {
+        if (patch.startDate !== undefined || patch.endDate !== undefined) {
+            await loadTrip(id);
+            return;
+        }
+        if (patch.destination !== undefined) {
+            store.trip.destination = patch.destination;
+            store.trip.city = patch.destination;
+        }
+        if (patch.budget !== undefined) {
+            store.trip.budget = patch.budget;
+            store.trip.budgetTotal = patch.budget;
+        }
+    }
+}
 async function deleteTripById(id) {
     const opsAny = ops;
     await opsAny.deleteTrip(id);
@@ -504,6 +523,7 @@ store.currentTripId = currentTripId;
 store.reload = reload;
 store.createTrip = createTrip;
 store.updateTripMeta = updateTripMeta;
+store.updateTripInfo = updateTripInfo;
 store.deleteTripById = deleteTripById;
 store.importDemo = importDemo;
 store.addActivity = addActivity;
