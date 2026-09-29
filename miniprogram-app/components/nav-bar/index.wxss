@@ -24,23 +24,7 @@
 .nb-back.on-photo { background: rgba(24,42,61,.30); }
 .nb-back.on-photo .ic { color: #fff; }
 
-/* 微信胶囊（右侧） */
-.nb-capsule {
-  position: absolute; z-index: 5; border-radius: 999rpx;
-  background: rgba(255,255,255,.82); border: 2rpx solid rgba(24,42,61,.08);
-  box-shadow: inset 0 2rpx 0 rgba(255,255,255,.65), 0 4rpx 16rpx rgba(23,84,153,.08);
-  display: flex; align-items: center; overflow: hidden;
-}
-.nb-capsule .cap-cell { flex: 1; display: flex; align-items: center; justify-content: center; }
-.nb-capsule .cap-cell .ic { width: 36rpx; height: 36rpx; color: var(--ink); }
-.nb-capsule .cap-div { width: 2rpx; height: 36rpx; background: rgba(24,42,61,.12); }
-.nb-capsule.dark { background: rgba(24,42,61,.28); border-color: rgba(255,255,255,.14); box-shadow: none; }
-.nb-capsule.dark .cap-cell .ic { color: #fff; }
-.nb-capsule.dark .cap-div { background: rgba(255,255,255,.28); }
-
-/* 深色：返回键/胶囊转暗玻璃；标题与图标随 --ink 令牌翻亮 */
+/* 深色：返回键转暗玻璃；标题与图标随 --ink 令牌翻亮 */
 @media (prefers-color-scheme: dark) {
   .nb-back { background: rgba(36,56,80,.92); box-shadow: 0 4rpx 16rpx rgba(0,0,0,.3); }
-  .nb-capsule { background: rgba(36,56,80,.9); border-color: rgba(255,255,255,.1); box-shadow: none; }
-  .nb-capsule .cap-div { background: rgba(255,255,255,.16); }
 }
