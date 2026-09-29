@@ -111,6 +111,7 @@
 .wx-day .i { font-size: 30rpx; }
 .wx-day .t2 { font-size: 20rpx; color: var(--ink2); font-weight: 700; }
 .wx-day .t3 { font-size: 18rpx; color: var(--ink3); }
+.wx-day.pend { opacity: .55; }
 
 /* 出发模式 CTA */
 .tm-cta {

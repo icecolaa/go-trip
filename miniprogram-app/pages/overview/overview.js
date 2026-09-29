@@ -1,5 +1,4 @@
 const theme = require('../../utils/theme')
-const engine = require('../../utils/engine')
 const store = require('../../utils/store')
 const storage = require('../../utils/rdb/storage')
 const api = require('../../utils/api')
@@ -24,10 +23,10 @@ function rangeTxt(s, e) {
   return n === 0 ? '当天往返' : '共 ' + (n + 1) + ' 天 ' + n + ' 晚'
 }
 
-// 天气速览：boot 先渲染 engine.weather 本地占位，再由 loadWeather 异步换成容器真数据
+// 天气速览：boot 渲染诚实 pending 槽位，loadWeather 拉容器真数据按 date 覆盖——任何情况不回落假数据
 const WX_DAYS = 4
 const WX_TTL = 3 * 60 * 60 * 1000
-const weatherCache = {} // '城市|日期串' -> { at, rows }
+const weatherCache = {} // '城市|日期串' -> { at, rows }（只存真实行）
 
 function isoAdd(baseISO, n) {
   const d = new Date(baseISO + 'T00:00:00')
@@ -38,6 +37,14 @@ function wxTip(label, hi, lo) {
   if (label && (label.indexOf('雨') >= 0 || label.indexOf('雪') >= 0)) return '带雨具'
   if (hi != null && lo != null && hi - lo > 9) return '早晚温差大'
   return '适宜出行'
+}
+// 初始槽位：未来行程给「预报未出」占位；行程已结束返回空（整卡隐藏）
+function buildWxSlots(days, today) {
+  if (!days.length || today > days[days.length - 1].rawDate) return []
+  return days.slice(0, WX_DAYS).map(d => ({
+    date: String(d.rawDate || '').slice(5).replace('-', '.'),
+    icon: '⏳', pending: true, tip: '出行前再查'
+  }))
 }
 
 Page({
@@ -181,7 +188,7 @@ Page({
         members,
         ownerName: owner ? owner.name : '',
         city: t.city || t.destination || '',
-        weather: engine.weather(t.city || t.destination, t.start || todayStr(), 4),
+        weather: buildWxSlots(days, today),
         assistantTip,
         progress,
         billCount: bills.length,
@@ -203,27 +210,37 @@ Page({
     if (!city) return
     const dates = []
     for (let i = 0; i < WX_DAYS; i++) dates.push(isoAdd(t.start || todayStr(), i))
+    if (todayStr() > dates[dates.length - 1]) return // 行程已结束：卡已隐藏，预报无意义
     const key = city + '|' + dates.join(',')
+    let rows = null
     const hit = weatherCache[key]
     if (hit && Date.now() - hit.at < WX_TTL) {
-      if (hit.rows.length) this.setData({ weather: hit.rows })
-      return
+      rows = hit.rows
+    } else {
+      try {
+        const list = await api.get('/api/weather?place=' + encodeURIComponent(city) + '&dates=' + dates.join(','))
+        // 无温度的行是预报窗口外占位（weatherCode=-1），丢弃后保留 pending 槽位
+        rows = (Array.isArray(list) ? list : [])
+          .filter(d => d && d.tempMax != null && d.tempMin != null)
+          .map(d => ({
+            date: String(d.date || '').slice(5).replace('-', '.'),
+            icon: (d.icon || '—') + ' ' + (d.label || ''),
+            hi: d.tempMax,
+            lo: d.tempMin,
+            tip: wxTip(d.label, d.tempMax, d.tempMin)
+          }))
+        weatherCache[key] = { at: Date.now(), rows }
+      } catch (e) { /* 容器不可达，保留 pending 槽位 */ }
     }
-    try {
-      const list = await api.get('/api/weather?place=' + encodeURIComponent(city) + '&dates=' + dates.join(','))
-      // 无温度的行是预报窗口外占位（weatherCode=-1），渲染成 null~null°C 不如不显示
-      const rows = (Array.isArray(list) ? list : [])
-        .filter(d => d && d.tempMax != null && d.tempMin != null)
-        .map(d => ({
-          date: String(d.date || '').slice(5).replace('-', '.'),
-          icon: (d.icon || '—') + ' ' + (d.label || ''),
-          hi: d.tempMax,
-          lo: d.tempMin,
-          tip: wxTip(d.label, d.tempMax, d.tempMin)
-        }))
-      weatherCache[key] = { at: Date.now(), rows }
-      if (rows.length) this.setData({ weather: rows })
-    } catch (e) { /* 容器不可达，保留本地占位 */ }
+    if (!rows) return
+    // 真实行按 date 覆盖 pending 槽位；槽位外日期（无天数据场景）追加
+    const merged = (this.data.weather || []).slice()
+    rows.forEach(r => {
+      const i = merged.findIndex(m => m.date === r.date)
+      if (i >= 0) merged[i] = r
+      else merged.push(r)
+    })
+    this.setData({ weather: merged })
   },
   go(e) {
     const url = e.currentTarget.dataset.url

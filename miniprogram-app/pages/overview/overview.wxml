@@ -71,16 +71,17 @@
     </view>
 
     <!-- 天气速览 -->
-    <view class="card wx-strip anim-rise d2">
+    <view class="card wx-strip anim-rise d2" wx:if="{{weather.length}}">
       <view class="wx-head">
         <text class="t">天气速览 · {{city}}</text>
         <text class="s">行程日期窗口</text>
       </view>
       <view class="wx-days">
-        <view class="wx-day" wx:for="{{weather}}" wx:key="date">
+        <view class="wx-day {{item.pending ? 'pend' : ''}}" wx:for="{{weather}}" wx:key="date">
           <text class="d">{{item.date}}</text>
           <text class="i">{{item.icon}}</text>
-          <text class="t2 num">{{item.lo}}~{{item.hi}}°C</text>
+          <text class="t2 num" wx:if="{{!item.pending}}">{{item.lo}}~{{item.hi}}°C</text>
+          <text class="t2" wx:else>预报未出</text>
           <text class="t3">{{item.tip}}</text>
         </view>
       </view>
