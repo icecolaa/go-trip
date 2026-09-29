@@ -33,7 +33,7 @@
 | 验收 | `work/accept-0929.js` **12 段**分段自愈框架（ONLY=S6,S7 段选重跑；段失败自动重启工具重放）。六轮 39→53→58→70→79→78 全过 + S12 12/12 + **七轮（0930）清单验收：12 段最后一次 attempt 全绿、console 零错误**（报告 acceptance/REPORT-native-0930.md；S3/S9 合规断言入册「ai 页不可达」；**清进程 taskkill 重启比 cli quit 彻底**入册）。天气专项=`work/verify-weather-1515.js`；头图三修专项=`work/verify-overview-ui.js`；合规专项=`work/verify-ai-removal.js`。**验收已定时化（条目 63 附记二）**：CronCreate `automation-88c53b0a` 每天 09:00 跑全量+前日对比。**每轮验收会真实写库——跑后跨账号清理残留（七轮 SQL 核查因 MCP 未登录未跑，S4/S6/S7/S12 自清理断言全过为降级证据）** |
 | 冒烟 | `scripts/smoke.sh` **10/0**（容器代理 9 断言 + shared 纯函数）；rdb 数据层改动一律 `npm run build:rdb`（含 process.env 防护门） |
 | 仓库 | Gitee=origin 主同步 + GitHub **双远端已全同步**（2026-09-29 晚两轮收口：feat=805eb8d→**a5a16ea**、master=fcee398→**090d571**，ls-remote 双端实证；本条 docs 提交推送后各 +1 属常态，下次窗口顺手推平）。分支 feat/miniprogram；**master 已合并 feat（090d571）**；**工作区已归零**（schedule.js 在途改动已核实收口提交，见 63 附记三） |
-| 待办 Top3 | ① **1.5.20 提交审核**（=1.5.19+假胶囊移除）→ 过审设体验版 → 真机验收：容器链路（锦囊/飞哪儿/天气速览）+ 地图定位 + 卡片编辑/背景图/同伴/修改行程/删除安排/overview 头图三修/**导航胶囊区** + 深色模式 ② GitHub 积 3 提交待补推（805eb8d 后：522921f/097cf5c/7e33e4d+本条 docs，代理窗口恢复时 push）③ 容器 OpenAccessTypes 修回 PUBLIC+MINIAPP + MCP 登录后补跑 SQL 残留核查 |
+| 待办 Top3 | ① **1.5.20 提交审核**（=1.5.19+假胶囊移除）→ 过审设体验版 → 真机验收：容器链路（锦囊/飞哪儿/天气速览）+ 地图定位 + 卡片编辑/背景图/同伴/修改行程/删除安排/overview 头图三修/**导航胶囊区** + 深色模式 ② GitHub 积 3 提交待补推（代理窗口恢复时 push）③ 容器 OpenAccessTypes 修回 PUBLIC+MINIAPP~~+ MCP 登录后补跑 SQL 残留核查~~（**已补跑：三表零残留+业务数据原样，见 64 遗留补记**） |
 
 ## 2026-08~09 主要交付（按主题）
 
