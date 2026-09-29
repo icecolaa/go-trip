@@ -1,5 +1,6 @@
-<!-- 自定义导航：状态栏 + 导航行 + 微信胶囊
-     float 模式：去掉标题表头，只留悬浮返回键（布局占位不变，内容零位移） -->
+<!-- 自定义导航：状态栏 + 导航行
+     float 模式：去掉标题表头，只留悬浮返回键（布局占位不变，内容零位移）
+     右上角不放胶囊——微信原生胶囊常驻同位，自绘只会叠影（1.5.20 移除） -->
 <view class="nb {{photo ? 'nb-photo' : ''}}" style="padding-top:{{sbH}}px">
   <view class="nb-bar" style="height:{{navH}}px">
     <view wx:if="{{back}}" class="nb-back {{photo ? 'on-photo' : ''}}" hover-class="press" hover-stay-time="80" bindtap="goBack">
@@ -10,12 +11,5 @@
       <slot></slot>
     </view>
     <view wx:if="{{float && title}}" class="nb-float-title {{photo ? 'on-photo' : ''}}">{{title}}</view>
-    <!-- 微信胶囊（按真实菜单按钮矩形定位） -->
-    <view class="nb-capsule {{photo ? 'dark' : ''}}"
-          style="width:{{capW}}px;height:{{capH}}px;top:{{capTop}}px;right:{{capR}}px">
-      <view class="cap-cell"><view class="ic ic-more"></view></view>
-      <view class="cap-div"></view>
-      <view class="cap-cell"><view class="ic ic-more-circle"></view></view>
-    </view>
   </view>
 </view>

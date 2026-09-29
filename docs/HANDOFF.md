@@ -1,7 +1,8 @@
 # 交接文档（HANDOFF）
 
 > 面向下一个接手的开发者或 AI 会话。先读根目录 `CLAUDE.md`（规则手册），再读本文（现状、过程与经验）。
-> 更新：2026-09-30（条目 64：**七轮清单验收全过 + 1.5.19 上传**——用户清单四项（按钮全覆盖/正常空值超长/移动端/报告）12 段收官 46/46+首轮六段全绿、console 零错误；报告 acceptance/REPORT-native-0930.md；review 修 R1 死规则；**1.5.19 已上传（推荐送审版，含 1.5.18 全部合规修复）**）
+> 更新：2026-09-30 二（条目 65：**假胶囊移除 + 1.5.20 上传**——用户真机反馈右上角按钮与微信原生胶囊重复：nav-bar 组件自绘了零功能假胶囊按原生矩形同位叠影；wxml/wxss/js 三删，导航行高与返回钮保留；automator 三页截图+.nb-capsule GONE+console 零错误；**1.5.20 已上传，送审选它**）
+> 上一条：2026-09-30（条目 64：**七轮清单验收全过 + 1.5.19 上传**——用户清单四项（按钮全覆盖/正常空值超长/移动端/报告）12 段收官 46/46+首轮六段全绿、console 零错误；报告 acceptance/REPORT-native-0930.md；review 修 R1 死规则）
 > 上一条：2026-09-29 晚三（条目 63 附记七：**审核驳回修复+1.5.18 上传**——1.5.17 送审被拒「AI 问答属深度合成、个人主体未开放」，截图实锤 pages/ai「行程助手」对话页（条目 55 移除 packOptions 排除项的决策回退）：app.json 摘注册+packOptions 重排除+helper 文案改口；三断言全过，1.5.18 已上传待重新提交审核）
 > 上一条：2026-09-29 晚（条目 63 附记四：**渲染层报错治理**——DOMNodeRemoved 红错=libVersion 3.17.3/devtools RC 内部（业务代码零渲染层路径实锤），钉回 3.4.10 生效；custom-tab-bar 组件 wxss 标签选择器 5 处→.lbl 类黄警消失；automator 实证+双页截图无回归。⚠️ overview.wxml 有用户在 devtools 里的在途微调（删「行程日期窗口」副标题）未提交）
 > 上一条：2026-09-29 晚（条目 63 附记三：**幻觉会话收口**——用户拍板弃用出幻觉的其它会话、后续统一本目录；schedule.js 在途改动核实为完整功能「删除安排」已提交 a5a16ea；master 合并 090d571；**双远端 ls-remote 实证同点** feat=a5a16ea/master=090d571；工作区归零）
@@ -27,14 +28,16 @@
 |---|---|
 | **生产环境** | CloudBase `gotrip-d1gb187o991f5260a`（个人版，付费至 2027-03-25）。云托管 gotrip 容器 = **gotrip-021 无状态代理**（2026-09-29 部署，**天气改高德主链路**：geocode 任意地名→adcode→weatherInfo，伊春真实命中；EnvParams 10 键/MaxNum=1 RMW 保留；⚠️ OpenAccessTypes 被 deploy 被动带回 OA——待顺手修回 PUBLIC+MINIAPP，身份门不受影响），`/health` 探针 `{"ok":true,"db":"none","mode":"proxy"}`。公网开着（Web 直连需要）。feat 分支=1.5.16 全部修复（见「仓库」行同步状态） |
 | **架构（原生化完成）** | 小程序 `@cloudbase/wx-cloud-client-sdk` models.*（openid 行级隔离）+ `utils/api.js` callContainer（**必须带 X-WX-SERVICE 头**，条目 60 P0）；容器=无状态代理（AI/飞哪儿/POI/天气/编码）。设计/映射/进度在 `docs/native-migration.md` |
-| 小程序 | **1.5.19 已上传（推荐送审版）**：含 1.5.18 全部合规修复（pages/ai 摘注册）+overview 死样式清理，**mp 后台选 1.5.19 提交审核**。发布主体=miniprogram-app 原生 20 页；Taro 版冻结在 miniprogram/。版本线见条目 61/62/63/64 |
+| 小程序 | **1.5.20 已上传（送审选它）**：1.5.18 合规修复+死样式清理+**假胶囊移除**（7e33e4d）。发布主体=miniprogram-app 原生 20 页；Taro 版冻结在 miniprogram/。版本线见条目 61~65 |
 | 数据库 | TDSQL-C MySQL 8.0（MCP 可直写：`queryMysqlDatabase`/`manageMysqlDatabase`，库名=`<envId>` schema）。**小兴安岭七日×2**（真机号 EBZKAZJUGG + 工具号 EC38PUC1S8，各 7 天/30 安排/全坐标；**同名同内容分属两账号，改动要考虑双账号**）：旧伊春种子支出 5 笔×2、种子打包 4 条×2 已按用户拍板清除（条目 62 补记）；工具号名下保留 16 条七日详规配套打包模板。**另有活跃的演示导入行程**（「国庆伊春深度游」×3，分属两个其它 openid，随 importDemo 生成）——正常业务数据，清理时**必须按 _id 精确删**，严禁按 title/金额模糊匹配 |
 | 验收 | `work/accept-0929.js` **12 段**分段自愈框架（ONLY=S6,S7 段选重跑；段失败自动重启工具重放）。六轮 39→53→58→70→79→78 全过 + S12 12/12 + **七轮（0930）清单验收：12 段最后一次 attempt 全绿、console 零错误**（报告 acceptance/REPORT-native-0930.md；S3/S9 合规断言入册「ai 页不可达」；**清进程 taskkill 重启比 cli quit 彻底**入册）。天气专项=`work/verify-weather-1515.js`；头图三修专项=`work/verify-overview-ui.js`；合规专项=`work/verify-ai-removal.js`。**验收已定时化（条目 63 附记二）**：CronCreate `automation-88c53b0a` 每天 09:00 跑全量+前日对比。**每轮验收会真实写库——跑后跨账号清理残留（七轮 SQL 核查因 MCP 未登录未跑，S4/S6/S7/S12 自清理断言全过为降级证据）** |
 | 冒烟 | `scripts/smoke.sh` **10/0**（容器代理 9 断言 + shared 纯函数）；rdb 数据层改动一律 `npm run build:rdb`（含 process.env 防护门） |
 | 仓库 | Gitee=origin 主同步 + GitHub **双远端已全同步**（2026-09-29 晚两轮收口：feat=805eb8d→**a5a16ea**、master=fcee398→**090d571**，ls-remote 双端实证；本条 docs 提交推送后各 +1 属常态，下次窗口顺手推平）。分支 feat/miniprogram；**master 已合并 feat（090d571）**；**工作区已归零**（schedule.js 在途改动已核实收口提交，见 63 附记三） |
-| 待办 Top3 | ① **1.5.19 提交审核**（替代 1.5.18，内容=合规修复+死样式清理）→ 过审设体验版 → 真机验收：容器链路（锦囊/飞哪儿/天气速览）+ 地图定位 + 卡片编辑/背景图/同伴/修改行程/删除安排/overview 头图三修 + 深色模式 ② ~~GitHub 补推~~（已补齐多轮，见「仓库」行）③ 容器 OpenAccessTypes 修回 PUBLIC+MINIAPP（deploy RMW 两次带回 OA）+ MCP 登录后补跑七轮 SQL 残留核查 |
+| 待办 Top3 | ① **1.5.20 提交审核**（=1.5.19+假胶囊移除）→ 过审设体验版 → 真机验收：容器链路（锦囊/飞哪儿/天气速览）+ 地图定位 + 卡片编辑/背景图/同伴/修改行程/删除安排/overview 头图三修/**导航胶囊区** + 深色模式 ② GitHub 积 3 提交待补推（805eb8d 后：522921f/097cf5c/7e33e4d+本条 docs，代理窗口恢复时 push）③ 容器 OpenAccessTypes 修回 PUBLIC+MINIAPP + MCP 登录后补跑 SQL 残留核查 |
 
 ## 2026-08~09 主要交付（按主题）
+
+65. **假胶囊移除 + 1.5.20（2026-09-30）**：用户真机截图反馈「右上角两个按钮像跟微信本身的重复了」。**根因**：nav-bar 组件自绘了一个零功能假胶囊（●●●｜◎，`getMenuButtonBoundingClientRect` 按**原生胶囊真实矩形**定位）——真机上与原生胶囊完全同位：半透明底叠上去原生胶囊发浊、两层边框错位成叠影、点了没反应（原生胶囊无障碍层在上面）。该组件被 9 个在包页面复用（home/profile/overview/create/helper/guidebook/flights/packing/places）。**修复（7e33e4d，wxml/wxss/js 三删）**：假胶囊 wxml 块、`.nb-capsule` 全部样式（含 dark 与媒体查询）、js 里 capW/capH/capTop/capR 定位数据全删；`navH` 行高计算与返回钮保留（胶囊位的 `padding-right:208rpx` 保留防内容伸进原生胶囊区）。**验证**：`work/verify-capsule-fix.js`——home/overview/helper 三页截图目验叠影消失（原生胶囊单层清晰）+ `.nb-capsule` 元素 GONE + console 零错误；头图三修/天气真数据同帧回归正常。**1.5.20 已上传（送审选它）**。**教训**：微信原生胶囊（胶囊按钮）是系统级悬浮 UI，**永远不要自绘复刻**——位置对着画就是叠影，功能上原生菜单/返回首页也无法伪造；设计稿里的胶囊只是标注占位，不是要实现的控件。
 
 64. **七轮清单验收全过 + 1.5.19 上传（2026-09-30）**：用户三连（清单验收/review 工作区/发版）。**清单四项对照**：①按钮全覆盖=S1-S12 既有遍历+overview 功能格 7/7+新增功能专项（删除安排走 S6 产品路径自清理 PASS、头图三修几何三断言全过）②正常/空值/超长=S4 空值拦截+60 字超长+建删闭环、flights 空值交换拦截、S12 修改行程全链③移动端=iPhone 模拟器 190 张截图+深浅主题回归（真机待用户）④错误/复现/截图=REPORT-native-0930.md 四事件表（E1 冷桥自愈/E2 合规断言 reLaunch 抛错→脚本 try/catch 修复/E3 桥超时崩溃→**taskkill 清 13 进程重启比 cli quit 彻底**/E4 僵尸端口复现同处置）。
     **执行波折（复现路径入册）**：首轮 S3/S9 因「automator 对未注册页 reLaunch **直接抛错**而非跳转」三连败（合规断言写法缺陷，非产品问题）→ 修脚本；首轮 S9 后主连接超时崩溃且 S10-S12 未跑 → 清进程重启；段选重跑（ONLY=S3,S9,S10,S11,S12）**46/46 全过 console 零错误**。**审读纪律重申：按最后一次 attempt 判读，首轮 S1 attempt1 的 5 个 FAIL 是冷桥假故障**。
