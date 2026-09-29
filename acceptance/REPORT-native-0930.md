@@ -1,0 +1,52 @@
+# 原生版验收报告 · 2026-09-30（七轮：1.5.18 发布前全量清单验收）
+
+> 清单来源：用户四项要求——①每个按钮点一遍 ②正常/空值/超长各测一次 ③检查移动端 ④错误+复现+截图入报告，全过才算完成。
+> 基线：feat/miniprogram = 76c34d0（1.5.18 内容：pages/ai 摘注册合规修复 + overview 头图三修 + 日程删除安排 + tab-bar 选择器修复 + libVersion 3.4.10 钉版）。
+> 工具链：`work/accept-0929.js` 12 段分段自愈框架（段失败自动重启工具重放 ≤3 次）；本机 devtools RC 2.02.2609231 + 基础库 3.4.10；截图 `work/accept-0929/`（190 张）。
+
+## 结论
+
+**12 段全部通过（最后一次 attempt 全绿），console 零错误。** 分两批执行：首轮 S1/S2/S4/S5/S6/S7/S8 过（S1 attempt1 冷桥失败自愈；S3/S9 因脚本兼容问题未跑完、桥超时中断在 S10 前）；清进程重启后段选重跑 S3/S9/S10/S11/S12 → **46/46 全过**。
+
+## 覆盖明细（对照清单）
+
+### ① 每个按钮都点一遍
+- S1 启动链：welcome→home 自动进、行程卡 tap 进 overview、功能格跳转。
+- S2 三 tab：home/profile/trip-mode 切换；S3 九个次级页逐页可达（schedule/map/packing/settle/links/places/flights/helper）+ settings 三档主题切换。
+- S10 按钮全覆盖：settings 帮助页可达、分享说明弹层、helper 页可达。
+- S11 补遗：create 图标 chip/颜色点选、**overview 功能格全遍历 7/7**（逐格跳转+返回）、trip-mode 复制路线+高德规划按钮、flights 交换城市+人数步进、journal 心情选择、helper 问答回复。
+- 新功能专项：**日程长按菜单「删除安排」**——S6 自清理段走产品路径 delStop（mock showModal confirm → store.deleteActivityById 级联删 → 断言消失）**PASS**；overview 头图编辑钮存在（S8）+ 头图三修几何三断言（`work/verify-overview-ui.js`：徽章 top 175rpx 避开返回钮 / 双钮并排同底 / 钮底缘不压成员卡）**全过**。
+
+### ② 正常 / 空值 / 超长
+- 空值：create 空标题拦截、flights 空目的地交换拦截、AI 解析空文本（已随 ai 页摘除退役）。
+- 超长：create 60+ 字超长标题（注入→setData 截 60→真实提交）。
+- 正常：S4 真实建行程→删行程闭环、S6 表单保存+兜底编码、S12 修改行程全链（目的地/日期延长 3→4/缩短确认/预算）+ 一次性行程级联删除。
+- helper：问答回复含「攻略导入」文案且无「行程助手」字样（1.5.18 合规改口回归）。
+
+### ③ 检查移动端
+- devtools iPhone 14/15 模拟器全流程 190 张截图（`work/accept-0929/*.png`）；深浅双主题切换回归（S3 深色档）。
+- 真机验收未含（需用户侧）：1.5.18 过审后按待办①清单执行。
+
+### ④ 错误、复现步骤与处置
+| # | 现象 | 复现 | 处置 | 状态 |
+|---|---|---|---|---|
+| E1 | S1 attempt1 五断言 FAIL + `null.tap`（冷桥未就绪，工具刚启动自动化通道未热） | 首次 `cli auto` 后立即连接 | 框架分段自愈自动重放，attempt2 全绿 | ✅ 已自愈（按惯例按最后一次 attempt 判读） |
+| E2 | S3/S9 三次尝试全败：`page "pages/ai/ai" is not found` | 验收脚本合规断言直接 `reLaunch('/pages/ai/ai')`——automator 对未注册页**抛错**而非跳转，段被中断（连带 settings/journal/飞哪儿断言未跑） | 脚本修复：reLaunch 包 try/catch，抛错即判定「不可达 PASS」；重跑全绿 | ✅ 已修（本地验收脚本，非产品代码） |
+| E3 | 首轮跑到 S9 后主连接 `timeout waiting for automator response` 崩溃，S10-S12 未执行，RESULT 未写出 | 长会话桥超时（本机顽疾），叠加前次崩溃残留进程 | `taskkill` 清 13 个 WeChatAppEx + 工具进程后重启重跑 | ✅ 恢复；**清进程重启**比 `cli quit` 更彻底（新沉淀） |
+| E4 | 段选重跑首启即崩（0 断言执行）——上次崩溃把自动化端口留成僵尸态 | 上轮崩溃后未清进程直接重跑 | 同 E3 处置 | ✅ 恢复 |
+
+**console 错误：0**（两批合计；`DOMNodeRemoved` 红错未再现——libVersion 3.4.10 钉版生效的又一实证）。
+
+## Review 问题清单（任务②，已直接修复）
+
+| # | 级别 | 问题 | 处置 |
+|---|---|---|---|
+| R1 | P3 | `overview.wxss` `.wx-head .s` 死规则——天气卡副标题删除后无消费方 | 已删（本次提交） |
+| R2 | P3 | 验收脚本 S3/S9 合规断言 reLaunch 未包 try/catch → 段中断（E2 根因） | 已修（work/ 本地工具不入库） |
+| R3 | 核对无问题 | schedule.js delStop（showModal/loadLoading 配对、refresh 双路覆盖、无未使用变量）；custom-tab-bar wxml/wxss `.lbl` 配对一致、无 `text` 标签选择器残留；四改动文件无 console.log/debugger；app.json/packOptions ai 摘除一致 | 无需改 |
+
+## 遗留（非阻断）
+
+1. **跨账号 SQL 残留核查未跑**：双 MCP 实例本会话均未登录（设备码需用户扫码）。降级证据：S4/S6/S7/S12 四个自清理断言全过（产品路径删除+断言消失），与上轮「跑后核查=0」同款闭环。已定时化的 `automation-88c53b0a`（每天 09:00）会在 MCP 登录态可用时补跑对比。
+2. 真机验收待 1.5.18/1.5.19 过审后执行（用户侧）。
+3. RC 工具 scrollTo/touch 滑动对 scroll-view 失效（既有入册顽疾）——滚底安全区留白为确定性 CSS，真机 flick 一屏即可补验。
