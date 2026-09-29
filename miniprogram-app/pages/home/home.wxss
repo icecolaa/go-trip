@@ -65,8 +65,10 @@
 .bottom-space { height: 40rpx; }
 
 @media (prefers-color-scheme: dark) {
-  .create-btn { background: rgba(23,48,75,.6); color: var(--sky400); }
+  /* 深色底改为天空蓝微透（原 60% 深灰底发闷），虚线边与渐变底透出 */
+  .create-btn { background: rgba(46,146,237,.10); color: var(--sky400); border-color: rgba(85,172,243,.55); }
 }
+.home.theme-dark .create-btn { background: rgba(46,146,237,.10); color: var(--sky400); border-color: rgba(85,172,243,.55); }
 
 /* 深色：头部亮色天空渐变整对翻暗（渐变里的硬编码亮色曾逃过 codemod——白字压亮底不可读） */
 @media (prefers-color-scheme: dark) {

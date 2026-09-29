@@ -2,7 +2,11 @@
 <view class="screen profile {{themeClass}}">
   <view class="bg-tint"></view>
   <nav-bar>
-    <text class="big-title">我的</text>
+    <view class="brandbar">
+      <image class="logo" src="/assets/logo.png" mode="aspectFill" />
+      <text class="cn">出发吧</text>
+      <text class="en">GoTrip</text>
+    </view>
   </nav-bar>
 
   <scroll-view class="scroll" scroll-y>

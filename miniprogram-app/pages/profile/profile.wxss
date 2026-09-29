@@ -4,7 +4,15 @@
   .profile .bg-tint { background: linear-gradient(180deg, #14283D 0%, var(--bg) 100%); }
 }
 .profile.theme-dark .bg-tint { background: linear-gradient(180deg, #14283D 0%, var(--bg) 100%); }
-.big-title { font-size: 46rpx; font-weight: 900; color: var(--ink); }
+/* 品牌栏（与首页头部同款） */
+.brandbar { display: flex; align-items: center; gap: 16rpx; }
+.brandbar .logo { width: 56rpx; height: 56rpx; border-radius: 18rpx; box-shadow: 0 6rpx 16rpx rgba(23,84,153,.2); }
+.brandbar .cn { font-size: 38rpx; font-weight: 900; letter-spacing: 1rpx; color: var(--ink); }
+.brandbar .en { font-style: italic; font-size: 24rpx; font-weight: 800; color: var(--sky600); margin-left: -8rpx; }
+@media (prefers-color-scheme: dark) {
+  .brandbar .en { color: var(--sky400); }
+}
+.theme-dark .brandbar .en { color: var(--sky400); }
 
 .profile-card { margin: 20rpx 32rpx 0; padding: 26rpx 28rpx; display: flex; align-items: center; gap: 28rpx; position: relative; z-index: 2; }
 .avatar.xl { width: 116rpx; height: 116rpx; font-size: 44rpx; box-shadow: 0 12rpx 32rpx rgba(46,146,237,.3); }
