@@ -8,7 +8,7 @@
     <!-- 普通页签 -->
     <view wx:else class="tb-tab tab-press {{selected === index ? 'on' : ''}}" hover-class="press" hover-stay-time="80" data-path="{{item.path}}" bindtap="switchTab">
       <view class="ic ic-{{item.icon}}"></view>
-      <text>{{item.text}}</text>
+      <text class="lbl">{{item.text}}</text>
     </view>
   </block>
 </view>
