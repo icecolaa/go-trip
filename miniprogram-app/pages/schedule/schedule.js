@@ -79,13 +79,39 @@ Page({
   pickDay(e) { this.setData({ dayIdx: Number(e.currentTarget.dataset.i) }, () => this.refresh()) },
   stopMenu(e) {
     const id = e.currentTarget.dataset.id
+    const name = (this.data.dayStops.find(s => s.id === id) || {}).name || ''
     wx.showActionSheet({
-      itemList: ['上移', '下移', '修改备注', '移动到其他天'],
+      itemList: ['上移', '下移', '修改备注', '移动到其他天', '删除安排'],
       success: res => {
         if (res.tapIndex === 0) this.shift(id, -1)
         if (res.tapIndex === 1) this.shift(id, 1)
         if (res.tapIndex === 2) this.editNote(id)
         if (res.tapIndex === 3) this.moveDay(id)
+        if (res.tapIndex === 4) this.delStop({ currentTarget: { dataset: { id, name } } })
+      }
+    })
+  },
+  /** 删除单条安排（级联清活动+动态日志）：stopMenu 第五项，也可被自动化脚本直驱 */
+  delStop(e) {
+    const { id, name } = e.currentTarget.dataset
+    if (!id) return
+    wx.showModal({
+      title: '删除安排',
+      content: `确定删除「${name || '该安排'}」吗？`,
+      confirmText: '删除',
+      confirmColor: '#F0655A',
+      success: async (r) => {
+        if (!r.confirm) return
+        try {
+          wx.showLoading({ title: '删除中…', mask: true })
+          await store.deleteActivityById(id, name)
+          wx.hideLoading()
+          wx.showToast({ title: '已删除', icon: 'success' })
+        } catch (e2) {
+          wx.hideLoading()
+          wx.showToast({ title: (e2 && e2.message) || '删除失败', icon: 'none' })
+        }
+        this.refresh()
       }
     })
   },
