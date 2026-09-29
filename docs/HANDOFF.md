@@ -1,7 +1,8 @@
 # 交接文档（HANDOFF）
 
 > 面向下一个接手的开发者或 AI 会话。先读根目录 `CLAUDE.md`（规则手册），再读本文（现状、过程与经验）。
-> 更新：2026-09-29 晚三（条目 63 附记七：**审核驳回修复+1.5.18 上传**——1.5.17 送审被拒「AI 问答属深度合成、个人主体未开放」，截图实锤 pages/ai「行程助手」对话页（条目 55 移除 packOptions 排除项的决策回退）：app.json 摘注册+packOptions 重排除+helper 文案改口；三断言全过，**1.5.18 已上传待重新提交审核**）
+> 更新：2026-09-30（条目 64：**七轮清单验收全过 + 1.5.19 上传**——用户清单四项（按钮全覆盖/正常空值超长/移动端/报告）12 段收官 46/46+首轮六段全绿、console 零错误；报告 acceptance/REPORT-native-0930.md；review 修 R1 死规则；**1.5.19 已上传（推荐送审版，含 1.5.18 全部合规修复）**）
+> 上一条：2026-09-29 晚三（条目 63 附记七：**审核驳回修复+1.5.18 上传**——1.5.17 送审被拒「AI 问答属深度合成、个人主体未开放」，截图实锤 pages/ai「行程助手」对话页（条目 55 移除 packOptions 排除项的决策回退）：app.json 摘注册+packOptions 重排除+helper 文案改口；三断言全过，1.5.18 已上传待重新提交审核）
 > 上一条：2026-09-29 晚（条目 63 附记四：**渲染层报错治理**——DOMNodeRemoved 红错=libVersion 3.17.3/devtools RC 内部（业务代码零渲染层路径实锤），钉回 3.4.10 生效；custom-tab-bar 组件 wxss 标签选择器 5 处→.lbl 类黄警消失；automator 实证+双页截图无回归。⚠️ overview.wxml 有用户在 devtools 里的在途微调（删「行程日期窗口」副标题）未提交）
 > 上一条：2026-09-29 晚（条目 63 附记三：**幻觉会话收口**——用户拍板弃用出幻觉的其它会话、后续统一本目录；schedule.js 在途改动核实为完整功能「删除安排」已提交 a5a16ea；master 合并 090d571；**双远端 ls-remote 实证同点** feat=a5a16ea/master=090d571；工作区归零）
 > 上一条：2026-09-29（条目 63：**1.5.15/1.5.16 接真天气**——容器 gotrip-021 高德主链路+前端 loadWeather 真数据覆盖；后追加拍板方案「诚实占位+根除假数据兜底」（窗口外「预报未出」、过去行程隐藏卡片、engine 假数据退役），automator 四断言全过；**master 已合并 feat**；1.5.16 已上传待设体验版）
@@ -26,14 +27,20 @@
 |---|---|
 | **生产环境** | CloudBase `gotrip-d1gb187o991f5260a`（个人版，付费至 2027-03-25）。云托管 gotrip 容器 = **gotrip-021 无状态代理**（2026-09-29 部署，**天气改高德主链路**：geocode 任意地名→adcode→weatherInfo，伊春真实命中；EnvParams 10 键/MaxNum=1 RMW 保留；⚠️ OpenAccessTypes 被 deploy 被动带回 OA——待顺手修回 PUBLIC+MINIAPP，身份门不受影响），`/health` 探针 `{"ok":true,"db":"none","mode":"proxy"}`。公网开着（Web 直连需要）。feat 分支=1.5.16 全部修复（见「仓库」行同步状态） |
 | **架构（原生化完成）** | 小程序 `@cloudbase/wx-cloud-client-sdk` models.*（openid 行级隔离）+ `utils/api.js` callContainer（**必须带 X-WX-SERVICE 头**，条目 60 P0）；容器=无状态代理（AI/飞哪儿/POI/天气/编码）。设计/映射/进度在 `docs/native-migration.md` |
-| 小程序 | **1.5.18 已上传，待重新提交审核**（1.5.17 送审被拒：AI 问答=深度合成、个人主体未开放；已摘除 pages/ai 对话页，见 63 附记七。发布主体=miniprogram-app 原生 21 页→**20 页**；Taro 版冻结在 miniprogram/）。版本线见条目 61/62/63 |
+| 小程序 | **1.5.19 已上传（推荐送审版）**：含 1.5.18 全部合规修复（pages/ai 摘注册）+overview 死样式清理，**mp 后台选 1.5.19 提交审核**。发布主体=miniprogram-app 原生 20 页；Taro 版冻结在 miniprogram/。版本线见条目 61/62/63/64 |
 | 数据库 | TDSQL-C MySQL 8.0（MCP 可直写：`queryMysqlDatabase`/`manageMysqlDatabase`，库名=`<envId>` schema）。**小兴安岭七日×2**（真机号 EBZKAZJUGG + 工具号 EC38PUC1S8，各 7 天/30 安排/全坐标；**同名同内容分属两账号，改动要考虑双账号**）：旧伊春种子支出 5 笔×2、种子打包 4 条×2 已按用户拍板清除（条目 62 补记）；工具号名下保留 16 条七日详规配套打包模板。**另有活跃的演示导入行程**（「国庆伊春深度游」×3，分属两个其它 openid，随 importDemo 生成）——正常业务数据，清理时**必须按 _id 精确删**，严禁按 title/金额模糊匹配 |
-| 验收 | `work/accept-0929.js` **12 段**分段自愈框架（ONLY=S6,S7 段选重跑；段失败自动重启工具重放）。六轮 39→53→58→70→79→78 全过 + **S12 修改行程 12/12**（一次性行程上测编辑闭环，跑后云端残留核查=0）。天气专项=`work/verify-weather-1515.js`（①容器原始返回 ②页面映射格式 ③脱离本地引擎比对；只读不写库）。**验收已定时化（条目 63 附记二）**：CronCreate `automation-88c53b0a` 每天 09:00 跑 accept-0929.js 全量+前日 result.json 对比日报（残留只报 _id 不删）。**每轮验收会真实写库——跑后跨账号清理「验收占位/验收同伴」残留** |
+| 验收 | `work/accept-0929.js` **12 段**分段自愈框架（ONLY=S6,S7 段选重跑；段失败自动重启工具重放）。六轮 39→53→58→70→79→78 全过 + S12 12/12 + **七轮（0930）清单验收：12 段最后一次 attempt 全绿、console 零错误**（报告 acceptance/REPORT-native-0930.md；S3/S9 合规断言入册「ai 页不可达」；**清进程 taskkill 重启比 cli quit 彻底**入册）。天气专项=`work/verify-weather-1515.js`；头图三修专项=`work/verify-overview-ui.js`；合规专项=`work/verify-ai-removal.js`。**验收已定时化（条目 63 附记二）**：CronCreate `automation-88c53b0a` 每天 09:00 跑全量+前日对比。**每轮验收会真实写库——跑后跨账号清理残留（七轮 SQL 核查因 MCP 未登录未跑，S4/S6/S7/S12 自清理断言全过为降级证据）** |
 | 冒烟 | `scripts/smoke.sh` **10/0**（容器代理 9 断言 + shared 纯函数）；rdb 数据层改动一律 `npm run build:rdb`（含 process.env 防护门） |
 | 仓库 | Gitee=origin 主同步 + GitHub **双远端已全同步**（2026-09-29 晚两轮收口：feat=805eb8d→**a5a16ea**、master=fcee398→**090d571**，ls-remote 双端实证；本条 docs 提交推送后各 +1 属常态，下次窗口顺手推平）。分支 feat/miniprogram；**master 已合并 feat（090d571）**；**工作区已归零**（schedule.js 在途改动已核实收口提交，见 63 附记三） |
-| 待办 Top3 | ① **1.5.18 重新提交审核**（1.5.17 因 pages/ai「行程助手」AI 对话页被拒）→ 过审后设体验版 → 真机验收：容器链路（AI 解析/锦囊/飞哪儿/天气速览）+ 地图定位 + 卡片编辑/背景图/同伴/修改行程/删除安排/overview 头图三修 + 深色模式 ② ~~GitHub 补推~~（已补齐多轮，见「仓库」行）③ 容器 OpenAccessTypes 修回 PUBLIC+MINIAPP（deploy RMW 两次带回 OA） |
+| 待办 Top3 | ① **1.5.19 提交审核**（替代 1.5.18，内容=合规修复+死样式清理）→ 过审设体验版 → 真机验收：容器链路（锦囊/飞哪儿/天气速览）+ 地图定位 + 卡片编辑/背景图/同伴/修改行程/删除安排/overview 头图三修 + 深色模式 ② ~~GitHub 补推~~（已补齐多轮，见「仓库」行）③ 容器 OpenAccessTypes 修回 PUBLIC+MINIAPP（deploy RMW 两次带回 OA）+ MCP 登录后补跑七轮 SQL 残留核查 |
 
 ## 2026-08~09 主要交付（按主题）
+
+64. **七轮清单验收全过 + 1.5.19 上传（2026-09-30）**：用户三连（清单验收/review 工作区/发版）。**清单四项对照**：①按钮全覆盖=S1-S12 既有遍历+overview 功能格 7/7+新增功能专项（删除安排走 S6 产品路径自清理 PASS、头图三修几何三断言全过）②正常/空值/超长=S4 空值拦截+60 字超长+建删闭环、flights 空值交换拦截、S12 修改行程全链③移动端=iPhone 模拟器 190 张截图+深浅主题回归（真机待用户）④错误/复现/截图=REPORT-native-0930.md 四事件表（E1 冷桥自愈/E2 合规断言 reLaunch 抛错→脚本 try/catch 修复/E3 桥超时崩溃→**taskkill 清 13 进程重启比 cli quit 彻底**/E4 僵尸端口复现同处置）。
+    **执行波折（复现路径入册）**：首轮 S3/S9 因「automator 对未注册页 reLaunch **直接抛错**而非跳转」三连败（合规断言写法缺陷，非产品问题）→ 修脚本；首轮 S9 后主连接超时崩溃且 S10-S12 未跑 → 清进程重启；段选重跑（ONLY=S3,S9,S10,S11,S12）**46/46 全过 console 零错误**。**审读纪律重申：按最后一次 attempt 判读，首轮 S1 attempt1 的 5 个 FAIL 是冷桥假故障**。
+    **review（任务②，问题清单→直改）**：R1 [P3] overview.wxss `.wx-head .s` 死规则（副标题删除后无消费方）→ 已删；R2 [P3] 验收脚本合规断言未包 try/catch（E2 根因，work/ 本地工具）→ 已修；R3 核对无问题——delStop 配对完整/无未使用变量、tab-bar `.lbl` 配对一致、四文件无 console.log/debugger、ai 摘除双配置一致。
+    **发版**：**1.5.19 已上传**（工具通道，发布者=冰可乐）=1.5.18 合规修复+死样式清理，**推荐以此版提交审核**（1.5.18 已上传但被 1.5.19 取代，后台两版并存任选，审 1.5.19 即可）。
+    **遗留**：① MCP 双实例本会话均未登录（设备码需扫码）→ 七轮跨账号 SQL 残留核查未跑，降级证据=S4/S6/S7/S12 四个自清理断言全过（产品路径删除+断言消失，与六轮「核查=0」同款闭环）；MCP 登录后补跑。② 真机验收待过审后（用户侧）。③ RC 工具 scrollTo/touch 滑动失效顽疾沿用（滚底留白=确定性 CSS，真机 flick 补验）。
 
 63. **接真天气：行程页天气速览切容器真实数据（2026-09-29，1.5.15）**：用户问「天气是真是假」引出。**根因**：overview 天气速览是 `engine.weather` 本地确定性假数据（hash(城市+日期) 种子+静态 CITY_CLIMATE 表，无网络）；容器真实路由 `GET /api/weather?place=&dates=` 一直存在但**前端从未接**；且旧容器实现 Open-Meteo 主链路（国外源国内容器不稳）+内置城市表无伊春→恒占位。**容器侧（a820694，上会话已完成并本地直调验证）**：高德主链路 geocode（任意地名→adcode，adcodeCache 进程缓存）→ weatherInfo extensions=all（今天+3 天，窗口外日期保持占位行），`weatherCode:-2` 高德源标识（占位 -1、Open-Meteo ≥0）；Open-Meteo 降为第二降级。
     **前端（85bcc97，本会话落地）**：boot 先渲染 engine 占位 → 末尾 `loadWeather(t)`：模块级 weatherCache（`city|dates` 键，TTL 3h）→ `api.get('/api/weather?place='+encodeURIComponent(city)+'&dates='+…)`（行程 start 起 4 天，本地格式化防 UTC+8 偏移）→ **无温度的行直接丢弃**（窗口外占位渲染成 null~null°C 不如不显示，槽位 flex 均分自适应）→ 映射 `{date: M.D, icon+' '+label, hi/lo, tip: 雨雪→带雨具/温差>9→早晚温差大/适宜出行}` → setData 覆盖+写缓存；catch/空结果静默保留占位。
