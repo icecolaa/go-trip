@@ -1,7 +1,8 @@
 # 交接文档（HANDOFF）
 
 > 面向下一个接手的开发者或 AI 会话。先读根目录 `CLAUDE.md`（规则手册），再读本文（现状、过程与经验）。
-> 更新：2026-09-29（条目 62：**功能缺口「修改行程」落地（1.5.11）**——overview hero 编辑钮+表单弹层（目的地/出行日期/预算），日期变更经 syncDays 重建后整包重载，缩短需确认；验收 S12 12/12。GitHub 积 18 提交待补推；1.5.11 待设体验版）
+> 更新：2026-09-29（条目 63：**1.5.15 接真天气——行程页天气速览从本地假数据切容器真实数据（高德主链路）**。容器 gotrip-021 上线；前端 loadWeather 占位→异步覆盖+TTL3h 缓存；automator ①②③ 全 PASS；1.5.15 已上传待设体验版）
+> 上一条：2026-09-29（条目 62：**功能缺口「修改行程」落地（1.5.11）**——overview hero 编辑钮+表单弹层（目的地/出行日期/预算），日期变更经 syncDays 重建后整包重载，缩短需确认；验收 S12 12/12。GitHub 积 18 提交待补推；1.5.11 待设体验版）
 > 上一条：2026-09-29（条目 61：**会话收官——原生版功能收官七连发（1.5.4→1.5.10）+ 行程数据重建（小兴安岭七日×2账号）+ 验收体系成型（11 段 78 断言，六轮全过）**。GitHub 积 17 提交待补推；1.5.10 待设体验版）
 > 上一条：2026-09-29（条目 60：**二轮验收+P0 修复+发版 1.5.9**。验收揪出 **P0：api.js 漏 X-WX-SERVICE 头——原生版全部容器 API 自迁移以来 404**（AI/锦囊/飞哪儿/POI/天气/编码全挂）已修；容器 geocode 形状兼容（gotrip-020）；autoGeocodeOnce 死代码接通；53 断言全过（报告 acceptance/REPORT-native-0929-round2.md））
 > 上一条：2026-09-29（条目 59：**验收轮+发版 1.5.3**。滚动容器同类修复 14 处收官；review 修 P1 删行程脏内存态；automator 分段自愈验收 **39/39 全过、console 零错误**（报告 acceptance/REPORT-native-0929.md）；1.5.3 已上传待设体验版）
@@ -16,20 +17,26 @@
 > 上一条：2026-09-26（条目 45：Web 账密注册通道证实不可用并移除——平台 501 + SDK 吞错双实锤；登录页改登录+游客双通道）。
 > 上一条：2026-09-25（条目 42：第三个环境 + SQL 库接通 + H5 双端）。
 
-## 当前状态一览（2026-09-29，修改行程落地）
+## 当前状态一览（2026-09-29，接真天气落地）
 
 | 项 | 值 |
 |---|---|
-| **生产环境** | CloudBase `gotrip-d1gb187o991f5260a`（个人版，付费至 2027-03-25）。云托管 gotrip 容器 = **gotrip-020 无状态代理**（2026-09-29 部署，geocode 兼容双入参形状；EnvParams 10 键/MaxNum=1/PUBLIC+MINIAPP 保留），`/health` 探针 `{"ok":true,"db":"none","mode":"proxy"}`。公网开着（Web 直连需要）。feat 分支=1.5.11 全部修复，**Gitee 与 GitHub 均已同步至 fa7b2c7**（代理窗口已补齐，积压清零） |
+| **生产环境** | CloudBase `gotrip-d1gb187o991f5260a`（个人版，付费至 2027-03-25）。云托管 gotrip 容器 = **gotrip-021 无状态代理**（2026-09-29 部署，**天气改高德主链路**：geocode 任意地名→adcode→weatherInfo，伊春真实命中；EnvParams 10 键/MaxNum=1 RMW 保留；⚠️ OpenAccessTypes 被 deploy 被动带回 OA——待顺手修回 PUBLIC+MINIAPP，身份门不受影响），`/health` 探针 `{"ok":true,"db":"none","mode":"proxy"}`。公网开着（Web 直连需要）。feat 分支=1.5.15 全部修复（见「仓库」行同步状态） |
 | **架构（原生化完成）** | 小程序 `@cloudbase/wx-cloud-client-sdk` models.*（openid 行级隔离）+ `utils/api.js` callContainer（**必须带 X-WX-SERVICE 头**，条目 60 P0）；容器=无状态代理（AI/飞哪儿/POI/天气/编码）。设计/映射/进度在 `docs/native-migration.md` |
-| 小程序 | **1.5.14 已上传，需重新设为体验版**（发布主体=miniprogram-app 原生 21 页；Taro 版冻结在 miniprogram/）。**1.5.3→1.5.14 版本线见条目 61/62**（…/修改行程/深色修复两轮/我的页品牌栏/**首页封面同步（build-rdb 产物 bug 根治）+首页分享+九宫格统一**） |
+| 小程序 | **1.5.15 已上传，需重新设为体验版**（发布主体=miniprogram-app 原生 21 页；Taro 版冻结在 miniprogram/）。**1.5.3→1.5.15 版本线见条目 61/62/63**（…/修改行程/深色修复两轮/我的页品牌栏/首页封面同步+分享+九宫格统一/**天气速览接真数据**） |
 | 数据库 | TDSQL-C MySQL 8.0（MCP 可直写：`queryMysqlDatabase`/`manageMysqlDatabase`，库名=`<envId>` schema）。**小兴安岭七日×2**（真机号 EBZKAZJUGG + 工具号 EC38PUC1S8，各 7 天/30 安排/全坐标；**同名同内容分属两账号，改动要考虑双账号**）：旧伊春种子支出 5 笔×2、种子打包 4 条×2 已按用户拍板清除（条目 62 补记）；工具号名下保留 16 条七日详规配套打包模板。**另有活跃的演示导入行程**（「国庆伊春深度游」×3，分属两个其它 openid，随 importDemo 生成）——正常业务数据，清理时**必须按 _id 精确删**，严禁按 title/金额模糊匹配 |
-| 验收 | `work/accept-0929.js` **12 段**分段自愈框架（ONLY=S6,S7 段选重跑；段失败自动重启工具重放）。六轮 39→53→58→70→79→78 全过 + **S12 修改行程 12/12**（一次性行程上测编辑闭环，跑后云端残留核查=0）。**每轮验收会真实写库——跑后跨账号清理「验收占位/验收同伴」残留** |
+| 验收 | `work/accept-0929.js` **12 段**分段自愈框架（ONLY=S6,S7 段选重跑；段失败自动重启工具重放）。六轮 39→53→58→70→79→78 全过 + **S12 修改行程 12/12**（一次性行程上测编辑闭环，跑后云端残留核查=0）。天气专项=`work/verify-weather-1515.js`（①容器原始返回 ②页面映射格式 ③脱离本地引擎比对；只读不写库）。**每轮验收会真实写库——跑后跨账号清理「验收占位/验收同伴」残留** |
 | 冒烟 | `scripts/smoke.sh` **10/0**（容器代理 9 断言 + shared 纯函数）；rdb 数据层改动一律 `npm run build:rdb`（含 process.env 防护门） |
-| 仓库 | Gitee=origin 主同步 + GitHub **双远端均已同步至 fa7b2c7**。分支 feat/miniprogram，master 严重落后（合并待拍板） |
-| 待办 Top3 | ① **1.5.13 重新设体验版 → 真机验收**：容器链路（AI 解析/锦囊/飞哪儿/天气）+ 地图自动定位 + 卡片编辑/背景图/同伴管理/修改行程 + **深色模式**（首页/我的页头部渐变、新建旅程按钮——1.5.12/1.5.13 修复项）② master 合并待拍板（feat 领先 21+ 提交）③ 验收脚本改定时任务/按需触发模式（已提议未拍板） |
+| 仓库 | Gitee=origin 主同步 + GitHub（按代理窗口补推，见条目 63 尾）。分支 feat/miniprogram，master 严重落后（合并待拍板） |
+| 待办 Top3 | ① **1.5.15 重新设体验版 → 真机验收**：容器链路（AI 解析/锦囊/飞哪儿/**天气速览真数据**）+ 地图自动定位 + 卡片编辑/背景图/同伴管理/修改行程 + 深色模式 ② master 合并待拍板（feat 领先 21+ 提交）③ 容器 OpenAccessTypes 修回 PUBLIC+MINIAPP（deploy RMW 两次带回 OA）+ 验收脚本改定时/按需模式（已提议未拍板） |
 
 ## 2026-08~09 主要交付（按主题）
+
+63. **接真天气：行程页天气速览切容器真实数据（2026-09-29，1.5.15）**：用户问「天气是真是假」引出。**根因**：overview 天气速览是 `engine.weather` 本地确定性假数据（hash(城市+日期) 种子+静态 CITY_CLIMATE 表，无网络）；容器真实路由 `GET /api/weather?place=&dates=` 一直存在但**前端从未接**；且旧容器实现 Open-Meteo 主链路（国外源国内容器不稳）+内置城市表无伊春→恒占位。**容器侧（a820694，上会话已完成并本地直调验证）**：高德主链路 geocode（任意地名→adcode，adcodeCache 进程缓存）→ weatherInfo extensions=all（今天+3 天，窗口外日期保持占位行），`weatherCode:-2` 高德源标识（占位 -1、Open-Meteo ≥0）；Open-Meteo 降为第二降级。
+    **前端（85bcc97，本会话落地）**：boot 先渲染 engine 占位 → 末尾 `loadWeather(t)`：模块级 weatherCache（`city|dates` 键，TTL 3h）→ `api.get('/api/weather?place='+encodeURIComponent(city)+'&dates='+…)`（行程 start 起 4 天，本地格式化防 UTC+8 偏移）→ **无温度的行直接丢弃**（窗口外占位渲染成 null~null°C 不如不显示，槽位 flex 均分自适应）→ 映射 `{date: M.D, icon+' '+label, hi/lo, tip: 雨雪→带雨具/温差>9→早晚温差大/适宜出行}` → setData 覆盖+写缓存；catch/空结果静默保留占位。
+    **部署+验证**：staging 从 HEAD 重建（六项 87 文件 diff 归零）→ MCP deploy → **gotrip-021 上线**（FlowRatio 100，EnvParams 10 键/MaxNum=1/端口 RMW 保留）。公网探针（预编码 UTF-8 URL）：伊春 10-01 阵雨 13/2°C、10-02 多云 13/1°C（-2 真实命中），10-03/04 窗口外占位——与高德 today+3 窗口完全一致。automator `work/verify-weather-1515.js`：**①容器真实命中 2/4 ②页面 2 行真实映射（tip 规则全对：阵雨→带雨具、温差 12°C→早晚温差大） ③页面数据脱离本地引擎占位，全 PASS**。本次验证只读不写库，无残留。
+    **踩坑沉淀**：① **devtools 长时间闲置后 callContainer 报 `access_token missing` 且 models 链路同崩**（store.ready 抛错→weather 停留初始 []）——桥僵尸化新变体，`cli quit`+重启 auto 即愈（此前已知的是超时/僵尸查询，本次是票据失效形态）；② **Git Bash 中文探针假阴性再变体**：`curl -G --data-urlencode "place=伊春"` 仍按 GBK 编码发出（服务端 place 回显乱码）——**预编码 URL（%E4%BC%8A%E6%98%A5）才是干净探针**，验证容器新旧版本必须先排除探针自身污染；③ **MCP deploy 的 RMW 会把 OpenAccessTypes 的 OA 带回来**（gotrip-020→021 两次部署均复现，条目 57 修回过一次）——每次部署后核一眼，待办③；④ 上会话晚段输出不可信期的回滚处置被本会话证实正确：Edit 报「file modified」实为改动早已落盘——**接手先 Read 全文件核对实况再动手，别按交接描述盲改**。
+    **余下待办**：① 1.5.15 设体验版 → 真机验天气速览（真实数据）+ 此前全部待验项；② 容器 OpenAccessTypes 修回 PUBLIC+MINIAPP；③ 双远端推送状态见「仓库」行（Gitee 已随本条目同步，GitHub 视代理窗口）。
 
 62. **功能缺口「修改行程」落地（2026-09-29，1.5.11）**：接条目 61 待办③。**现状核实**：handoff 原表述「Taro 版有」不准——Taro 版只有活动级编辑（pages/activity updateActivity），行程本体编辑（目的地/日期/预算）只在 Web 版 CreateTripModal 编辑模式存在（`client/src/components/CreateTripModal.tsx` 传 trip 进编辑态调 updateTrip）；原生版 rdb 层 `updateTrip`（日期变更自动 syncDays）与 store 通道早已就绪，缺的纯是页面入口。**实现**：① `store.updateTripInfo(id, patch)`——日期变更（startDate/endDate 任一出现）走整包 `loadTrip` 重载（syncDays 会重建/删除天行，内存同步不够）；仅目的地/预算时同步内存字段即可；② overview hero 加 `ic-edit` 圆钮（相机钮上方，`.bg-edit.edit` bottom:104rpx），表单弹层复用全局 `.sheet` 样式（目的地 input maxlength 40 / 双 picker 出发返程互钳 / 预算 type=digit），`editRangeTxt` 实时显示「共 N 天 N 晚」；③ **缩短日期范围弹 showModal 确认**（「被移除日期内的安排将一并删除」——syncDays 删天连带删活动，Web 版同语义）；保存中 busy 守卫（按钮置「保存中…」+遮罩/X 不可关弹层防吞失败 toast）。
     **验收（新增 S12 段，12/12，一次性行程上闭环后删除）**：建 3 天一次性行程 → hero 编辑钮存在 → 弹层预填 → 目的地+预算保存轮询生效（city/budgetTxt）→ 日期延长 3→4 天（dayList 轮询）→ 再开弹层预填保持 → 缩回 3 天（showModal 重 mock confirm 后触发）→ 一次性行程级联删除。**跑后跨账号 SQL 残留核查=0**（trips 仅剩 2 条真实行程，无孤儿天/孤儿成员）。首跑 attempt1 遇重启后桥未就绪的 `page.$` 空指针（分段自愈重放即愈，attempt2 全绿）。静态门：`node --check` + markup-check ALL-BALANCED + handler 对账 11/11。
