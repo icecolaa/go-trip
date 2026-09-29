@@ -1,0 +1,79 @@
+<!-- 旅行地图：原生 map 组件 · 按天分色 callout · 按天筛选 · 站点导航跳转 -->
+<view class="screen mapscreen {{themeClass}}">
+  <!-- 无行程空态 -->
+  <view wx:if="{{!hasTrip}}" style="margin:200rpx 32rpx">
+    <view class="card" style="padding:64rpx 40rpx;display:flex;flex-direction:column;align-items:center;gap:16rpx">
+      <text class="t-sec">还没有选定行程</text>
+      <text class="t-sub">请先从首页选择行程</text>
+    </view>
+  </view>
+
+  <block wx:if="{{hasTrip}}">
+  <!-- 原生地图：markers 来自 store.stops 中带坐标的站，callout 按天分色显示名称+费用 -->
+  <map wx:if="{{hasCoords}}" id="tripMap" class="map-bg"
+       latitude="{{center.latitude}}" longitude="{{center.longitude}}"
+       markers="{{markers}}" include-points="{{includePoints}}"
+       type="{{layer === 'sat' ? 'satellite' : 'standard'}}"
+       bindmarkertap="onMarkerTap">
+  </map>
+
+  <!-- 无坐标空态 -->
+  <view wx:if="{{!hasCoords}}" style="position:absolute;left:0;top:0;right:0;bottom:0;display:flex;align-items:center;justify-content:center">
+    <view class="card" style="margin:0 64rpx;padding:56rpx 40rpx;display:flex;flex-direction:column;align-items:center;gap:16rpx">
+      <text class="t-sec">站点还没有坐标</text>
+      <text class="t-sub" style="text-align:center">日程安排填了地点名称会自动解析定位；添加安排时也可直接地图选点</text>
+      <view class="btn small" style="margin-top:10rpx" hover-class="press" bindtap="autoGeocodeOnce"><text>立即定位</text></view>
+      <view class="btn ghost small" hover-class="press" bindtap="goSchedule"><text>去日程补充地点</text></view>
+    </view>
+  </view>
+
+  <text class="map-attr" style="bottom:{{attrBottom}}px">© 腾讯地图 · 位置仅供参考</text>
+
+  <nav-bar float="{{true}}" back="{{true}}" />
+
+  <!-- 按天筛选 -->
+  <view class="day-seg">
+    <text class="{{filter === 0 ? 'on' : ''}}" hover-class="press" bindtap="setFilter" data-d="0">全部</text>
+    <text class="{{filter === item.d ? 'on' : ''}}" wx:for="{{days}}" wx:key="d"
+          hover-class="press" bindtap="setFilter" data-d="{{item.d}}">D{{item.d}}</text>
+  </view>
+
+  <view class="float-ctrl">
+    <view class="fc loc" hover-class="press" bindtap="locate"><view class="ic ic-loc" style="color:#fff"></view></view>
+    <view class="fc" hover-class="press" bindtap="toggleLayer">
+      <view class="ic ic-{{layer === 'std' ? 'map' : 'mount'}}" style="width:34rpx;height:34rpx;color:#1B78D8"></view>
+    </view>
+    <view class="fc" hover-class="press" bindtap="searchPlaces"><view class="ic ic-search" style="width:32rpx;height:32rpx;color:#1B78D8"></view></view>
+  </view>
+
+  <view class="map-sheet">
+    <view class="grab"></view>
+    <view class="ms-head">
+      <text class="t">{{filterTitle}}</text>
+      <text class="date">{{dateLabel}}</text>
+    </view>
+    <view class="ms-stats">
+      <view class="stat"><text class="v num">{{shownStops.length}}</text><text class="k">个地点</text></view>
+      <view class="stat"><text class="v num">{{totalKm}} km</text><text class="k">全程里程</text></view>
+      <view class="stat"><text class="v num">{{totalMin}} 分</text><text class="k">总车程</text></view>
+      <view class="stat yellow"><text class="v num">¥{{totalCost}}</text><text class="k">费用合计</text></view>
+    </view>
+    <scroll-view class="stop-strip" scroll-x>
+      <view class="poi-mini" wx:for="{{shownStops}}" wx:key="id" hover-class="press" bindtap="rowTap" data-id="{{item.id}}">
+        <view class="s-dot d{{(item.day - 1) % 4 + 1}}">{{item.seq}}</view>
+        <view class="p-body">
+          <text class="b">{{item.name}}</text>
+          <text class="s">D{{item.day}} · {{item.costTxt}}</text>
+        </view>
+        <view class="s-ops">
+          <view class="s-op" hover-class="press" catchtap="rowTap" data-id="{{item.id}}"><view class="ic ic-nav-arrow"></view></view>
+          <view class="s-op xhs" hover-class="press" catchtap="xhsSearch" data-name="{{item.name}}"><text class="xhs-t">红</text></view>
+        </view>
+      </view>
+    </scroll-view>
+    <view class="ms-cta">
+      <view class="btn grow" hover-class="press" bindtap="navAll"><view class="ic ic-nav-arrow"></view><text>高德规划全天路线</text></view>
+    </view>
+  </view>
+  </block>
+</view>

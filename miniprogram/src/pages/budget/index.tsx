@@ -7,6 +7,9 @@ import { ensureProfile } from '../../rdb/trip'
 import type { TripBundle, TripMember, Expense } from '../../types'
 
 const CATS = ['交通', '住宿', '餐饮', '门票', '购物', '娱乐', '其他']
+const CAT_EMOJI: Record<string, string> = {
+  交通: '🚄', 住宿: '🏨', 餐饮: '🍜', 门票: '🎫', 购物: '🛍️', 娱乐: '🎭', 其他: '📌',
+}
 const yuan = (n: number): string => `¥${(Math.round(n * 100) / 100).toLocaleString('zh-CN', { maximumFractionDigits: 2 })}`
 
 export default function Budget() {
@@ -90,36 +93,46 @@ export default function Budget() {
 
   return (
     <View className="page">
-      <View className="panel">
-        <Text className="label">已花 {yuan(spent)}{budgetTotal > 0 ? ` / 预算 ${yuan(budgetTotal)}` : ''}</Text>
+      <View className="sum-card">
+        <View className="sum-label">行程总支出 · {bundle.expenses.length} 笔</View>
+        <View className="sum-num"><Text className="sum-unit">¥</Text>{(Math.round(spent * 100) / 100).toLocaleString('zh-CN', { maximumFractionDigits: 2 })}</View>
+        {budgetTotal > 0 && <View className="sum-sub">预算 {yuan(budgetTotal)} · 已用 {pct}%</View>}
         {budgetTotal > 0 && (
-          <View className="bar"><View className="bar-in" style={{ width: `${pct}%`, background: pct >= 100 ? '#b4541f' : '#37715a' }} /></View>
+          <View className="sum-track"><View className={`sum-track-in ${pct >= 100 ? 'over' : ''}`} style={{ width: `${pct}%` }} /></View>
         )}
         {bundle.budget.byCategory.map(b => (
-          <View key={b.category} className="row-between">
-            <Text className="muted">{b.category}</Text>
-            <Text className="muted">{yuan(b.amount)}</Text>
+          <View key={b.category} className="cat-row">
+            <Text>{CAT_EMOJI[b.category] || '📌'} {b.category}</Text>
+            <Text className="cat-amt">{yuan(b.amount)}</Text>
           </View>
         ))}
       </View>
 
       {bundle.budget.perMember.length > 0 && (
-        <View className="panel">
-          <Text className="label">成员结算（应付为负 = 需收钱）</Text>
-          {bundle.budget.perMember.map(pm => {
-            const name = members.find(m => m.id === pm.memberId)?.displayName || '—'
-            return (
-              <View key={pm.memberId} className="row-between">
-                <Text>{name}</Text>
-                <Text className="muted">垫付 {yuan(pm.paid)} · 应付 {yuan(pm.share)} · <Text style={{ color: pm.balance >= 0 ? '#37715a' : '#b4541f' }}>{pm.balance >= 0 ? '多付 ' : '待付 '}{yuan(Math.abs(pm.balance))}</Text></Text>
-              </View>
-            )
-          })}
+        <View>
+          <View className="section"><Text>成员结算</Text></View>
+          <View className="settle-grid">
+            {bundle.budget.perMember.map(pm => {
+              const name = members.find(m => m.id === pm.memberId)?.displayName || '—'
+              const m = members.find(x => x.id === pm.memberId)
+              return (
+                <View key={pm.memberId} className="settle-cell">
+                  <View className="avatar" style={m?.avatarColor ? { background: m.avatarColor } : undefined}>{name.slice(0, 1)}</View>
+                  <View style={{ flex: 1, minWidth: 0 }}>
+                    <View className="settle-name">{name}</View>
+                    <View className={`settle-bal ${pm.balance >= 0 ? 'plus' : 'minus'}`}>
+                      {pm.balance >= 0 ? `多付 +${yuan(pm.balance)}` : `待付 −${yuan(Math.abs(pm.balance))}`}
+                    </View>
+                  </View>
+                </View>
+              )
+            })}
+          </View>
         </View>
       )}
 
       {!showAdd && (
-        <Button className="submit" onClick={() => { if (!members.length) { Taro.showToast({ title: '先在成员页添加成员', icon: 'none' }); return } setPayerIdx(0); setShowAdd(true) }}>＋ 记一笔</Button>
+        <Button className="fab" onClick={() => { if (!members.length) { Taro.showToast({ title: '先在成员页添加成员', icon: 'none' }); return } setPayerIdx(0); setShowAdd(true) }}>＋ 记一笔</Button>
       )}
       {showAdd && (
         <View className="panel">
@@ -128,11 +141,11 @@ export default function Budget() {
             <Input className="input" value={title} onInput={e => setTitle(e.detail.value)} placeholder="例如：民宿三晚" maxlength={60} />
           </View>
           <View className="row2">
-            <View className="field">
+            <View className="field" style={{ flex: 1 }}>
               <Text className="label">金额 *</Text>
               <Input className="input" type="number" value={amount} onInput={e => setAmount(e.detail.value)} placeholder="0" />
             </View>
-            <View className="field">
+            <View className="field" style={{ flex: 1 }}>
               <Text className="label">分类</Text>
               <Picker mode="selector" range={CATS} onChange={e => setCategory(CATS[Number(e.detail.value)])}>
                 <View className="input picker">{category}</View>
@@ -146,24 +159,28 @@ export default function Budget() {
             </Picker>
           </View>
           <View className="row2">
-            <Button className="ghost" onClick={() => setShowAdd(false)}>取消</Button>
-            <Button className="submit-inline" loading={busy} onClick={add}>记账</Button>
+            <Button className="ghost" style={{ flex: 1 }} onClick={() => setShowAdd(false)}>取消</Button>
+            <Button className="submit-inline" style={{ flex: 1 }} loading={busy} onClick={add}>记账</Button>
           </View>
         </View>
       )}
 
-      <Text className="section">支出明细 · {bundle.expenses.length} 笔</Text>
-      {bundle.expenses.length === 0 && <View className="empty"><Text>还没有支出记录</Text></View>}
+      <View className="section"><Text>支出明细 · {bundle.expenses.length} 笔</Text></View>
+      {bundle.expenses.length === 0 && <View className="empty"><Text>还没有支出记录，点右下角「记一笔」</Text></View>}
       {bundle.expenses.map(exp => (
-        <View key={exp.id} className="row-between item" onClick={() => remove(exp)}>
-          <View>
-            <Text>{exp.title}</Text>
-            <View className="muted"><Text>{exp.date} · {exp.category} · {payerName(exp.payerMemberId)} 垫付</Text></View>
+        <View key={exp.id} className="exp-cell" onClick={() => remove(exp)}>
+          <View className="exp-ic" style={{ background: exp.category === '餐饮' || exp.category === '购物' ? '#FFF6D9' : '#F1F8FE' }}>
+            <Text>{CAT_EMOJI[exp.category] || '📌'}</Text>
           </View>
-          <Text className="amount">{yuan(exp.amount)}</Text>
+          <View className="exp-main">
+            <View className="exp-title">{exp.title}</View>
+            <View className="exp-meta">{exp.date} · {exp.category} · {payerName(exp.payerMemberId)} 垫付</View>
+          </View>
+          <Text className="exp-amt">{yuan(exp.amount)}</Text>
         </View>
       ))}
       {bundle.expenses.length > 0 && <View className="hint-center"><Text>点击支出可删除</Text></View>}
+      <View style={{ height: '140rpx' }} />
     </View>
   )
 }

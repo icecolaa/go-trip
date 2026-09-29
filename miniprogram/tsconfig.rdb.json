@@ -1,0 +1,18 @@
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "module": "CommonJS",
+    "moduleResolution": "node",
+    "rootDir": "src",
+    "strict": false,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "declaration": false,
+    "outDir": "../miniprogram-app/utils/rdb"
+  },
+  "include": [
+    "src/rdb/**/*.ts",
+    "src/shared/**/*.ts"
+  ],
+  "outDir": "../miniprogram-app/utils/rdb"
+}

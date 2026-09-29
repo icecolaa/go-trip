@@ -1,0 +1,38 @@
+<!-- 消息 · 协作动态（二级页） -->
+<view class="screen messages {{themeClass}}">
+  <nav-bar float="{{true}}" back="{{true}}" />
+
+  <scroll-view class="scroll" scroll-y>
+    <view class="trip-chip-row">
+      <view class="tc" hover-class="press" bindtap="goOverview"><image src="{{tripCover}}" mode="aspectFill" /><text>{{tripTitle || '当前行程'}}</text></view>
+      <view class="line"></view>
+    </view>
+
+    <!-- 未选行程空态 -->
+    <view wx:if="{{needTrip}}" class="msg-row" hover-class="press" bindtap="goHome" style="justify-content:center">
+      <text class="l2" style="text-align:center">请先从首页选择行程 · 点此去首页</text>
+    </view>
+
+    <!-- 无动态空态 -->
+    <view wx:elif="{{!feed.length}}" class="msg-row" style="flex-direction:column;gap:10rpx;padding:60rpx 26rpx">
+      <text style="font-size:29rpx;font-weight:800;color:var(--ink)">还没有协作动态</text>
+      <text class="l2" style="white-space:normal;text-align:center">邀请同伴加入后，添加地点、记账、写日志都会出现在这里</text>
+    </view>
+
+    <block wx:else>
+      <view class="msg-row anim-rise" style="animation-delay:{{index * 70}}ms" wx:for="{{feed}}" wx:key="ts" hover-class="press" bindtap="goOverview">
+        <view class="avatar {{item.av}}">{{item.initial}}</view>
+        <view class="m-main">
+          <view class="l1">
+            <text class="n">{{item.name}}</text>
+            <text class="act">{{item.action}}</text>
+          </view>
+          <text class="l2">{{item.desc}}</text>
+        </view>
+        <text class="time">{{item.time}}</text>
+      </view>
+    </block>
+
+    <view style="height:40rpx"></view>
+  </scroll-view>
+</view>

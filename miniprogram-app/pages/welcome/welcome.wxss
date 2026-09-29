@@ -1,0 +1,44 @@
+.welcome { background: linear-gradient(180deg, #CBE6FC 0%, #E3F1FD 34%, #F3F8FC 70%, #FFFFFF 100%); }
+
+.hero-sky { position: absolute; left: 0; top: 0; right: 0; bottom: 0; overflow: hidden; }
+.cloud { position: absolute; border-radius: 50%; background: rgba(255,255,255,.5); }
+.c1 { width: 300rpx; height: 88rpx; left: -60rpx; top: 240rpx; }
+.c2 { width: 220rpx; height: 68rpx; right: -40rpx; top: 420rpx; opacity: .6; }
+.c3 { width: 140rpx; height: 48rpx; left: 112rpx; top: 640rpx; opacity: .45; }
+.flight-arc {
+  position: absolute; left: -10%; width: 120%; height: 500rpx; top: 220rpx;
+  border: 5rpx dashed rgba(255,255,255,.95); border-bottom: none;
+  border-radius: 50% 50% 0 0 / 100% 100% 0 0;
+}
+.plane { position: absolute; right: 96rpx; top: 296rpx; font-size: 40rpx; transform: rotate(18deg); color: #FFC414; text-shadow: 0 2rpx 0 #fff; }
+
+.hero-wrap { flex: 1; display: flex; flex-direction: column; align-items: center; padding-top: 120rpx; position: relative; z-index: 2; }
+.logo-card {
+  width: 296rpx; height: 296rpx; border-radius: 80rpx; overflow: hidden; background: #54A6F0;
+  box-shadow: 0 48rpx 96rpx rgba(27,90,160,.28), 0 0 0 16rpx rgba(255,255,255,.65);
+}
+.logo-card image { width: 100%; height: 100%; }
+.brand { margin-top: 52rpx; display: flex; align-items: baseline; gap: 16rpx; }
+.brand .cn { font-size: 60rpx; font-weight: 900; letter-spacing: 2rpx; color: var(--ink); }
+.brand .en { font-style: italic; font-size: 32rpx; font-weight: 800; color: var(--sky600); }
+.slogan { margin-top: 14rpx; font-size: 28rpx; color: var(--ink2); letter-spacing: 6rpx; }
+.feats { display: flex; gap: 20rpx; margin-top: 52rpx; }
+.feat {
+  display: flex; align-items: center; gap: 10rpx; background: rgba(255,255,255,.85);
+  border: 2rpx solid #fff; border-radius: 999rpx; padding: 12rpx 26rpx;
+  font-size: 24rpx; font-weight: 600; color: var(--sky700); box-shadow: 0 8rpx 24rpx rgba(23,84,153,.08);
+}
+.feat .ic { width: 26rpx; height: 26rpx; }
+
+.login-area { padding: 0 56rpx 60rpx; position: relative; z-index: 2; }
+.skip { display: block; text-align: center; margin: 28rpx 0 12rpx; font-size: 27rpx; color: var(--ink2); font-weight: 600; }
+.agree { display: flex; align-items: center; justify-content: center; gap: 10rpx; margin-top: 12rpx; font-size: 22rpx; color: var(--ink3); }
+.agree-check {
+  width: 28rpx; height: 28rpx; border-radius: 50%; background: #2E92ED;
+  display: flex; align-items: center; justify-content: center; flex: none;
+}
+.agree-check .ic { width: 16rpx; height: 16rpx; color: #fff; }
+.agree .lk { color: var(--sky500); font-weight: 600; }
+
+/* 品牌小飞机：欢迎页唯一的常驻动效，呼应「出发」 */
+.plane { animation: floatY 3.2s ease-in-out infinite; }

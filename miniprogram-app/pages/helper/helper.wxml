@@ -1,0 +1,26 @@
+<!-- 使用助手：功能问答 · 内容由内置指南生成 -->
+<view class="screen helper {{themeClass}}">
+  <nav-bar float="{{true}}" back="{{true}}" />
+  <scroll-view class="h-scroll" scroll-y scroll-into-view="{{lastId}}">
+    <view class="h-hero card anim-rise">
+      <image class="face" src="/assets/logo.png" mode="aspectFill" />
+      <view class="t">
+        <text class="n">功能指南</text>
+        <text class="s">{{engineTag}} · 点下方问题或直接输入</text>
+      </view>
+    </view>
+    <view class="h-qa anim-rise d1" wx:for="{{qa}}" wx:key="index" id="qa{{index}}">
+      <view class="h-q" hover-class="press" bindtap="ask" data-q="{{item.q}}">
+        <text>{{item.q}}</text>
+        <view class="ic ic-right" style="width:24rpx;height:24rpx;color:var(--ink3)"></view>
+      </view>
+      <view class="h-a" wx:if="{{item.open}}"><text>{{item.a}}</text></view>
+    </view>
+    <view style="height:30rpx"></view>
+  </scroll-view>
+  <view class="h-inputbar">
+    <input class="h-field" value="{{draft}}" placeholder="想了解哪个功能？" placeholder-class="ph"
+           confirm-type="send" cursor-spacing="24" bindinput="onInput" bindconfirm="send" />
+    <view class="h-send" hover-class="press" bindtap="send"><view class="ic ic-send" style="color:#fff"></view></view>
+  </view>
+</view>

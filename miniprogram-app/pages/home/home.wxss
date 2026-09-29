@@ -1,0 +1,79 @@
+.home {
+  background: linear-gradient(180deg, #D8ECFC 0%, #EDF6FE 416rpx, var(--bg) 600rpx);
+  /* 底部让位停靠式 TabBar（112rpx）+ 安全区 */
+  padding-bottom: calc(140rpx + env(safe-area-inset-bottom));
+}
+
+.brandbar { display: flex; align-items: center; gap: 16rpx; }
+.brandbar .logo { width: 56rpx; height: 56rpx; border-radius: 18rpx; box-shadow: 0 6rpx 16rpx rgba(23,84,153,.2); }
+.brandbar .cn { font-size: 38rpx; font-weight: 900; letter-spacing: 1rpx; color: var(--ink); }
+.brandbar .en { font-style: italic; font-size: 24rpx; font-weight: 800; color: var(--sky600); margin-left: -8rpx; }
+
+.greet { padding: 20rpx 32rpx 28rpx; display: flex; flex-direction: column; }
+.greet .h1 { font-size: 42rpx; font-weight: 900; color: var(--ink); }
+.greet .sub { font-size: 25rpx; color: var(--ink2); margin-top: 6rpx; }
+
+.hero { margin: 0 32rpx; }
+.p-row { display: flex; align-items: center; gap: 20rpx; margin: 24rpx 0 28rpx; }
+.p-row .progress { flex: 1; }
+.p-txt { font-size: 23rpx; color: var(--sky700); font-weight: 700; flex: none; }
+.foot-row { display: flex; align-items: center; justify-content: space-between; }
+.foot-row .btn.small {
+  background: linear-gradient(135deg, var(--sky400), var(--sky600));
+  box-shadow: 0 10rpx 28rpx rgba(46,146,237,.3);
+}
+.cover-title { position: absolute; left: 28rpx; bottom: 24rpx; right: 160rpx; display: flex; flex-direction: column; }
+.cover-title .t { color: #fff; font-size: 38rpx; font-weight: 900; text-shadow: 0 4rpx 16rpx rgba(10,40,70,.4); }
+.cover-title .s { color: #fff; opacity: .92; font-size: 24rpx; margin-top: 4rpx; }
+
+.trip-row {
+  display: flex; gap: 24rpx; align-items: center; background: var(--card);
+  border-radius: 28rpx; box-shadow: var(--sh-card); padding: 20rpx; margin: 0 32rpx 20rpx;
+}
+.trip-row .thumb { width: 144rpx; height: 128rpx; border-radius: 20rpx; flex: none; overflow: hidden; }
+.thumb-img { width: 100%; height: 100%; }
+
+/* 卡片编辑弹层 */
+.edit-head { display: flex; align-items: center; justify-content: space-between; margin: 8rpx 0 20rpx; }
+.edit-head .t { font-size: 33rpx; font-weight: 800; color: var(--ink); }
+.edit-head .x { width: 52rpx; height: 52rpx; border-radius: 50%; background: var(--sky50); display: flex; align-items: center; justify-content: center; }
+.edit-head .x .ic { width: 26rpx; height: 26rpx; color: var(--ink2); }
+.edit-lab { font-size: 24rpx; font-weight: 700; color: var(--ink2); margin: 22rpx 0 12rpx; }
+.edit-chips { display: flex; flex-wrap: wrap; gap: 14rpx; }
+.edit-chip { width: 88rpx; height: 72rpx; border-radius: 18rpx; background: var(--sky50); border: 3rpx solid transparent; display: flex; align-items: center; justify-content: center; }
+.edit-chip.on { border-color: var(--sky500); background: var(--sky100); }
+.edit-dots { display: flex; gap: 26rpx; flex-wrap: wrap; }
+.edit-dot { width: 60rpx; height: 60rpx; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+.trip-row .info { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.trip-row .t { font-size: 29rpx; font-weight: 700; color: var(--ink); display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
+.trip-row .s { font-size: 23rpx; color: var(--ink3); margin-top: 6rpx; }
+.trip-row .tags { display: flex; gap: 10rpx; margin-top: 12rpx; }
+.trip-row .arrow { width: 28rpx; height: 28rpx; color: var(--ink3); }
+
+.create-btn {
+  margin: 12rpx 32rpx 0; height: 112rpx; border-radius: 36rpx; border: 4rpx dashed #93CBF7;
+  display: flex; align-items: center; justify-content: center; gap: 16rpx;
+  color: var(--sky600); font-size: 30rpx; font-weight: 700; background: rgba(255,255,255,.6);
+}
+.plus-ring {
+  width: 44rpx; height: 44rpx; border-radius: 50%; background: var(--yel400);
+  display: flex; align-items: center; justify-content: center; box-shadow: var(--sh-yellow);
+}
+.plus-ring .ic { width: 24rpx; height: 24rpx; color: #6B5200; }
+
+/* 停靠式 TabBar 避让由页面根 padding-bottom 承担，此处仅留滚动到底的呼吸空隙 */
+.bottom-space { height: 40rpx; }
+
+@media (prefers-color-scheme: dark) {
+  /* 深色底改为天空蓝微透（原 60% 深灰底发闷），虚线边与渐变底透出 */
+  .create-btn { background: rgba(46,146,237,.10); color: var(--sky400); border-color: rgba(85,172,243,.55); }
+}
+.home.theme-dark .create-btn { background: rgba(46,146,237,.10); color: var(--sky400); border-color: rgba(85,172,243,.55); }
+
+/* 深色：头部亮色天空渐变整对翻暗（渐变里的硬编码亮色曾逃过 codemod——白字压亮底不可读） */
+@media (prefers-color-scheme: dark) {
+  .home { background: linear-gradient(180deg, #14283D 0%, #0F1E30 416rpx, var(--bg) 600rpx); }
+  .home .brandbar .en { color: var(--sky400); }
+}
+.home.theme-dark { background: linear-gradient(180deg, #14283D 0%, #0F1E30 416rpx, var(--bg) 600rpx); }
+.home.theme-dark .brandbar .en { color: var(--sky400); }

@@ -1,0 +1,86 @@
+<!-- 出发模式 Trip Mode：全屏当天视图 · 逐站勾选 · 下一站高亮 · 距离估算 · 离线手绘图 -->
+<view class="screen tmode {{themeClass}}">
+  <nav-bar back="{{false}}" />
+
+  <!-- 无行程空态 -->
+  <view wx:if="{{!hasTrip}}" style="margin:200rpx 32rpx">
+    <view class="card" style="padding:64rpx 40rpx;display:flex;flex-direction:column;align-items:center;gap:16rpx">
+      <text class="t-sec">还没有选定行程</text>
+      <text class="t-sub">请先从首页选择行程</text>
+    </view>
+  </view>
+
+  <block wx:if="{{hasTrip}}">
+  <view class="tm-hero">
+    <view class="tm-days">
+      <view class="tm-day {{dayIdx === index ? 'on' : ''}}" wx:for="{{days}}" wx:key="d"
+            hover-class="press" bindtap="pickDay" data-i="{{index}}">
+        <text>D{{item.d}}</text>
+      </view>
+    </view>
+    <text class="tm-title">{{days[dayIdx].title || tripTitle}}</text>
+    <view class="tm-sub">
+      <text>{{days[dayIdx].date}} {{days[dayIdx].week}}</text>
+      <text class="dot-sep">·</text>
+      <text>已完成 {{doneCount}}/{{dayStops.length}}</text>
+      <text wx:if="{{offToday}}" class="tag yellow">今天不在行程中</text>
+    </view>
+    <view class="tm-progress"><view class="bar" style="width:{{progress}}%"></view></view>
+  </view>
+
+  <scroll-view class="tm-scroll" scroll-y>
+    <view class="tm-legend">
+      <view class="tm-legend-chip" wx:for="{{days}}" wx:key="d">
+        <view class="pin d{{(index % 4) + 1}}"></view><text>D{{item.d}}</text>
+      </view>
+    </view>
+
+    <view wx:if="{{!dayStops.length}}" style="padding:60rpx 0;display:flex;flex-direction:column;align-items:center;gap:16rpx;color:var(--ink3);font-size:26rpx">
+      <text>这一天还没有安排</text>
+      <text class="tag blue">去日程页「＋安排」补齐</text>
+    </view>
+
+    <view class="tm-stop {{item.done ? 'done' : ''}} {{item.next ? 'next' : ''}}"
+          wx:for="{{dayStops}}" wx:key="id" hover-class="press" bindtap="toggleDone" data-id="{{item.id}}">
+      <view class="tm-check {{item.done ? 'on' : ''}}">
+        <view wx:if="{{item.done}}" class="ic ic-check"></view>
+      </view>
+      <view class="tm-stop-main">
+        <view class="tm-l1">
+          <text class="time">{{item.time}}</text>
+          <text class="name">{{item.name}}</text>
+          <view wx:if="{{item.next}}" class="next-rib">下一站</view>
+        </view>
+        <view class="tm-l2">
+          <text wx:if="{{item.cost > 0}}" class="num">¥{{item.cost}}</text>
+          <text wx:if="{{item.note}}" class="note">{{item.note}}</text>
+          <text wx:if="{{item.leg}}" class="leg">{{item.leg}}</text>
+        </view>
+      </view>
+      <view class="tm-go" catchtap="navHere" data-id="{{item.id}}">
+        <view class="ic ic-nav-arrow"></view>
+      </view>
+    </view>
+
+    <!-- 离线手绘路线概览（仅当天站点含手绘图锚点坐标时显示） -->
+    <view class="tm-sketch card" wx:if="{{hasSketch}}">
+      <view class="tm-sketch-head">
+        <text class="t">手绘路线概览</text>
+        <text class="tag green">已缓存 · 断网可看</text>
+      </view>
+      <image class="tm-sketch-img" src="/assets/trip-sketch.png" mode="widthFix" lazy-load />
+    </view>
+
+    <view style="height:60rpx"></view>
+  </scroll-view>
+
+  <view class="tm-cta">
+    <view class="btn ghost tm-cta-btn" hover-class="press" bindtap="copyRoute">
+      <view class="ic ic-list" style="width:30rpx;height:30rpx"></view><text>复制今日路线</text>
+    </view>
+    <view class="btn tm-cta-btn" hover-class="press" bindtap="amapRoute">
+      <view class="ic ic-nav-arrow" style="width:30rpx;height:30rpx"></view><text>高德规划全天</text>
+    </view>
+  </view>
+  </block>
+</view>

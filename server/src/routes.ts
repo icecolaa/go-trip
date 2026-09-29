@@ -14,7 +14,7 @@
 import crypto from 'node:crypto';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { ApiError, json, readBody } from './util.ts';
-import { searchPois, geocodePlaces, cleanActivityQuery, type GeocodeItem } from './poi.ts';
+import { searchPois, geocodePlaces, cleanActivityQuery, reverseGeocode, type GeocodeItem } from './poi.ts';
 import { getWeather } from './weather.ts';
 import { parseGuide, generatePlan, aiConfigured } from './ai.ts';
 import { buildHandbook, aiHandbook } from './handbook.ts';
@@ -72,6 +72,65 @@ function queryOf(req: IncomingMessage): URLSearchParams {
   return new URLSearchParams((req.url || '').split('?')[1] || '');
 }
 
+/* ==================== 位置：逆地理（坐标→城市） ==================== */
+// 供飞哪儿「识别出发地」等场景：wx.getLocation 拿坐标 → 此接口换城市名
+route('GET', '/api/poi/regeo', async (req, res) => {
+  const lat = Number(queryOf(req).get('lat'));
+  const lng = Number(queryOf(req).get('lng'));
+  if (!isFinite(lat) || !isFinite(lng)) throw new ApiError(400, '缺少坐标');
+  const out = await reverseGeocode(lat, lng);
+  json(res, 200, out || { province: '', city: '', district: '' });
+});
+
+/* ==================== AI：封面生成（CogView，异步 job） ==================== */
+// callContainer 15s 硬超时，CogView 生成 10~30s → 照飞哪儿模式 job 化：
+// submit 秒回 jobId，后台生成；result 轮询取 base64（<700KB，callContainer 响应上限内）。
+// 转存云存储由客户端执行（FSM 写临时文件 → uploadFile → fileID 入库）。任务存单实例内存。
+const COVER_JOBS = new Map<string, { status: 'running' | 'done' | 'error'; image?: string; mime?: string; error?: string }>();
+
+route('POST', '/api/ai/gen-cover/submit', async (_req, res, _p, body) => {
+  const prompt = String(body.prompt || '').trim().slice(0, 300);
+  if (!prompt) throw new ApiError(400, '缺少封面描述');
+  const base = (process.env.GOTRIP_AI_BASE_URL || '').replace(/\/+$/, '');
+  const key = process.env.GOTRIP_AI_API_KEY || '';
+  if (!base || !key) throw new ApiError(400, 'AI 未配置');
+  const jobId = crypto.randomUUID();
+  COVER_JOBS.set(jobId, { status: 'running' });
+  // 后台执行（不 await）
+  (async () => {
+    try {
+      const resp = await fetch(`${base}/images/generations`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` },
+        body: JSON.stringify({ model: 'cogview-3-flash', prompt, size: '1024x1024' }),
+        signal: AbortSignal.timeout(120000),
+      });
+      if (!resp.ok) throw new Error(`生图接口返回 ${resp.status}`);
+      const data: any = await resp.json();
+      const url = data?.data?.[0]?.url;
+      if (!url) throw new Error('生图接口未返回图片');
+      const img = await fetch(url, { signal: AbortSignal.timeout(30000) });
+      if (!img.ok) throw new Error('图片下载失败');
+      const buf = Buffer.from(await img.arrayBuffer());
+      if (buf.length > 700 * 1024) throw new Error('图片超出传输上限');
+      COVER_JOBS.set(jobId, { status: 'done', image: buf.toString('base64'), mime: img.headers.get('content-type') || 'image/jpeg' });
+    } catch (e: any) {
+      COVER_JOBS.set(jobId, { status: 'error', error: e?.message || '生成失败' });
+    } finally {
+      // 5 分钟后回收，防内存积压
+      setTimeout(() => COVER_JOBS.delete(jobId), 5 * 60 * 1000);
+    }
+  })();
+  json(res, 200, { jobId });
+});
+
+route('GET', '/api/ai/gen-cover/result', async (req, res) => {
+  const jobId = String(queryOf(req).get('jobId') || '');
+  const job = COVER_JOBS.get(jobId);
+  if (!job) throw new ApiError(404, '任务不存在或已过期');
+  json(res, 200, { status: job.status, image: job.image, mime: job.mime, error: job.error });
+});
+
 /* ==================== AI：攻略解析 / 行程生成 ==================== */
 // 返回纯数据，不落库——写入由客户端执行（保证 _openid 归属）
 
@@ -110,13 +169,19 @@ route('POST', '/api/trips/:id/ai/generate', async (_req, res, _p, body) => {
   }));
 });
 
-/** 批量地理编码：客户端写完活动后调用，回填坐标（高德优先，内置城市库兜底）。
- * 输入 items: [{ id, title, place?, city? }]，输出 coords: { [id]: {lat,lng} } */
+/** 批量地理编码：客户端写完活动后调用，回填坐标（高德 POI 优先，内置城市库兜底）。
+ * 兼容两种入参形状：{id, query|title, alt|place, city}（原生端传 query/alt，Taro 旧端传 title/place） */
 route('POST', '/api/poi/geocode', async (_req, res, _p, body) => {
+  console.error('[DBG route] body=', JSON.stringify(body).slice(0, 300));
   const items = Array.isArray(body.items) ? body.items.slice(0, 60) : [];
   const pending: GeocodeItem[] = items
-    .filter((it: any) => it && String(it.title || '').trim())
-    .map((it: any) => ({ id: String(it.id), query: cleanActivityQuery(String(it.title)), alt: it.place || undefined, city: it.city || undefined }));
+    .filter((it: any) => it && String(it.query || it.title || '').trim())
+    .map((it: any) => ({
+      id: String(it.id),
+      query: cleanActivityQuery(String(it.query || it.title)),
+      alt: it.alt || it.place || undefined,
+      city: it.city || undefined,
+    }));
   const coords = await geocodePlaces(pending).catch(() => new Map<string, { lat: number; lng: number }>());
   const out: Record<string, { lat: number; lng: number }> = {};
   for (const [id, c] of coords) out[id] = { lat: c.lat, lng: c.lng };

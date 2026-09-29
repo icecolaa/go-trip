@@ -3,7 +3,7 @@
   "miniprogramRoot": "dist/",
   "projectname": "gotrip-miniprogram",
   "description": "出发吧 GoTrip 微信小程序",
-  "appid": "wxea1150ef589e225f",
+  "appid": "wx1417f97b87638a38",
   "setting": {
     "urlCheck": false,
     "es6": false,
@@ -37,5 +37,6 @@
     "ignore": [],
     "include": []
   },
-  "editorSetting": {}
+  "editorSetting": {},
+  "isGameTourist": false
 }

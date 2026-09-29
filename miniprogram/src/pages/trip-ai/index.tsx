@@ -25,7 +25,7 @@ export default function TripAI() {
     if (!text.trim()) { Taro.showToast({ title: '请粘贴攻略文本', icon: 'none' }); return }
     setBusy(true)
     try {
-      Taro.showLoading({ title: 'AI 解析中，约 20~60 秒…' })
+      Taro.showLoading({ title: '解析中，约 20~60 秒…' })
       const g = await api.post<ParsedGuide>(`/api/trips/${tripId}/ai/parse-guide`, { text: text.slice(0, 6000) })
       setGuide(g)
       Taro.hideLoading()
@@ -108,7 +108,7 @@ export default function TripAI() {
           }
         }
       } catch { /* 定位失败不影响行程 */ }
-      await logActivity(tripId, '我', targeted ? 'AI 重写了部分行程' : 'AI 重写了全部行程')
+      await logActivity(tripId, '我', targeted ? '按攻略重写了部分行程' : '按攻略重写了全部行程')
       Taro.hideLoading()
       Taro.showToast({ title: targeted ? `已重写 ${touched.size} 天` : '已写入行程', icon: 'success' })
       setTimeout(() => Taro.navigateBack(), 600)
@@ -140,7 +140,7 @@ export default function TripAI() {
       {guide && (
         <View className="panel">
           <Text className="section" style={{ marginTop: 0 }}>
-            {dayNums.length ? `识别到第 ${dayNums.join('、')} 天行程` : `识别到 ${guide.days.length} 天`}（{guide.source === 'ai' ? 'AI 解析' : '内置模板'}）
+            {dayNums.length ? `识别到第 ${dayNums.join('、')} 天行程` : `识别到 ${guide.days.length} 天`}（{guide.source === 'ai' ? '智能解析' : '规则解析'}）
           </Text>
           {guide.days.map(d => (
             <View key={d.dayNumber} className="ai-day">

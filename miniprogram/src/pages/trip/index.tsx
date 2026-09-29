@@ -1,7 +1,10 @@
 import { useRef, useState } from 'react'
-import { View, Text, Button } from '@tarojs/components'
-import Taro, { usePullDownRefresh } from '@tarojs/taro'
+import { View, Text, Button, Image } from '@tarojs/components'
+import Taro, { useDidShow, usePullDownRefresh, useShareAppMessage } from '@tarojs/taro'
 import { loadTripBundle } from '../../rdb/trip'
+import { updateRow } from '../../rdb/entities'
+import { uploadImage } from '../../rdb/storage'
+import { api } from '../../api/request'
 import type { TripBundle, Activity } from '../../types'
 
 const KIND_EMOJI: Record<string, string> = {
@@ -12,6 +15,7 @@ const KIND_EMOJI: Record<string, string> = {
 export default function Trip() {
   const [bundle, setBundle] = useState<TripBundle | null>(null)
   const [error, setError] = useState('')
+  const [coverBusy, setCoverBusy] = useState('')
   const tripId = String(Taro.getCurrentInstance().router?.params.id || '')
   const reloading = useRef(false)
 
@@ -32,10 +36,88 @@ export default function Trip() {
     load().finally(() => Taro.stopPullDownRefresh())
   })
 
-  // 首次加载（单主人架构，无实时订阅）
+  // 首次加载 + 每次回页刷新（子页保存/删除后返回，云写入有可见性延迟，重拉兜底）
+  useDidShow(() => {
+    if (bundle) load()
+  })
   useState(() => {
     load()
   })
+
+  // 分享给朋友（右上角菜单 / hero 分享按钮）；imageUrl 支持云 fileID
+  useShareAppMessage(() => {
+    const t = bundle?.trip
+    return {
+      title: t ? `${t.title} · 一起出发吧` : '出发吧 GoTrip',
+      path: `/pages/trip/index?id=${tripId}`,
+      imageUrl: t?.coverImage || undefined,
+    }
+  })
+
+  /** 上传自定义背景（chooseMedia → 压缩 → 云存储 → cover_image 入库） */
+  const uploadCover = () => {
+    Taro.chooseMedia({
+      count: 1,
+      mediaType: ['image'],
+      sizeType: ['compressed'],
+      success: async (res) => {
+        const p = res.tempFiles?.[0]?.tempFilePath
+        if (!p) return
+        setCoverBusy('upload')
+        try {
+          let src = p
+          try { const c = await Taro.compressImage({ src: p, quality: 80 }); src = c.tempFilePath } catch { /* 压缩失败用原图 */ }
+          const fileID = await uploadImage(src, 'cover')
+          await updateRow('gt_trips', tripId, { cover_image: fileID })
+          Taro.showToast({ title: '背景已更新', icon: 'success' })
+          await load()
+        } catch (e) {
+          Taro.showToast({ title: e instanceof Error ? e.message : '上传失败', icon: 'none' })
+        } finally {
+          setCoverBusy('')
+        }
+      },
+    })
+  }
+
+  /** AI 生成封面（容器 CogView 异步 job → base64 → 临时文件 → 云存储） */
+  const genCover = async () => {
+    const t = bundle?.trip
+    if (!t || coverBusy) return
+    setCoverBusy('ai')
+    try {
+      Taro.showLoading({ title: '正在生成封面…' })
+      const { jobId } = await api.post<{ jobId: string }>('/api/ai/gen-cover/submit', {
+        prompt: `旅行摄影风格插图：${t.destination || '中国'}的风景，行程「${t.title}」，明亮晴空蓝天空与温暖秋色，清新通透，无文字，无水印`,
+      })
+      const deadline = Date.now() + 150000
+      let image64 = ''
+      while (Date.now() < deadline) {
+        await new Promise(r => setTimeout(r, 2500))
+        const st = await api.get<{ status: string; image?: string; error?: string }>(`/api/ai/gen-cover/result?jobId=${jobId}`)
+        if (st.status === 'done') { image64 = st.image || ''; break }
+        if (st.status === 'error') throw new Error(st.error || '生成失败')
+      }
+      if (!image64) throw new Error('生成超时，请重试')
+      const filePath = `${Taro.env.USER_DATA_PATH}/cover-${Date.now()}.jpg`
+      await new Promise<void>((resolve, reject) => {
+        Taro.getFileSystemManager().writeFile({
+          filePath, data: image64, encoding: 'base64',
+          success: () => resolve(), fail: (err: unknown) => reject(new Error('写入临时文件失败')),
+        })
+      })
+      const fileID = await uploadImage(filePath, 'cover')
+      await updateRow('gt_trips', tripId, { cover_image: fileID })
+      Taro.hideLoading()
+      Taro.showToast({ title: '封面已生成', icon: 'success' })
+      await load()
+    } catch (e) {
+      Taro.hideLoading()
+      Taro.showToast({ title: e instanceof Error ? e.message : '生成失败', icon: 'none' })
+    } finally {
+      setCoverBusy('')
+    }
+  }
 
   const goBudget = () => Taro.navigateTo({ url: `/pages/budget/index?tripId=${tripId}` })
   const goPacking = () => Taro.navigateTo({ url: `/pages/packing/index?tripId=${tripId}` })
@@ -64,53 +146,77 @@ export default function Trip() {
   const daysByGroup = bundle.days.map(d => ({ day: d, acts: bundle.activities.filter(a => a.dayId === d.id).sort((x, y) => (x.sort || 0) - (y.sort || 0)) }))
   const progress = tripProgress(trip.startDate, trip.endDate)
   const spent = bundle.budget.total
+  const statusChip = tripStatusChip(trip.startDate, trip.endDate)
+
+  const fnItems: { icon: string; label: string; onTap: () => void }[] = [
+    { icon: '💰', label: '账本', onTap: goBudget },
+    { icon: '🎒', label: '清单', onTap: goPacking },
+    { icon: '✍️', label: '日志', onTap: () => Taro.navigateTo({ url: `/pages/journal/index?tripId=${tripId}` }) },
+    { icon: '📖', label: '锦囊', onTap: () => Taro.navigateTo({ url: `/pages/handbook/index?tripId=${tripId}` }) },
+    { icon: '👥', label: '伙伴', onTap: () => Taro.navigateTo({ url: `/pages/members/index?tripId=${tripId}` }) },
+    { icon: '🗺️', label: '地图', onTap: () => Taro.navigateTo({ url: `/pages/map/index?tripId=${tripId}` }) },
+    { icon: '📑', label: '攻略导入', onTap: () => Taro.navigateTo({ url: `/pages/trip-ai/index?tripId=${tripId}&maxDay=${bundle.days.length}` }) },
+  ]
 
   return (
     <View className="page">
-      <View className="hero">
-        <View className="hero-row">
-          <Text className="hero-emoji">{trip.coverEmoji}</Text>
-          <View style={{ flex: 1 }}>
+      <View className="card hero">
+        <View className="hero-cover" style={trip.coverImage ? undefined : { background: `linear-gradient(135deg, ${tint(trip.coverColor, 0.3)}, ${trip.coverColor || '#3B6EA5'})` }}>
+          {!!trip.coverImage && <Image className="hero-bg" src={trip.coverImage} mode="aspectFill" />}
+          <View className="hero-scrim" />
+          <View className="hero-emoji"><Text>{trip.coverEmoji}</Text></View>
+          <View style={{ flex: 1, minWidth: 0 }}>
             <Text className="hero-title">{trip.title}</Text>
-            <View className="hero-meta">
-              <Text>📍 {trip.destination || '目的地待定'}</Text>
-            </View>
-            <View className="hero-meta">
-              <Text>{trip.startDate} ~ {trip.endDate}</Text>
-            </View>
+            <View className="hero-meta"><Text>📍 {trip.destination || '目的地待定'}</Text></View>
+            <View className="hero-meta"><Text>{trip.startDate} ~ {trip.endDate}</Text></View>
+          </View>
+          <View className="date-chip">{statusChip}</View>
+          <View className="hero-tools">
+            <Button className="hero-tool" size="mini" loading={coverBusy === 'ai'} onClick={genCover}>✨</Button>
+            <Button className="hero-tool" size="mini" loading={coverBusy === 'upload'} onClick={uploadCover}>📸</Button>
+            <Button className="hero-tool" size="mini" openType="share">🔗</Button>
           </View>
         </View>
-        <View className="progress"><View className="progress-in" style={{ width: `${progress}%` }} /></View>
-        <View className="hero-meta" style={{ marginTop: '10rpx' }}>
-          <Text>💰 预算 {trip.budget > 0 ? `¥${trip.budget.toLocaleString()}` : '未设'} · 已花 ¥{spent.toLocaleString()}</Text>
-        </View>
-        <View className="btn-row">
-          <Button className="chip" size="mini" onClick={goBudget}>💰 预算</Button>
-          <Button className="chip" size="mini" onClick={goPacking}>🎒 清单</Button>
-          <Button className="chip" size="mini" onClick={() => Taro.navigateTo({ url: `/pages/journal/index?tripId=${tripId}` })}>✍️ 日志</Button>
-          <Button className="chip" size="mini" onClick={() => Taro.navigateTo({ url: `/pages/handbook/index?tripId=${tripId}` })}>📖 锦囊</Button>
-          <Button className="chip" size="mini" onClick={() => Taro.navigateTo({ url: `/pages/members/index?tripId=${tripId}` })}>👥 成员</Button>
-          <Button className="chip" size="mini" onClick={() => Taro.navigateTo({ url: `/pages/map/index?tripId=${tripId}` })}>🗺️ 地图</Button>
-          <Button className="chip" size="mini" onClick={() => Taro.navigateTo({ url: `/pages/trip-ai/index?tripId=${tripId}&maxDay=${bundle.days.length}` })}>AI 解析</Button>
+        <View className="hero-body">
+          <View className="progress"><View className="progress-in" style={{ width: `${progress}%` }} /></View>
+          <View className="hero-meta">
+            <Text>💰 预算 {trip.budget > 0 ? `¥${trip.budget.toLocaleString()}` : '未设'} · 已花 ¥{spent.toLocaleString()}</Text>
+          </View>
+          <View className="fn-grid">
+            {fnItems.map(f => (
+              <Button key={f.label} className="fn-item" onClick={f.onTap}>
+                <View className="fn-ic"><Text>{f.icon}</Text></View>
+                <Text className="fn-label">{f.label}</Text>
+              </Button>
+            ))}
+          </View>
         </View>
       </View>
 
       {daysByGroup.map(({ day, acts }) => (
-        <View key={day.id} className="day-block">
+        <View key={day.id} className="card day-block">
           <View className="day-head">
-            <View className="day-num"><Text className="day-n">D{day.dayNumber}</Text></View>
-            <View style={{ flex: 1 }}>
+            <View className="day-num">
+              <Text className="day-n">D{day.dayNumber}</Text>
+              {!!day.date && <Text className="day-date">{day.date.slice(5).replace('-', '.')}</Text>}
+            </View>
+            <View style={{ flex: 1, minWidth: 0 }}>
               <Text className="day-title">{day.title || `第 ${day.dayNumber} 天`}</Text>
-              <View className="day-sub"><Text>{day.date}{day.place ? ` · ${day.place}` : ''}</Text></View>
+              {!!day.place && <View className="day-sub"><Text>{day.place}</Text></View>}
             </View>
             <Button className="chip" size="mini" onClick={() => goAddActivity(day.id)}>＋ 安排</Button>
           </View>
-          {acts.length === 0 && <View className="day-empty"><Text>这一天还没有安排</Text></View>}
+          {acts.length === 0 && (
+            <View className="day-empty">
+              <Text>这一天还没有安排</Text>
+              <View><Button className="chip" size="mini" onClick={() => goAddActivity(day.id)}>添加第一个安排</Button></View>
+            </View>
+          )}
           {acts.map(a => (
             <View key={a.id} className="act" onClick={() => goEditActivity(a)}>
               <Text className="act-time">{a.time || '待定'}</Text>
               <Text className="act-emoji">{KIND_EMOJI[a.kind] || '📌'}</Text>
-              <View style={{ flex: 1, minWidth: 0 }}>
+              <View className="act-main">
                 <Text className="act-title">{a.title}</Text>
                 {!!a.place && <View className="act-place"><Text>📍 {a.place}</Text></View>}
                 {!!a.notes && <View className="act-notes"><Text>{a.notes}</Text></View>}
@@ -121,7 +227,7 @@ export default function Trip() {
         </View>
       ))}
 
-      <View className="btn-row" style={{ marginTop: '16rpx' }}>
+      <View className="btn-row" style={{ marginTop: '16rpx', marginBottom: '24rpx' }}>
         <Button className="ghost" size="mini" onClick={() => Taro.navigateTo({ url: `/pages/trip-create/index` })}>＋ 新的旅程</Button>
       </View>
     </View>
@@ -135,4 +241,30 @@ function tripProgress(start: string, end: string): number {
   if (n <= s) return 0
   if (n >= e + 86400000) return 100
   return Math.round(((n - s) / (e + 86400000 - s)) * 100)
+}
+
+/** Hero 状态 chip 文案：计划中倒计时 / 进行中第 N 天 / 已结束。 */
+function tripStatusChip(start: string, end: string): string {
+  const now = new Date()
+  const p = (x: number) => String(x).padStart(2, '0')
+  const today = `${now.getFullYear()}-${p(now.getMonth() + 1)}-${p(now.getDate())}`
+  const days = (a: string, b: string) => Math.round((new Date(b + 'T00:00:00').getTime() - new Date(a + 'T00:00:00').getTime()) / 86400000)
+  if (today < start) {
+    const left = days(today, start)
+    return left >= 1 ? `出发倒计时 ${left} 天` : '今天出发'
+  }
+  if (today > end) return '旅程已结束'
+  return `进行中 · 第 ${days(start, today) + 1} 天`
+}
+
+/** 封面色提亮：hex 混白，做渐变亮端。 */
+function tint(hex: string, amt: number): string {
+  const h = (hex || '#3B6EA5').replace('#', '')
+  if (h.length !== 6) return '#55ACF3'
+  const n = parseInt(h, 16)
+  const mix = (c: number) => Math.round(c + (255 - c) * amt)
+  const r = mix((n >> 16) & 255)
+  const g = mix((n >> 8) & 255)
+  const b = mix(n & 255)
+  return `#${((r << 16) | (g << 8) | b).toString(16).padStart(6, '0')}`
 }

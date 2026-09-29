@@ -1,0 +1,63 @@
+<!-- 旅行日志：图文手记 · 多图 · 长按删除 -->
+<view class="screen journal {{themeClass}}">
+  <nav-bar float="{{true}}" back="{{true}}" />
+  <scroll-view class="scroll" scroll-y>
+    <view wx:if="{{noTrip}}" class="anim-rise" style="padding:140rpx 40rpx;text-align:center;">
+      <text style="font-size:30rpx;color:var(--ink3)">请先从首页选择行程</text>
+    </view>
+    <block wx:else>
+    <view class="j-entry anim-rise" style="animation-delay:{{index * 70}}ms" wx:for="{{entries}}" wx:key="id"
+          bindlongpress="delEntry" data-id="{{item.id}}">
+      <view class="j-head">
+        <view class="j-day">{{item.mood}}</view>
+        <view class="j-meta">
+          <text class="j-date">{{item.author}}</text>
+          <text class="j-mood">{{item.dateStr}}</text>
+        </view>
+      </view>
+      <text class="j-text">{{item.content}}</text>
+      <view class="j-imgs" wx:if="{{item.images.length}}">
+        <image wx:for="{{item.images}}" wx:for-item="img" wx:key="*this" class="j-img" src="{{img}}" mode="aspectFill" lazy-load />
+      </view>
+    </view>
+
+    <view wx:if="{{!entries.length}}" class="j-empty">
+      <text class="j-empty-t">还没有手记</text>
+      <text class="j-empty-s">旅行中随手记一笔，回来就是完整的故事</text>
+    </view>
+
+    <view class="j-add card" hover-class="press" bindtap="startAdd">
+      <view class="j-add-ic"><view class="ic ic-camera"></view></view>
+      <view class="j-add-txt">
+        <text class="t">写一条手记</text>
+        <text class="s">记录今天的心情与见闻</text>
+      </view>
+      <view class="ic ic-right" style="color:var(--ink3)"></view>
+    </view>
+    <view style="height:60rpx"></view>
+    </block>
+  </scroll-view>
+
+  <view wx:if="{{composer}}" class="sheet-mask" bindtap="cancel"></view>
+  <view wx:if="{{composer}}" class="sheet j-sheet">
+    <view class="grab"></view>
+    <view class="j-head-bar">
+      <text class="t">写手记</text>
+      <view class="x" hover-class="press" bindtap="cancel"><view class="ic ic-close"></view></view>
+    </view>
+    <view class="j-days">
+      <view class="j-day-chip {{form.moodIdx === index ? 'on' : ''}}" wx:for="{{moods}}" wx:key="*this"
+            hover-class="press" bindtap="pickMood" data-i="{{index}}">{{item}}</view>
+    </view>
+    <textarea class="j-input" value="{{form.text}}" placeholder="今天的心情、见闻、梗图素材…" placeholder-class="ph" show-confirm-bar="{{false}}" adjust-position="{{true}}"
+              bindinput="onText" maxlength="300" />
+    <view class="j-pick" hover-class="press" bindtap="chooseImages">
+      <view class="ic ic-camera" style="color:var(--sky500)"></view>
+      <text>添加图片（已选 {{form.images.length}}/9）</text>
+    </view>
+    <view class="j-imgs" wx:if="{{form.images.length}}">
+      <image wx:for="{{form.images}}" wx:key="*this" class="j-img" src="{{item}}" mode="aspectFill" />
+    </view>
+    <view class="btn btn-block j-save" hover-class="press" bindtap="saveEntry"><text>发布手记</text></view>
+  </view>
+</view>

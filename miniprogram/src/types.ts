@@ -5,6 +5,8 @@ export type MemberRole = 'owner' | 'admin' | 'editor' | 'viewer';
 
 export interface Profile {
   id: string
+  /** 平台自动维护的属主标识（weda_<openid>），列表查询的稳定锚点 */
+  owner?: string
   nickname: string
   avatarColor: string
   bio: string
@@ -28,6 +30,7 @@ export interface TripMember {
 
 export interface Trip {
   id: string
+
   title: string
   destination: string
   description: string
@@ -38,6 +41,7 @@ export interface Trip {
   coverImage: string | null // 云存储 fileID
   budget: number
   visibility: 'private' | 'link'
+  /** 平台属主标识 weda_<openid>（业务挪用：列表查询锚点，见 rdb/trip.ts listTrips 注释） */
   shareToken: string | null
   createdAt?: number
   updatedAt?: number
@@ -264,8 +268,10 @@ export interface TripCardInfo {
   endDate: string
   coverEmoji: string
   coverColor: string
+  coverImage?: string
   budget: number
-  memberPreview: { displayName: string; avatarColor: string }[]
-  totalSpent: number
+  // listTrips 已裁剪（首屏提速，2026-09-28）：不再输出，保留可选仅为旧调用方兼容
+  memberPreview?: { displayName: string; avatarColor: string }[]
+  totalSpent?: number
   activityCount: number
 }

@@ -114,6 +114,25 @@ export async function geocodePlaces(items: GeocodeItem[], maxLookups = 24, maxMs
   return result;
 }
 
+/** 逆地理编码：坐标 → 省/市（高德 regeo）。用于「识别出发地」等场景，未配置 Key 或失败返回 null */
+export async function reverseGeocode(lat: number, lng: number): Promise<{ province: string; city: string; district: string } | null> {
+  if (!AMAP_KEY) return null;
+  try {
+    const url = new URL('https://restapi.amap.com/v3/geocode/regeo');
+    url.searchParams.set('key', AMAP_KEY);
+    url.searchParams.set('location', `${lng.toFixed(6)},${lat.toFixed(6)}`);
+    url.searchParams.set('extensions', 'base');
+    const resp = await fetch(url, { signal: AbortSignal.timeout(5000) });
+    const data = await resp.json() as { status: string; regeocode?: { addressComponent?: { province?: string | []; city?: string | []; district?: string | [] } } };
+    const comp = data.status === '1' ? data.regeocode?.addressComponent : null;
+    if (!comp) return null;
+    const pick = (v: string | string[] | undefined) => (Array.isArray(v) ? '' : String(v || ''));
+    return { province: pick(comp.province), city: pick(comp.city) || pick(comp.province), district: pick(comp.district) };
+  } catch {
+    return null;
+  }
+}
+
 /** 生成高德 App 导航链接与网页链接 */
 export function amapLinks(name: string, lat?: number | null, lng?: number | null): { uri: string; web: string } {
   if (lat != null && lng != null) {

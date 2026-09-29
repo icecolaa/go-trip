@@ -1,0 +1,84 @@
+<!-- 我的 -->
+<view class="screen profile {{themeClass}}">
+  <view class="bg-tint"></view>
+  <nav-bar>
+    <view class="brandbar">
+      <image class="logo" src="/assets/logo.png" mode="aspectFill" />
+      <text class="cn">出发吧</text>
+      <text class="en">GoTrip</text>
+    </view>
+  </nav-bar>
+
+  <scroll-view class="scroll" scroll-y>
+    <view class="card profile-card anim-rise">
+      <view class="avatar av-blue xl">{{initial}}</view>
+      <view class="mid">
+        <view class="n-row">
+          <text class="n">{{nickname}}</text>
+          <text class="tag yellow">旅行家 Lv.{{level}}</text>
+        </view>
+        <text class="d">微信用户 · GoTrip ID {{gid}}</text>
+      </view>
+      <view class="edit" hover-class="press" bindtap="editNickname"><view class="ic ic-edit"></view></view>
+    </view>
+
+    <view class="card stats anim-rise d1">
+      <view class="stat-c"><text class="v num">{{statTrips}}</text><text class="k">旅行</text></view>
+      <view class="stat-c"><text class="v num">{{statCities}}</text><text class="k">城市</text></view>
+      <view class="stat-c"><text class="v num">{{statStops}}</text><text class="k">地点</text></view>
+      <view class="stat-c"><text class="v num">{{statSpent}}</text><text class="k">记账</text></view>
+    </view>
+    <view class="grp" style="margin-top:16rpx">
+      <view class="cell" hover-class="press" bindtap="goGuidebook">
+        <view class="cell-ic yel"><view class="ic ic-compass" style="color:#FFC414"></view></view>
+        <view class="cell-main">
+          <text class="h">旅行锦囊</text>
+        </view>
+        <view class="cell-right"><view class="ic ic-right"></view></view>
+      </view>
+    </view>
+    <view class="grp">
+      <view class="cell" hover-class="press" bindtap="goMessages">
+        <view class="cell-ic sky"><view class="ic ic-chat" style="color:#2E92ED"></view></view>
+        <view class="cell-main">
+          <text class="h">消息</text>
+        </view>
+        <view class="cell-right"><view class="ic ic-right"></view></view>
+      </view>
+    </view>
+
+    <view class="grp-title"><text>飞哪儿</text><view class="line"></view></view>
+    <view class="fl-hero" hover-class="press" bindtap="goFlights">
+      <view class="fl-left">
+        <view class="fl-ic"><view class="ic ic-send"></view></view>
+        <view class="fl-txt">
+          <text class="t">机票低价探索</text>
+          <text class="s">按人数精确计价 · 附天气与出行建议</text>
+        </view>
+      </view>
+    </view>
+
+    <view class="grp-title"><text>通用</text><view class="line"></view></view>
+    <view class="grp">
+      <view class="cell" hover-class="press" bindtap="goSettings">
+        <view class="cell-ic gray"><view class="ic ic-gear" style="color:#51637A"></view></view>
+        <view class="cell-main">
+          <text class="h">设置</text>
+        </view>
+        <view class="cell-right"><view class="ic ic-right"></view></view>
+      </view>
+      <view class="cell" hover-class="press" bindtap="showAbout">
+        <view class="cell-ic yel"><view class="ic ic-star" style="color:#FFC414"></view></view>
+        <view class="cell-main">
+          <text class="h">关于</text>
+        </view>
+        <view class="cell-right"><view class="ic ic-right"></view></view>
+      </view>
+    </view>
+
+    <view class="ver">
+      <image src="/assets/logo.png" mode="aspectFill" />
+      <text>出发吧 GoTrip · v1.5.0</text>
+    </view>
+  </scroll-view>
+</view>

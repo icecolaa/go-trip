@@ -1,0 +1,46 @@
+/* 停靠式毛玻璃 TabBar：贴底 + 底部安全区；首页 / 出发(黄) / 我的
+   内容区高 112rpx（56px，对齐原生 tabBar），下方让位给 home indicator。
+   色值用字面量（不依赖页面令牌继承），深色走媒体查询 */
+.tb {
+  position: fixed; left: 0; right: 0; bottom: 0;
+  z-index: 300;
+  height: calc(112rpx + env(safe-area-inset-bottom));
+  padding: 0 20rpx env(safe-area-inset-bottom);
+  display: flex; align-items: center;
+  background: rgba(255,255,255,.92);
+  -webkit-backdrop-filter: blur(60rpx) saturate(1.8);
+  backdrop-filter: blur(60rpx) saturate(1.8);
+  border-top: 2rpx solid rgba(230,238,246,.9);
+  box-shadow: 0 -10rpx 40rpx rgba(23,84,153,.08);
+}
+.tb-tab .ic, .tb-tab text { transition: color 0.2s ease; }
+.tb-tab {
+  flex: 1; height: 112rpx; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 6rpx;
+}
+.tb-tab .ic { width: 46rpx; height: 46rpx; color: #7A8FA5; }
+.tb-tab text { font-size: 22rpx; color: #7A8FA5; font-weight: 500; }
+.tb-tab.on .ic { color: #2E92ED; }
+.tb-tab.on text { color: #1B78D8; font-weight: 700; }
+
+.tb-ai {
+  flex: none; display: flex; align-items: center; gap: 10rpx; height: 84rpx; margin: 0 8rpx;
+  padding: 0 28rpx 0 12rpx; border-radius: 42rpx;
+  background: linear-gradient(135deg, #FFDE5C, #FFC414);
+  box-shadow: 0 10rpx 28rpx rgba(255,196,20,.4);
+}
+.tb-ai-face { width: 60rpx; height: 60rpx; border-radius: 50%; border: 4rpx solid #fff; background: #54A6F0; }
+.tb-ai-txt { font-size: 26rpx; font-weight: 800; color: #6B5200; white-space: nowrap; }
+
+/* 深色：暗玻璃面板，文字用暗色令牌值 */
+@media (prefers-color-scheme: dark) {
+  .tb {
+    background: rgba(16,27,41,.94);
+    border-top-color: rgba(255,255,255,.08);
+    box-shadow: 0 -10rpx 40rpx rgba(0,0,0,.45);
+  }
+  .tb-tab .ic { color: #64798F; }
+  .tb-tab text { color: #64798F; }
+  .tb-tab.on .ic { color: #55ACF3; }
+  .tb-tab.on text { color: #55ACF3; }
+}

@@ -1,0 +1,49 @@
+<!-- 设置：夜间模式 / 使用助手 / 对外分享 -->
+<view class="screen settings {{themeClass}}">
+  <nav-bar float="{{true}}" back="{{true}}" />
+  <scroll-view class="scroll" scroll-y>
+    <view class="card st-card anim-rise">
+      <view class="st-head"><text class="t">夜间模式</text><text class="tag {{themeSetting === 'auto' ? 'blue' : 'yellow'}}">{{themeLabel}}</text></view>
+      <view class="st-opts">
+        <view class="st-opt {{themeSetting === 'auto' ? 'on' : ''}}" hover-class="press" bindtap="setTheme" data-v="auto">
+          <text class="t">跟随系统</text><text class="s">自动亮暗</text>
+        </view>
+        <view class="st-opt {{themeSetting === 'light' ? 'on' : ''}}" hover-class="press" bindtap="setTheme" data-v="light">
+          <text class="t">浅色</text><text class="s">始终明亮</text>
+        </view>
+        <view class="st-opt {{themeSetting === 'dark' ? 'on' : ''}}" hover-class="press" bindtap="setTheme" data-v="dark">
+          <text class="t">深色</text><text class="s">护眼夜用</text>
+        </view>
+      </view>
+    </view>
+
+    <view class="card st-card anim-rise d1">
+      <view class="cell" hover-class="press" bindtap="goHelper">
+        <view class="cell-ic" style="background:var(--yel100)"><view class="ic ic-spark" style="color:#FFC414"></view></view>
+        <view class="cell-main"><text class="h">功能指南</text><text class="p">常见问题 一查就懂</text></view>
+        <view class="cell-right"><view class="ic ic-right"></view></view>
+      </view>
+      <view class="cell" hover-class="press" bindtap="shareReadonly">
+        <view class="cell-ic" style="background:var(--sky100)"><view class="ic ic-link" style="color:#2E92ED"></view></view>
+        <view class="cell-main"><text class="h">对外分享</text><text class="p">生成只读链接 · 发给长辈也能看</text></view>
+        <view class="cell-right"><view class="ic ic-right"></view></view>
+      </view>
+      <button class="cell st-share" open-type="share" hover-class="press">
+        <view class="cell-ic" style="background:#E4F6EC"><view class="ic ic-wechat" style="color:#07C160"></view></view>
+        <view class="cell-main"><text class="h">转发小程序卡片</text><text class="p">微信好友可见 · 只读预览</text></view>
+        <view class="cell-right"><view class="ic ic-right"></view></view>
+      </button>
+      <view class="cell" hover-class="press" bindtap="showAbout">
+        <view class="cell-ic" style="background:#F1EAFE"><view class="ic ic-star" style="color:#7B8CFF"></view></view>
+        <view class="cell-main"><text class="h">关于出发吧</text><text class="p">版本与功能简介</text></view>
+        <view class="cell-right"><view class="ic ic-right"></view></view>
+      </view>
+    </view>
+
+    <view class="ver">
+      <image src="/assets/logo.png" mode="aspectFill" />
+      <text>出发吧 GoTrip · v1.5.0</text>
+    </view>
+    <view style="height:60rpx"></view>
+  </scroll-view>
+</view>

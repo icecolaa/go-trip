@@ -1,0 +1,41 @@
+<!-- 旅行锦囊：四类手册卡片 · 内置内容库 · 自定义卡片 -->
+<view class="screen guidebook {{themeClass}}">
+  <nav-bar float="{{true}}" back="{{true}}" />
+  <scroll-view class="scroll" scroll-y>
+    <view class="sec" style="margin-top:12rpx"><text class="h">目的地</text><text class="tag yellow">内置 {{cityCount}}+ 目的地</text></view>
+    <scroll-view class="city-rail" scroll-x>
+      <view class="city-chip {{city === item ? 'on' : ''}}" wx:for="{{cities}}" wx:key="*this"
+            hover-class="press" bindtap="pickCity" data-c="{{item}}">{{item}}</view>
+    </scroll-view>
+
+    <view class="g-card anim-rise" wx:for="{{cards}}" wx:key="key" style="animation-delay:{{index * 70}}ms">
+      <view class="g-head">
+        <view class="g-ic" style="background:{{item.bg}}"><view class="ic ic-{{item.icon}}" style="color:{{item.color}}"></view></view>
+        <text class="g-name">{{item.name}}</text>
+        <text class="g-sub">{{city}} · {{item.items.length}} 条</text>
+      </view>
+      <view class="g-item" wx:for="{{item.items}}" wx:for-item="it" wx:key="*this">
+        <view class="g-dot" style="background:{{item.color}}"></view>
+        <text>{{it}}</text>
+      </view>
+    </view>
+
+    <view class="g-card custom" wx:if="{{customs.length}}">
+      <view class="g-head">
+        <view class="g-ic" style="background:var(--yel100)"><view class="ic ic-edit" style="color:#FFC414"></view></view>
+        <text class="g-name">成员自定义</text>
+        <text class="g-sub">{{customs.length}} 条</text>
+      </view>
+      <view class="g-item" wx:for="{{customs}}" wx:key="*this">
+        <view class="g-dot" style="background:#FF8A5C"></view>
+        <text>{{item}}</text>
+        <view class="g-del" hover-class="press" bindtap="delCustom" data-i="{{index}}"><view class="ic ic-close"></view></view>
+      </view>
+    </view>
+
+    <view class="g-actions">
+      <view class="btn ghost btn-block" hover-class="press" bindtap="addCustom"><view class="ic ic-plus" style="width:30rpx;height:30rpx"></view><text>加一张自定义卡片</text></view>
+    </view>
+    <view style="height:60rpx"></view>
+  </scroll-view>
+</view>

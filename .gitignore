@@ -27,3 +27,6 @@ docs/gotrip-architecture.visual-check.*
 .zcode/
 .zcodeignore
 skills-lock.json
+
+# 会话工作目录（含上传密钥备份/验收脚本等，绝不提交）
+work/
