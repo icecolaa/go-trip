@@ -13,15 +13,15 @@
   border-top: 2rpx solid rgba(230,238,246,.9);
   box-shadow: 0 -10rpx 40rpx rgba(23,84,153,.08);
 }
-.tb-tab .ic, .tb-tab text { transition: color 0.2s ease; }
+.tb-tab .ic, .tb-tab .lbl { transition: color 0.2s ease; }
 .tb-tab {
   flex: 1; height: 112rpx; display: flex; flex-direction: column;
   align-items: center; justify-content: center; gap: 6rpx;
 }
 .tb-tab .ic { width: 46rpx; height: 46rpx; color: #7A8FA5; }
-.tb-tab text { font-size: 22rpx; color: #7A8FA5; font-weight: 500; }
+.tb-tab .lbl { font-size: 22rpx; color: #7A8FA5; font-weight: 500; }
 .tb-tab.on .ic { color: #2E92ED; }
-.tb-tab.on text { color: #1B78D8; font-weight: 700; }
+.tb-tab.on .lbl { color: #1B78D8; font-weight: 700; }
 
 .tb-ai {
   flex: none; display: flex; align-items: center; gap: 10rpx; height: 84rpx; margin: 0 8rpx;
@@ -40,7 +40,7 @@
     box-shadow: 0 -10rpx 40rpx rgba(0,0,0,.45);
   }
   .tb-tab .ic { color: #64798F; }
-  .tb-tab text { color: #64798F; }
+  .tb-tab .lbl { color: #64798F; }
   .tb-tab.on .ic { color: #55ACF3; }
-  .tb-tab.on text { color: #55ACF3; }
+  .tb-tab.on .lbl { color: #55ACF3; }
 }
