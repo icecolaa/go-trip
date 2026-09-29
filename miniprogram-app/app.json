@@ -19,8 +19,7 @@
     "pages/flights/flights",
     "pages/helper/helper",
     "pages/settings/settings",
-    "pages/profile/profile",
-    "pages/ai/ai"
+    "pages/profile/profile"
   ],
   "window": {
     "navigationStyle": "custom",

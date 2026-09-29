@@ -5,6 +5,10 @@
       {
         "value": "README.md",
         "type": "file"
+      },
+      {
+        "value": "pages/ai",
+        "type": "folder"
       }
     ],
     "include": []
