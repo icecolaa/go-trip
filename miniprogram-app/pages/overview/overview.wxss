@@ -1,9 +1,10 @@
 .overview { background: var(--bg); }
+.overview .scroll { padding-bottom: calc(40rpx + env(safe-area-inset-bottom)); }
 
 .photo-head { position: relative; height: 472rpx; flex: none; }
 .photo-head .bg { width: 100%; height: 100%; }
 .bg-edit {
-  position: absolute; right: 24rpx; bottom: 24rpx; z-index: 20;
+  position: absolute; right: 108rpx; bottom: 88rpx; z-index: 20;
   width: 68rpx; height: 68rpx; border-radius: 50%;
   background: rgba(24,42,61,.35); border: 2rpx solid rgba(255,255,255,.25);
   display: flex; align-items: center; justify-content: center;
@@ -13,14 +14,15 @@
   position: absolute; left: 0; top: 0; right: 0; bottom: 0;
   background: linear-gradient(180deg, rgba(10,30,55,.42) 0%, rgba(10,30,55,0) 40%, rgba(10,30,55,.62) 100%);
 }
-.head-title { position: absolute; left: 32rpx; right: 32rpx; bottom: 104rpx; z-index: 5; display: flex; flex-direction: column; }
+/* top 锚定：徽章落在返回钮（状态栏+60rpx 行，iPhone 底缘≈154rpx）下方，不再遮挡 */
+.head-title { position: absolute; left: 32rpx; right: 32rpx; top: 176rpx; z-index: 5; display: flex; flex-direction: column; }
 .chip-live {
   display: inline-flex; align-items: center; gap: 10rpx; align-self: flex-start;
   background: var(--yel400); color: #6B5200; font-size: 22rpx; font-weight: 800;
   border-radius: 999rpx; padding: 8rpx 20rpx; box-shadow: var(--sh-yellow);
 }
 .chip-live .i { width: 12rpx; height: 12rpx; border-radius: 50%; background: #E4572E; }
-.head-title .t { font-size: 48rpx; font-weight: 900; color: #fff; margin-top: 16rpx; text-shadow: 0 4rpx 20rpx rgba(8,30,55,.5); }
+.head-title .t { font-size: 48rpx; font-weight: 900; color: #fff; margin-top: 16rpx; text-shadow: 0 4rpx 20rpx rgba(8,30,55,.5); display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
 .head-title .meta { display: flex; align-items: center; gap: 10rpx; color: #fff; opacity: .95; font-size: 25rpx; margin-top: 8rpx; }
 .head-title .meta .ic { width: 26rpx; height: 26rpx; }
 .head-title .div { opacity: .5; }
@@ -125,8 +127,8 @@
 .tm-cta-txt .t { font-size: 28rpx; font-weight: 900; color: #6B5200; }
 .tm-cta-txt .s { font-size: 21rpx; color: #A97E00; margin-top: 2rpx; }
 
-/* 修改行程：hero 编辑钮 + 弹层 */
-.bg-edit.edit { bottom: 104rpx; }
+/* 修改行程：hero 编辑钮（与相机钮并排、底缘 88rpx 高于成员卡叠入线 64rpx）+ 弹层 */
+.bg-edit.edit { right: 24rpx; bottom: 88rpx; }
 .edit-head { display: flex; align-items: center; justify-content: space-between; margin: 8rpx 0 20rpx; }
 .edit-head .t { font-size: 33rpx; font-weight: 800; color: var(--ink); }
 .edit-head .x { width: 52rpx; height: 52rpx; border-radius: 50%; background: var(--sky50); display: flex; align-items: center; justify-content: center; }

@@ -74,7 +74,6 @@
     <view class="card wx-strip anim-rise d2" wx:if="{{weather.length}}">
       <view class="wx-head">
         <text class="t">天气速览 · {{city}}</text>
-        <text class="s">行程日期窗口</text>
       </view>
       <view class="wx-days">
         <view class="wx-day {{item.pending ? 'pend' : ''}}" wx:for="{{weather}}" wx:key="date">
