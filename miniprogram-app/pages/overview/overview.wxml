@@ -40,7 +40,7 @@
   </view>
 
   <scroll-view class="scroll" scroll-y>
-    <!-- 功能入口 -->
+    <!-- 功能入口（8 格统一样式；飞哪儿入口在「我的」页） -->
     <view class="actions anim-rise d1">
       <view class="act" hover-class="press" bindtap="go" data-url="/pages/schedule/schedule">
         <view class="big blue"><view class="ic ic-note"></view></view><text>日程</text>
@@ -49,7 +49,7 @@
         <view class="big blue"><view class="ic ic-map"></view></view><text>地图</text>
       </view>
       <view class="act" hover-class="press" bindtap="go" data-url="/pages/ledger/ledger">
-        <view class="big yellow"><view class="ic ic-wallet"></view></view>
+        <view class="big blue"><view class="ic ic-wallet"></view></view>
         <text>记账</text>
         <view class="bubble-tip" wx:if="{{billCount}}">{{billCount}} 笔</view>
       </view>
@@ -57,19 +57,16 @@
         <view class="big blue"><view class="ic ic-list"></view></view><text>清单</text>
       </view>
       <view class="act" hover-class="press" bindtap="go" data-url="/pages/guidebook/guidebook">
-        <view class="big green"><view class="ic ic-compass"></view></view><text>锦囊</text>
+        <view class="big blue"><view class="ic ic-compass"></view></view><text>锦囊</text>
       </view>
       <view class="act" hover-class="press" bindtap="go" data-url="/pages/journal/journal">
-        <view class="big green"><view class="ic ic-camera"></view></view><text>日志</text>
+        <view class="big blue"><view class="ic ic-camera"></view></view><text>日志</text>
       </view>
       <view class="act" hover-class="press" bindtap="go" data-url="/pages/links/links">
-        <view class="big green"><view class="ic ic-link"></view></view><text>收藏</text>
-      </view>
-      <view class="act" hover-class="press" bindtap="go" data-url="/pages/flights/flights">
-        <view class="big yellow"><view class="ic ic-send"></view></view><text>飞哪儿</text>
+        <view class="big blue"><view class="ic ic-link"></view></view><text>收藏</text>
       </view>
       <view class="act" hover-class="press" bindtap="go" data-url="/pages/settle/settle">
-        <view class="big yellow"><view class="ic ic-transfer"></view></view><text>结算</text>
+        <view class="big blue"><view class="ic ic-transfer"></view></view><text>结算</text>
       </view>
     </view>
 

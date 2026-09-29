@@ -42,12 +42,8 @@
 }
 .act .big { width: 80rpx; height: 80rpx; border-radius: 28rpx; display: flex; align-items: center; justify-content: center; }
 .act .big.blue { background: var(--sky100); }
-.act .big.green { background: #E4F6EC; }
-.act .big.green .ic { color: #2FA96E; }
-.act .big.yellow { background: var(--yel100); }
 .act .big .ic { width: 40rpx; height: 40rpx; }
 .act .big.blue .ic { color: var(--sky500); }
-.act .big.yellow .ic { color: var(--yel500); }
 .act text { font-size: 23rpx; font-weight: 600; color: var(--ink2); }
 .bubble-tip {
   position: absolute; top: -14rpx; right: 16rpx; background: var(--red); color: #fff;

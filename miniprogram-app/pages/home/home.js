@@ -217,6 +217,13 @@ Page({
     }
   },
   goCreate() { wx.navigateTo({ url: '/pages/create/create' }) },
+  onShareAppMessage() {
+    return {
+      title: '出发吧 GoTrip · 一起规划每一段旅程',
+      path: '/pages/home/home',
+      imageUrl: '/assets/sanya.jpg'
+    }
+  },
   async importDemo() {
     if (this._importing) return
     this._importing = true

@@ -29,7 +29,7 @@ function parseJsonField(v, fallback) {
     }
 }
 /* ---------------- profile ---------------- */
-let _meRow = null; // 会话内缓存：冷启动 ready 里 ensureProfile 会被 listTrips 重复触发
+let _meRow = null; // 会话内缓存：ready 里 ensureProfile 会被 listTrips 重复触发
 async function ensureProfile() {
     if (_meRow)
         return _meRow;
@@ -65,7 +65,7 @@ async function listTrips() {
     // 首屏列表只需卡片字段（安排数来自 activities 一项查询）；行程间并行取代逐个串行——
     // 34 行程 × 3 表串行曾是启动页 ~100 次串行模型调用的主因。成员/支出由 bundle 路径按需加载。
     const out = await Promise.all(trips.map(async (t) => {
-        const activities = await (0, entities_1.listRows)('gt_activities', { trip_id: { $eq: t.id } });
+        const activities = (await (0, entities_1.listRows)('gt_activities', { trip_id: { $eq: t.id } }));
         return {
             id: t.id,
             title: t.title,
@@ -75,6 +75,7 @@ async function listTrips() {
             endDate: t.endDate,
             coverEmoji: t.coverEmoji,
             coverColor: t.coverColor,
+            coverImage: t.coverImage || '',
             budget: t.budget,
             activityCount: activities.length,
         };
