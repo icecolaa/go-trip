@@ -53,8 +53,11 @@ Page({
   },
   onInput(e) { this.setData({ draft: e.detail.value }) },
   ask(e) {
+    /* 快捷问题 chips 传 data-q（1.5.22 修复：原读 data-i 恒 NaN 点之无效）；qa 列表头保留展开/收起 */
+    const q = e.currentTarget.dataset.q
+    if (q) { this.askText(q); return }
     const i = Number(e.currentTarget.dataset.i)
-    this.setData({ ['qa[' + i + '].open']: !this.data.qa[i].open })
+    if (this.data.qa[i]) this.setData({ ['qa[' + i + '].open']: !this.data.qa[i].open })
   },
   send() { this.askText(this.data.draft) },
   askText(raw) {

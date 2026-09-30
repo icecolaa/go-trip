@@ -67,13 +67,6 @@
         </view>
         <view class="cell-right"><view class="ic ic-right"></view></view>
       </view>
-      <view class="cell" hover-class="press" bindtap="showAbout">
-        <view class="cell-ic yel"><view class="ic ic-star" style="color:#FFC414"></view></view>
-        <view class="cell-main">
-          <text class="h">关于</text>
-        </view>
-        <view class="cell-right"><view class="ic ic-right"></view></view>
-      </view>
     </view>
 
     <view class="ver">

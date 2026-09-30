@@ -77,3 +77,5 @@
 }
 .home.theme-dark { background: linear-gradient(180deg, #14283D 0%, #0F1E30 416rpx, var(--bg) 600rpx); }
 .home.theme-dark .brandbar .en { color: var(--sky400); }
+/* 手动浅色档：系统深色时媒体查询会把渐变翻深——.theme-light 钉浅令牌须配浅渐变，否则深浅混搭（1.5.22 用户真机实锤） */
+.home.theme-light { background: linear-gradient(180deg, #D8ECFC 0%, #EDF6FE 416rpx, var(--bg) 600rpx); }

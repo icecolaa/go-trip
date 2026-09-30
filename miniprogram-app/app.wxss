@@ -20,6 +20,8 @@ page {
   --bg: #F3F8FC; --card: #FFFFFF;
   /* 影 */
   --sh-card: 0 2rpx 8rpx rgba(23, 84, 153, 0.04), 0 12rpx 36rpx rgba(23, 84, 153, 0.08);
+  /* 导航返回钮底（令牌化：组件不跟系统媒体查询，跟页面主题走——1.5.22） */
+  --nb-back-bg: rgba(255,255,255,.9);
   --sh-float: 0 20rpx 56rpx rgba(23, 84, 153, 0.18);
   --sh-yellow: 0 12rpx 32rpx rgba(255, 196, 20, 0.35);
 
@@ -203,9 +205,10 @@ button::after { border: none; }
 .progress .bar { display: block; height: 100%; border-radius: 8rpx; background: linear-gradient(90deg, var(--yel400), var(--yel500)); }
 
 /* ---------- 底部弹层 ---------- */
-.sheet-mask { position: fixed; left: 0; top: 0; right: 0; bottom: 0; background: rgba(15,35,60,.45); z-index: 40; animation: maskIn 0.28s ease both; }
+.sheet-mask { position: fixed; left: 0; top: 0; right: 0; bottom: 0; background: rgba(15,35,60,.45); z-index: 390; animation: maskIn 0.28s ease both; }
+/* z-index 400>tabBar 300：tab 页（profile 等）弹层按钮区曾被 tabBar 遮挡致无法点确定（1.5.22 修复） */
 .sheet {
-  position: fixed; left: 0; right: 0; bottom: 0; z-index: 50; background: var(--card);
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 400; background: var(--card);
   border-radius: 48rpx 48rpx 0 0; padding: 20rpx 36rpx 0;
   padding-bottom: calc(20rpx + env(safe-area-inset-bottom));
   animation: sheetUp 0.34s cubic-bezier(0.16, 1, 0.3, 1);
@@ -319,6 +322,7 @@ button::after { border: none; }
 @media (prefers-color-scheme: dark) {
 page {
   --bg: #0D1724; --card: #152334; --ink: #E8F0F9; --ink2: #9FB3C8; --ink3: #64798F; --line: #23364B;
+  --nb-back-bg: rgba(36,56,80,.92);
   --sky50: #12233A; --sky100: #17304B; --sky200: #1E3F63;
   --yel100: #3B3320; --yel200: #4A3F26;
   --sh-card: 0 2rpx 8rpx rgba(0,0,0,.18), 0 12rpx 36rpx rgba(0,0,0,.26);
@@ -327,6 +331,7 @@ page {
 
 .theme-light {
   --bg: #F3F8FC; --card: #FFFFFF; --ink: #182A3D; --ink2: #51637A; --ink3: #7A8FA5; --line: #E6EEF6;
+  --nb-back-bg: rgba(255,255,255,.9);
   --sky50: #F1F8FE; --sky100: #E3F0FD; --sky200: #C6E2FB;
   --yel100: #FFF6D9; --yel200: #FFE9A8;
   --sh-card: 0 2rpx 8rpx rgba(23,84,153,.04), 0 12rpx 36rpx rgba(23,84,153,.08);
@@ -334,6 +339,7 @@ page {
 
 .theme-dark {
   --bg: #0D1724; --card: #152334; --ink: #E8F0F9; --ink2: #9FB3C8; --ink3: #64798F; --line: #23364B;
+  --nb-back-bg: rgba(36,56,80,.92);
   --sky50: #12233A; --sky100: #17304B; --sky200: #1E3F63;
   --yel100: #3B3320; --yel200: #4A3F26;
   --sh-card: 0 2rpx 8rpx rgba(0,0,0,.18), 0 12rpx 36rpx rgba(0,0,0,.26);

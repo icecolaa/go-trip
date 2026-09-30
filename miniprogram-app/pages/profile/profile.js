@@ -1,7 +1,6 @@
 const store = require('../../utils/store')
 const theme = require('../../utils/theme')
 
-const VERSION = 'v1.5.0'
 
 function fmtMoney(n) {
   n = Number(n) || 0
@@ -80,14 +79,6 @@ Page({
         wx.showToast({ title: '已保存', icon: 'success' })
       })
       .catch((err) => wx.showToast({ title: (err && err.message) || '保存失败', icon: 'none' }))
-  },
-  showAbout() {
-    wx.showModal({
-      title: '关于出发吧',
-      content: '出发吧 GoTrip ' + VERSION + '\n协作行程 · 记账结算 · 打包清单 · 旅行锦囊\n和同行人一起把旅行安排明白',
-      showCancel: false,
-      confirmText: '知道了'
-    })
   },
   goMessages() { wx.navigateTo({ url: '/pages/messages/messages' }) },
   goTrips() { wx.switchTab({ url: '/pages/home/home' }) },

@@ -63,7 +63,9 @@
 .tm-sketch-img { width: 100%; border-radius: 20rpx; margin-top: 16rpx; }
 
 .tm-cta {
-  flex: none; display: flex; gap: 20rpx; padding: 20rpx 32rpx calc(28rpx + env(safe-area-inset-bottom));
+  /* 贴合 tabBar：fixed 定位在停靠 tabBar（112rpx）正上方（1.5.22 用户反馈） */
+  position: fixed; left: 0; right: 0; bottom: calc(112rpx + env(safe-area-inset-bottom)); z-index: 50;
+  display: flex; gap: 20rpx; padding: 16rpx 32rpx;
   background: var(--card); border-top: 2rpx solid var(--line);
 }
 .tm-cta-btn { flex: 1; height: 88rpx; }

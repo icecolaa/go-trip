@@ -4,6 +4,8 @@
   .profile .bg-tint { background: linear-gradient(180deg, #14283D 0%, var(--bg) 100%); }
 }
 .profile.theme-dark .bg-tint { background: linear-gradient(180deg, #14283D 0%, var(--bg) 100%); }
+/* 手动浅色档钉浅渐变（同 home，1.5.22） */
+.profile.theme-light .bg-tint { background: linear-gradient(180deg, #D8ECFC 0%, var(--bg) 100%); }
 /* 品牌栏（与首页头部同款） */
 .brandbar { display: flex; align-items: center; gap: 16rpx; }
 .brandbar .logo { width: 56rpx; height: 56rpx; border-radius: 18rpx; box-shadow: 0 6rpx 16rpx rgba(23,84,153,.2); }

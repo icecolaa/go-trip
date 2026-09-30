@@ -71,7 +71,7 @@
       <image class="tm-sketch-img" src="/assets/trip-sketch.png" mode="widthFix" lazy-load />
     </view>
 
-    <view style="height:60rpx"></view>
+    <view style="height:220rpx"></view><!-- 让位固定底部 CTA -->
   </scroll-view>
 
   <view class="tm-cta">
