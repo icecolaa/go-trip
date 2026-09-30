@@ -77,3 +77,6 @@
     <view style="height:60rpx"></view>
   </view>
 </view>
+
+<input-sheet show="{{renameSheet.show}}" title="修改称呼" fields="{{renameSheet.fields}}"
+               bind:confirm="onRenameSheet" bind:cancel="closeRenameSheet" />

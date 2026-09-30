@@ -24,18 +24,20 @@ Page({
     })
   },
   addCustom() {
-    wx.showModal({
-      title: '自定义卡片内容',
-      editable: true, placeholderText: '例如：民宿老板推荐的看星星机位',
-      success: res => {
-        if (res.confirm && res.content) {
-          const list = this.loadCustoms()
-          list.unshift(res.content.trim())
-          try { wx.setStorageSync(CUSTOM_KEY + ':' + this.data.city, list.slice(0, 20)) } catch (e) { /* 忽略 */ }
-          this.setData({ customs: list })
-        }
+    this.setData({
+      cardSheet: {
+        show: true,
+        fields: [{ key: 'content', label: '卡片内容', placeholder: '例如：民宿老板推荐的看星星机位', type: 'textarea', required: true, maxlength: 100 }]
       }
     })
+  },
+  closeCardSheet() { this.setData({ 'cardSheet.show': false }) },
+  onCardSheet(e) {
+    this.setData({ 'cardSheet.show': false })
+    const list = this.loadCustoms()
+    list.unshift(e.detail.content)
+    try { wx.setStorageSync(CUSTOM_KEY + ':' + this.data.city, list.slice(0, 20)) } catch (err) { /* 忽略 */ }
+    this.setData({ customs: list })
   },
   delCustom(e) {
     const i = Number(e.currentTarget.dataset.i)

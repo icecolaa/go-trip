@@ -1,0 +1,22 @@
+<view wx:if="{{show}}" class="sheet-mask" bindtap="cancel"></view>
+<view wx:if="{{show}}" class="sheet is-sheet" catchtap="noop">
+  <view class="grab"></view>
+  <view class="is-head">
+    <text class="t">{{title}}</text>
+    <view class="x" hover-class="press" bindtap="cancel"><view class="ic ic-close"></view></view>
+  </view>
+  <view class="is-field" wx:for="{{fields}}" wx:key="key">
+    <text wx:if="{{item.label}}" class="is-lab">{{item.label}}</text>
+    <textarea wx:if="{{item.type === 'textarea'}}" class="is-input is-ta"
+              value="{{values[item.key]}}" placeholder="{{item.placeholder}}" placeholder-class="ph"
+              show-confirm-bar="{{false}}" adjust-position="{{true}}"
+              bindinput="onInput" data-key="{{item.key}}" maxlength="{{item.maxlength || 200}}" />
+    <input wx:else class="is-input"
+           value="{{values[item.key]}}" placeholder="{{item.placeholder}}" placeholder-class="ph"
+           bindinput="onInput" data-key="{{item.key}}" maxlength="{{item.maxlength || 60}}" />
+  </view>
+  <view class="is-btns">
+    <view class="is-btn ghost" hover-class="press" bindtap="cancel"><text>取消</text></view>
+    <view class="is-btn main" hover-class="press" bindtap="confirm"><text>{{confirmText}}</text></view>
+  </view>
+</view>

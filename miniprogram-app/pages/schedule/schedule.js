@@ -134,21 +134,25 @@ Page({
   editNote(id) {
     const s = store.stops.find(x => x.id === id)
     if (!s) return
-    wx.showModal({
-      title: s.name + ' · 备注',
-      editable: true,
-      placeholderText: s.note || '填写备注（如：需要预约）',
-      success: async res => {
-        if (!res.confirm) return
-        try {
-          await store.updateActivity(id, { notes: res.content || '' })
-          wx.showToast({ title: '备注已更新', icon: 'none' })
-        } catch (e) {
-          wx.showToast({ title: '保存失败，请重试', icon: 'none' })
-        }
-        this.refresh()
+    this._noteId = id
+    this.setData({
+      noteSheet: {
+        show: true,
+        title: s.name + ' · 备注',
+        fields: [{ key: 'note', label: '备注', placeholder: s.note || '填写备注（如：需要预约）', value: s.note || '', type: 'textarea', maxlength: 100 }]
       }
     })
+  },
+  closeNoteSheet() { this.setData({ 'noteSheet.show': false }) },
+  async onNoteSheet(e) {
+    this.setData({ 'noteSheet.show': false })
+    try {
+      await store.updateActivity(this._noteId, { notes: e.detail.note || '' })
+      wx.showToast({ title: '备注已更新', icon: 'none' })
+    } catch (err) {
+      wx.showToast({ title: '保存失败，请重试', icon: 'none' })
+    }
+    this.refresh()
   },
   moveDay(id) {
     const s = store.stops.find(x => x.id === id)

@@ -123,22 +123,22 @@ Page({
     })
   },
   addItem() {
-    wx.showModal({
-      title: '自定义物品', editable: true, placeholderText: '物品名称',
-      success: res => {
-        if (!res.confirm || !(res.content || '').trim()) return
-        const title = res.content.trim()
-        wx.showModal({
-          title: '放入哪个分类？', editable: true,
-          placeholderText: CATEGORIES.join(' / ') + '（留空为其他）',
-          success: res2 => {
-            const raw = (res2.content || '').trim()
-            const cat = CATEGORIES.indexOf(raw) >= 0 ? raw : '其他'
-            this.importItems([{ title, category: cat }])
-          }
-        })
+    this.setData({
+      itemSheet: {
+        show: true,
+        fields: [
+          { key: 'title', label: '物品名称', placeholder: '如：晕车药', required: true, maxlength: 30 },
+          { key: 'cat', label: '分类（可选）', placeholder: CATEGORIES.join(' / ') + '（留空为其他）', maxlength: 12 }
+        ]
       }
     })
+  },
+  closeItemSheet() { this.setData({ 'itemSheet.show': false }) },
+  onItemSheet(e) {
+    this.setData({ 'itemSheet.show': false })
+    const raw = e.detail.cat || ''
+    const cat = CATEGORIES.indexOf(raw) >= 0 ? raw : '其他'
+    this.importItems([{ title: e.detail.title, category: cat }])
   },
   importTemplate() {
     const rows = store.packing || []

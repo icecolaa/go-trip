@@ -1,0 +1,22 @@
+.is-sheet { padding-bottom: calc(24rpx + env(safe-area-inset-bottom)); }
+.is-head { display: flex; align-items: center; justify-content: space-between; margin: 8rpx 0 20rpx; }
+.is-head .t { font-size: 33rpx; font-weight: 800; color: var(--ink); }
+.is-head .x { width: 52rpx; height: 52rpx; border-radius: 50%; background: var(--sky50); display: flex; align-items: center; justify-content: center; }
+.is-head .x .ic { width: 26rpx; height: 26rpx; color: var(--ink2); }
+
+.is-field { margin-bottom: 20rpx; }
+.is-lab { display: block; font-size: 24rpx; font-weight: 700; color: var(--ink2); margin: 4rpx 0 10rpx; }
+.is-input {
+  width: 100%; height: 88rpx; border-radius: 24rpx; background: var(--sky50);
+  padding: 0 24rpx; font-size: 28rpx; color: var(--ink);
+}
+.is-ta { height: 160rpx; padding: 20rpx 24rpx; line-height: 1.5; }
+.ph { color: var(--ink3); }
+
+.is-btns { display: flex; gap: 20rpx; margin-top: 26rpx; }
+.is-btn { flex: 1; height: 88rpx; border-radius: 44rpx; display: flex; align-items: center; justify-content: center; }
+.is-btn text { font-size: 29rpx; font-weight: 700; }
+.is-btn.ghost { background: var(--sky50); }
+.is-btn.ghost text { color: var(--ink2); }
+.is-btn.main { background: var(--sky500); box-shadow: 0 10rpx 26rpx rgba(46,146,237,.3); }
+.is-btn.main text { color: #fff; }

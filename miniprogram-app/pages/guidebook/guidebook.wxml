@@ -39,3 +39,6 @@
     <view style="height:60rpx"></view>
   </scroll-view>
 </view>
+
+<input-sheet show="{{cardSheet.show}}" title="自定义卡片内容" fields="{{cardSheet.fields}}"
+               bind:confirm="onCardSheet" bind:cancel="closeCardSheet" />

@@ -27,25 +27,24 @@ Page({
     this.setData({ loading: false, links: store.links || [] })
   },
   addLink() {
-    wx.showModal({
-      title: '粘贴链接', editable: true,
-      placeholderText: 'https://www.xiaohongshu.com/… 或公众号文章链接',
-      success: res => {
-        if (!res.confirm || !(res.content || '').trim()) return
-        const url = res.content.trim()
-        const host = hostOf(url)
-        if (!host) { wx.showToast({ title: '链接格式不对，请检查', icon: 'none' }); return }
-        wx.showModal({
-          title: '备注标题', editable: true,
-          placeholderText: '留空则使用 ' + host,
-          success: res2 => {
-            if (!res2.confirm) return
-            const title = (res2.content || '').trim() || host
-            this.saveLink(title, url)
-          }
-        })
+    this.setData({
+      linkSheet: {
+        show: true,
+        fields: [
+          { key: 'url', label: '攻略链接', placeholder: 'https://www.xiaohongshu.com/… 或公众号文章链接', required: true, maxlength: 500 },
+          { key: 'title', label: '标题（可选）', placeholder: '留空则自动使用链接域名', maxlength: 40 }
+        ]
       }
     })
+  },
+  closeLinkSheet() { this.setData({ 'linkSheet.show': false }) },
+  onLinkSheet(e) {
+    this.setData({ 'linkSheet.show': false })
+    const url = e.detail.url
+    const host = hostOf(url)
+    if (!host) { wx.showToast({ title: '链接格式不对，请检查', icon: 'none' }); return }
+    const title = e.detail.title || host
+    this.saveLink(title, url)
   },
   async saveLink(title, url) {
     wx.showLoading({ title: '保存中', mask: true })

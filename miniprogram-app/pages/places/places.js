@@ -63,24 +63,25 @@ Page({
       candidateCount: places.filter(p => p.candidate).length
     })
   },
-  // 添加候选地点：弹窗输入名称
+  // 添加候选地点：统一弹层输入名称
   onAdd() {
-    wx.showModal({
-      title: '添加候选地点',
-      editable: true,
-      placeholderText: '输入地点名称（如：茅兰沟）',
-      success: async res => {
-        const name = (res.content || '').trim()
-        if (!res.confirm || !name) return
-        try {
-          await store.addPlace({ name })
-          wx.showToast({ title: '已加入候选', icon: 'success' })
-          this.refresh()
-        } catch (e) {
-          wx.showToast({ title: '添加失败，请重试', icon: 'none' })
-        }
+    this.setData({
+      addSheet: {
+        show: true,
+        fields: [{ key: 'name', label: '地点名称', placeholder: '输入地点名称（如：茅兰沟）', required: true, maxlength: 30 }]
       }
     })
+  },
+  closeAddSheet() { this.setData({ 'addSheet.show': false }) },
+  async onAddSheet(e) {
+    this.setData({ 'addSheet.show': false })
+    try {
+      await store.addPlace({ name: e.detail.name })
+      wx.showToast({ title: '已加入候选', icon: 'success' })
+      this.refresh()
+    } catch (err) {
+      wx.showToast({ title: '添加失败，请重试', icon: 'none' })
+    }
   },
   // 删除候选地点（长按或按钮）→ 确认
   onDelete(e) {

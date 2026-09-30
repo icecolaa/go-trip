@@ -42,3 +42,24 @@
 
 /* 品牌小飞机：欢迎页唯一的常驻动效，呼应「出发」 */
 .plane { animation: floatY 3.2s ease-in-out infinite; }
+
+/* 品牌区令牌强制 light：本页天空渐变写死浅色，系统深色时全局令牌翻浅
+   → 「出发吧」(--ink 浅色) 压浅天隐形（用户真机实锤）。整页按浅色渲染，与天空一致（1.5.21） */
+@media (prefers-color-scheme: dark) {
+  .welcome {
+    --ink: #182A3D; --ink2: #51637A; --ink3: #7A8FA5; --line: #E6EEF6;
+    --bg: #F3F8FC; --card: #FFFFFF;
+    --sky50: #F1F8FE; --sky100: #E3F0FD; --sky200: #C6E2FB;
+    --sky600: #1B78D8; --sky700: #1663B4;
+    --yel100: #FFF6D9; --yel200: #FFE9A8;
+  }
+}
+
+/* 双通道教训（62 附记三）：手动深色档 .theme-dark 类同样会翻浅令牌——welcome 品牌区一并强制 light */
+.welcome.theme-dark {
+  --ink: #182A3D; --ink2: #51637A; --ink3: #7A8FA5; --line: #E6EEF6;
+  --bg: #F3F8FC; --card: #FFFFFF;
+  --sky50: #F1F8FE; --sky100: #E3F0FD; --sky200: #C6E2FB;
+  --sky600: #1B78D8; --sky700: #1663B4;
+  --yel100: #FFF6D9; --yel200: #FFE9A8;
+}

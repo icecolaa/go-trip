@@ -99,23 +99,26 @@ Page({
     const t = store.trip
     const { id, name } = e.currentTarget.dataset
     if (!t || !id) return
-    wx.showModal({
-      title: '修改称呼',
-      editable: true,
-      placeholderText: name || '同伴称呼',
-      success: async (r) => {
-        if (!r.confirm) return
-        const name2 = (r.content || '').trim().slice(0, 20)
-        if (!name2) { wx.showToast({ title: '称呼不能为空', icon: 'none' }); return }
-        try {
-          await ops.updateMember(t.id, id, { displayName: name2 }, '我')
-          await this.refreshMembers()
-          wx.showToast({ title: '已修改', icon: 'success' })
-        } catch (e2) {
-          wx.showToast({ title: (e2 && e2.message) || '修改失败', icon: 'none' })
-        }
+    this._renameId = id
+    this.setData({
+      renameSheet: {
+        show: true,
+        fields: [{ key: 'name', label: '同伴称呼', placeholder: name || '同伴称呼', value: name || '', maxlength: 20 }]
       }
     })
+  },
+  closeRenameSheet() { this.setData({ 'renameSheet.show': false }) },
+  async onRenameSheet(e) {
+    this.setData({ 'renameSheet.show': false })
+    const name2 = (e.detail.name || '').slice(0, 20)
+    if (!name2) { wx.showToast({ title: '称呼不能为空', icon: 'none' }); return }
+    try {
+      await ops.updateMember(store.trip.id, this._renameId, { displayName: name2 }, '我')
+      await this.refreshMembers()
+      wx.showToast({ title: '已修改', icon: 'success' })
+    } catch (e2) {
+      wx.showToast({ title: (e2 && e2.message) || '修改失败', icon: 'none' })
+    }
   },
   /* ---- 删除（长按） ---- */
   removeMember(e) {

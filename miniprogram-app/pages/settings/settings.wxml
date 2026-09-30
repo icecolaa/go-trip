@@ -20,22 +20,25 @@
     <view class="card st-card anim-rise d1">
       <view class="cell" hover-class="press" bindtap="goHelper">
         <view class="cell-ic" style="background:var(--yel100)"><view class="ic ic-spark" style="color:#FFC414"></view></view>
-        <view class="cell-main"><text class="h">功能指南</text><text class="p">常见问题 一查就懂</text></view>
+        <view class="cell-main"><text class="h">功能指南</text><text class="p">常见问题</text></view>
         <view class="cell-right"><view class="ic ic-right"></view></view>
       </view>
       <view class="cell" hover-class="press" bindtap="shareReadonly">
         <view class="cell-ic" style="background:var(--sky100)"><view class="ic ic-link" style="color:#2E92ED"></view></view>
-        <view class="cell-main"><text class="h">对外分享</text><text class="p">生成只读链接 · 发给长辈也能看</text></view>
+        <view class="cell-main"><text class="h">对外分享</text><text class="p">只读链接</text></view>
         <view class="cell-right"><view class="ic ic-right"></view></view>
       </view>
-      <button class="cell st-share" open-type="share" hover-class="press">
+      <!-- 转发行：view.cell 呈现视觉，透明 cover button 铺满做 open-type=share 触发层
+           （微信 button UA width:184px+margin:auto 无法可靠归零，cover 模式绕开，1.5.21） -->
+      <view class="cell" style="position:relative" hover-class="press">
         <view class="cell-ic" style="background:#E4F6EC"><view class="ic ic-wechat" style="color:#07C160"></view></view>
-        <view class="cell-main"><text class="h">转发小程序卡片</text><text class="p">微信好友可见 · 只读预览</text></view>
+        <view class="cell-main"><text class="h">转发小程序</text><text class="p">好友可见</text></view>
         <view class="cell-right"><view class="ic ic-right"></view></view>
-      </button>
+        <button class="st-share-cover" open-type="share" hover-class="none"></button>
+      </view>
       <view class="cell" hover-class="press" bindtap="showAbout">
         <view class="cell-ic" style="background:#F1EAFE"><view class="ic ic-star" style="color:#7B8CFF"></view></view>
-        <view class="cell-main"><text class="h">关于出发吧</text><text class="p">版本与功能简介</text></view>
+        <view class="cell-main"><text class="h">关于出发吧</text><text class="p">版本简介</text></view>
         <view class="cell-right"><view class="ic ic-right"></view></view>
       </view>
     </view>

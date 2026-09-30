@@ -45,3 +45,6 @@
     </block>
   </scroll-view>
 </view>
+
+<input-sheet show="{{itemSheet.show}}" title="自定义物品" fields="{{itemSheet.fields}}"
+             bind:confirm="onItemSheet" bind:cancel="closeItemSheet" />

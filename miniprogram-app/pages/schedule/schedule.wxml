@@ -64,7 +64,7 @@
     <view class="map-btn" hover-class="press" bindtap="goTripMode"><view class="ic ic-compass"></view></view>
     <view class="map-btn" hover-class="press" bindtap="goMap"><view class="ic ic-map"></view></view>
     <view class="btn yellow grow" hover-class="press" bindtap="addPlan">
-      <view class="ic ic-plus"></view><text>＋安排</text>
+      <view class="ic ic-plus"></view><text>安排</text>
     </view>
     <view class="btn ghost grow" hover-class="press" bindtap="addPlace">
       <view class="ic ic-search"></view><text>添加地点</text>
@@ -94,3 +94,6 @@
     <view class="btn btn-block" style="margin:30rpx 0 8rpx" hover-class="press" bindtap="saveForm"><text>添加安排</text></view>
   </view>
 </view>
+
+<input-sheet show="{{noteSheet.show}}" title="{{noteSheet.title}}" fields="{{noteSheet.fields}}"
+             bind:confirm="onNoteSheet" bind:cancel="closeNoteSheet" />

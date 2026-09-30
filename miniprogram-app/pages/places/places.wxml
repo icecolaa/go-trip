@@ -71,3 +71,6 @@
     <view class="btn grow" hover-class="press" bindtap="goSchedule"><text>查看日程安排</text></view>
   </view>
 </view>
+
+<input-sheet show="{{addSheet.show}}" title="添加候选地点" fields="{{addSheet.fields}}"
+               bind:confirm="onAddSheet" bind:cancel="closeAddSheet" />

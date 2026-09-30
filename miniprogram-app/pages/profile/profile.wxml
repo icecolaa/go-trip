@@ -82,3 +82,6 @@
     </view>
   </scroll-view>
 </view>
+
+<input-sheet show="{{nickSheet.show}}" title="编辑昵称" fields="{{nickSheet.fields}}"
+               bind:confirm="onNickSheet" bind:cancel="closeNickSheet" />

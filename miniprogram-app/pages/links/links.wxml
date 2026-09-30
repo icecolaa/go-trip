@@ -6,15 +6,7 @@
       <text style="font-size:30rpx;color:var(--ink3)">请先从首页选择行程</text>
     </view>
     <block wx:else>
-    <view class="lk-add card anim-rise" hover-class="press" bindtap="addLink">
-      <view class="lk-add-ic"><view class="ic ic-link"></view></view>
-      <view class="lk-add-txt">
-        <text class="t">收藏一条攻略</text>
-        <text class="s">粘贴小红书 / 公众号链接并备注标题</text>
-      </view>
-      <view class="ic ic-right" style="color:var(--ink3)"></view>
-    </view>
-
+    <!-- 排版对齐日志页：列表 → 空态 → 入口卡片（1.5.21） -->
     <view class="lk-item anim-rise" style="animation-delay:{{index * 60}}ms" wx:for="{{links}}" wx:key="id"
           hover-class="press" bindtap="openLink" bindlongpress="delLink" data-i="{{index}}">
       <view class="lk-src {{item.source === '小红书' ? 'xhs' : 'web'}}">{{item.source}}</view>
@@ -29,7 +21,19 @@
       <text class="t">还没有收藏</text>
       <text class="s">看到好攻略先存进来，出行前统一翻看</text>
     </view>
+
+    <view class="lk-add card anim-rise" hover-class="press" bindtap="addLink">
+      <view class="lk-add-ic"><view class="ic ic-link"></view></view>
+      <view class="lk-add-txt">
+        <text class="t">收藏一条攻略</text>
+        <text class="s">粘贴小红书 / 公众号链接并备注标题</text>
+      </view>
+      <view class="ic ic-right" style="color:var(--ink3)"></view>
+    </view>
     <view style="height:60rpx"></view>
     </block>
   </scroll-view>
+
+  <input-sheet show="{{linkSheet.show}}" title="收藏攻略" fields="{{linkSheet.fields}}"
+               bind:confirm="onLinkSheet" bind:cancel="closeLinkSheet" />
 </view>

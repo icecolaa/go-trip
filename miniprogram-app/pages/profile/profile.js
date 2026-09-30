@@ -62,22 +62,24 @@ Page({
     })
   },
   editNickname() {
-    wx.showModal({
-      title: '编辑昵称',
-      editable: true,
-      content: this.data.nickname,
-      success: (r) => {
-        if (!r.confirm) return
-        const name = (r.content || '').trim()
-        if (!name) { wx.showToast({ title: '昵称不能为空', icon: 'none' }); return }
-        store.updateNickname(name)
-          .then(() => {
-            this.apply()
-            wx.showToast({ title: '已保存', icon: 'success' })
-          })
-          .catch((e) => wx.showToast({ title: (e && e.message) || '保存失败', icon: 'none' }))
+    this.setData({
+      nickSheet: {
+        show: true,
+        fields: [{ key: 'name', label: '昵称', placeholder: '旅行者', value: this.data.nickname || '', required: true, maxlength: 20 }]
       }
     })
+  },
+  closeNickSheet() { this.setData({ 'nickSheet.show': false }) },
+  onNickSheet(e) {
+    this.setData({ 'nickSheet.show': false })
+    const name = e.detail.name
+    if (!name) { wx.showToast({ title: '昵称不能为空', icon: 'none' }); return }
+    store.updateNickname(name)
+      .then(() => {
+        this.apply()
+        wx.showToast({ title: '已保存', icon: 'success' })
+      })
+      .catch((err) => wx.showToast({ title: (err && err.message) || '保存失败', icon: 'none' }))
   },
   showAbout() {
     wx.showModal({

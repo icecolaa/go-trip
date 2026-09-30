@@ -13,10 +13,11 @@
 .ver image { width: 56rpx; height: 56rpx; border-radius: 18rpx; opacity: .9; }
 .ver text { font-size: 20rpx; color: var(--ink3); }
 
-/* 转发按钮复用 cell 样式：重置 button 默认外观。
-   button 的 UA 样式会让全局 .cell 的 flex 与 text 块化失效（标题/描述连流换行）——显式补全布局 */
-.st-share { display: flex; align-items: center; gap: 24rpx; width: 100%; border: none; border-radius: 24rpx; background: transparent; margin: 4rpx 12rpx; padding: 20rpx 16rpx; font-size: inherit; line-height: inherit; text-align: left; }
-.st-share::after { border: none; }
-.st-share .cell-main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
-.st-share .h { font-size: 29rpx; font-weight: 600; color: var(--ink); }
-.st-share .p { font-size: 23rpx; color: var(--ink3); margin-top: 2rpx; }
+/* 转发触发层：透明 cover button 铺满所在 .cell（UA width:184px 被 100% 拉伸+opacity:0 归零可见性） */
+.st-share-cover { position: absolute; left: 0; top: 0; width: 100%; height: 100%; opacity: 0; margin: 0; padding: 0; border: none; border-radius: 0; background: transparent; z-index: 5; }
+.st-share-cover::after { border: none; }
+
+/* 页面级修正：全局 .cell-main 的描述样式选择器写的是 p 元素（137 行历史笔误），
+   .p 类从未命中 → h/p 连排一行。settings 四列在此统一两行排版（1.5.21） */
+.st-card .cell-main { display: flex; flex-direction: column; }
+.st-card .cell-main .p { font-size: 23rpx; color: var(--ink3); margin-top: 2rpx; }
