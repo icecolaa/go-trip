@@ -10,6 +10,11 @@ const MARKER_ICON = '/assets/marker-pin.png'
 
 function dayBg(d) { return DAY_BG[d] || DAY_BG[(((d - 1) % 4) + 4) % 4 + 1] || '#51637A' }
 function hasCoord(s) { return s && s.lat != null && s.lng != null }
+/* callout 显示名截断：超长名称气泡横穿屏幕且相邻遮挡（显示层截断，不碰数据） */
+function cutName(name) {
+  const t = (name || '').trim()
+  return t.length > 12 ? t.slice(0, 12) + '…' : t
+}
 
 Page({
   data: {
@@ -118,7 +123,8 @@ Page({
         width: 26,
         height: 26,
         callout: {
-          content: s.name + (s.cost > 0 ? ' ¥' + s.cost : ''),
+          /* 名称截 12 字：超长 callout 横穿屏幕且与相邻 marker 重叠（1.5.23 用户反馈） */
+          content: cutName(s.name) + (s.cost > 0 ? ' ¥' + s.cost : ''),
           color: '#FFFFFF',
           bgColor: dayBg(s.day),
           padding: 6,
