@@ -130,7 +130,8 @@ Page({
           padding: 6,
           borderRadius: 8,
           fontSize: 11,
-          display: 'ALWAYS',
+          /* 按天筛选=单天站点少默认全显气泡；全部=30+ 挤成一团改点击显示（1.5.24 用户反馈） */
+          display: this.data.filter === 0 ? 'BYCLICK' : 'ALWAYS',
           textAlign: 'center'
         }
       }

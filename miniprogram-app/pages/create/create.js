@@ -1,5 +1,6 @@
 const store = require('../../utils/store')
 const theme = require("../../utils/theme")
+const storage = require('../../utils/rdb/storage')
 
 const EMOJIS = ['🧭', '🗺️', '⛰️', '🏝️', '🏖️', '🏕️', '🎡', '🚗', '✈️', '🚄', '⛵', '🌴']
 const COLORS = ['#2E92ED', '#FFC414', '#2FA96E', '#FF8A5C', '#7B8CFF', '#2BB8A8']
@@ -44,6 +45,8 @@ Page({
     colors: COLORS,
     emoji: EMOJIS[0],
     color: COLORS[0],
+    coverImage: '',
+    coverLocal: '',
     submitting: false
   },
   onShow() { this.setData({ themeClass: theme.currentClass() }) },
@@ -68,6 +71,31 @@ Page({
   },
   onEnd(e) { this.setData({ endDate: e.detail.value }, () => this.sync()) },
   onEmoji(e) { this.setData({ emoji: e.currentTarget.dataset.em }) },
+  /* 封面图（可选）：上传云存储拿 fileID，创建时随行程落库（1.5.24 用户反馈） */
+  chooseCover() {
+    wx.chooseMedia({
+      count: 1,
+      mediaType: ['image'],
+      sizeType: ['compressed'],
+      success: async (res) => {
+        const src = res.tempFiles && res.tempFiles[0] && res.tempFiles[0].tempFilePath
+        if (!src) return
+        try {
+          wx.showLoading({ title: '上传中…', mask: true })
+          let up = src
+          try { const c = await wx.compressImage({ src, quality: 80 }); up = c.tempFilePath } catch (e) { /* 原图兜底 */ }
+          const fileID = await storage.uploadImage(up, 'covers')
+          this.setData({ coverImage: fileID, coverLocal: up })
+          wx.hideLoading()
+          wx.showToast({ title: '封面已就绪', icon: 'success' })
+        } catch (e) {
+          wx.hideLoading()
+          wx.showToast({ title: (e && e.message) || '上传失败', icon: 'none' })
+        }
+      }
+    })
+  },
+  removeCover() { this.setData({ coverImage: '', coverLocal: '' }) },
   onColor(e) { this.setData({ color: e.currentTarget.dataset.color }) },
   async submit() {
     if (this.data.submitting) return
@@ -83,7 +111,8 @@ Page({
         endDate: this.data.endDate,
         budget: parseFloat(this.data.budget) || 0,
         coverEmoji: this.data.emoji,
-        coverColor: this.data.color
+        coverColor: this.data.color,
+        coverImage: this.data.coverImage || ''
       })
       wx.showToast({ title: '创建成功，出发！', icon: 'success' })
       setTimeout(() => wx.switchTab({ url: '/pages/home/home' }), 700)

@@ -76,3 +76,6 @@
   .fl-txt .s { color: #C9A94F; }
   .fl-deal .r { color: #C9A94F; }
 }
+
+/* tab 页弹层抬到 tabBar 上方（1.5.24）：z-index 400 已保证可点，此处消除按钮与 tabBar 的视觉重叠 */
+.profile .sheet { bottom: calc(112rpx + env(safe-area-inset-bottom)); border-radius: 48rpx 48rpx 0 0; }

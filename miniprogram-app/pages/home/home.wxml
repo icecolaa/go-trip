@@ -74,21 +74,25 @@
   <view wx:if="{{editShow}}" class="sheet" catchtap="noop">
     <view class="grab"></view>
     <view class="edit-head"><text class="t">编辑旅程卡片</text><view class="x" hover-class="press" bindtap="closeEdit"><view class="ic ic-close"></view></view></view>
-    <view class="edit-lab">旅程名称</view>
-    <view class="input">
-      <view class="ic ic-flag"></view>
-      <input value="{{editTitle}}" maxlength="60" placeholder="旅程名称" placeholder-class="ph" bindinput="onEditTitle" style="flex:1;font-size:28rpx" />
-    </view>
-    <view class="edit-lab">图标</view>
-    <view class="edit-chips">
-      <view wx:for="{{emojis}}" wx:key="*this" class="edit-chip {{editEmoji === item ? 'on' : ''}}" hover-class="press" bindtap="onEditEmoji" data-em="{{item}}" style="font-size:36rpx">{{item}}</view>
-    </view>
-    <view class="edit-lab">封面颜色</view>
-    <view class="edit-dots">
-      <view wx:for="{{colors}}" wx:key="*this" class="edit-dot" style="background:{{item}};border:5rpx solid {{editColor === item ? '#182A3D' : 'transparent'}}" hover-class="press" bindtap="onEditColor" data-color="{{item}}">
-        <view wx:if="{{editColor === item}}" class="ic ic-check" style="width:26rpx;height:26rpx;color:#fff"></view>
+    <!-- 内容区限高滚动：小屏上保存按钮曾被推出屏幕/被 tabBar 遮挡（1.5.24） -->
+    <scroll-view class="sheet-scroll" scroll-y>
+      <view class="edit-lab">旅程名称</view>
+      <view class="input">
+        <view class="ic ic-flag"></view>
+        <input value="{{editTitle}}" maxlength="60" placeholder="旅程名称" placeholder-class="ph" bindinput="onEditTitle" style="flex:1;font-size:28rpx" />
       </view>
-    </view>
-    <view class="btn btn-block" style="margin:28rpx 0 8rpx" hover-class="press" bindtap="saveEdit"><text>保存</text></view>
+      <view class="edit-lab">图标</view>
+      <view class="edit-chips">
+        <view wx:for="{{emojis}}" wx:key="*this" class="edit-chip {{editEmoji === item ? 'on' : ''}}" hover-class="press" bindtap="onEditEmoji" data-em="{{item}}" style="font-size:36rpx">{{item}}</view>
+      </view>
+      <view class="edit-lab">封面颜色</view>
+      <view class="edit-dots">
+        <view wx:for="{{colors}}" wx:key="*this" class="edit-dot" style="background:{{item}};border:5rpx solid {{editColor === item ? '#182A3D' : 'transparent'}}" hover-class="press" bindtap="onEditColor" data-color="{{item}}">
+          <view wx:if="{{editColor === item}}" class="ic ic-check" style="width:26rpx;height:26rpx;color:#fff"></view>
+        </view>
+      </view>
+      <view style="height:8rpx"></view>
+    </scroll-view>
+    <view class="btn btn-block" style="margin:16rpx 0 8rpx" hover-class="press" bindtap="saveEdit"><text>保存</text></view>
   </view>
 </view>

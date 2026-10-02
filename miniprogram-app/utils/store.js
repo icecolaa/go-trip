@@ -273,6 +273,7 @@ async function createTrip(payload) {
         title: payload.title, destination: payload.destination, description: '',
         startDate: payload.startDate, endDate: payload.endDate, budget: Number(payload.budget) || 0,
         coverEmoji: payload.coverEmoji || '🧭', coverColor: payload.coverColor || '#2E92ED',
+        coverImage: payload.coverImage || '',
     }, me.nickname);
     await refreshTrips();
     await loadTrip(id);
