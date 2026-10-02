@@ -1,7 +1,8 @@
 # 交接文档（HANDOFF）
 
 > 面向下一个接手的开发者或 AI 会话。先读根目录 `CLAUDE.md`（规则手册），再读本文（现状、过程与经验）。
-> 更新：2026-10-01 四（条目 69：**map 页文字遮挡修复 + 1.5.23 上传**——callout 名称超 12 字截断（原气泡横穿屏幕+相邻重叠）、站点卡标题丢字根因=序号圆点压字（左缩进让位）；automator 实证 30 markers 全≤15 字符+「北京飞伊春」完整；**1.5.23 已上传，类目过后提审选它**）
+> 更新：2026-10-02（条目 70：**真机三项反馈 + 1.5.24 上传**——①map 按天筛选气泡 ALWAYS/全部 BYCLICK ②create 补封面图上传（可选，storage.uploadImage→fileID 随 createTrip 落库，store 透传补 coverImage）③home 编辑卡片弹层被 tabBar 遮挡：内容限高 46vh 滚动+**tab 页 sheet 底部抬到 tabBar 上方**（home/profile 页面级，z-index 之外的第二层修复）；automator 6/6 全过；**1.5.24 已上传，类目过后提审选它**）
+> 上一条：2026-10-01 四（条目 69：**map 页文字遮挡修复 + 1.5.23 上传**——callout 名称超 12 字截断（原气泡横穿屏幕+相邻重叠）、站点卡标题丢字根因=序号圆点压字（左缩进让位）；automator 实证 30 markers 全≤15 字符+「北京飞伊春」完整；**1.5.23 已上传，类目过后提审选它**）
 > 上一条：2026-10-01 三（条目 68：**真机六项反馈 + 1.5.22 上传**——①trip-mode 底部 CTA fixed 贴 tabBar ②helper 快捷问题 data-q/data-i 错位真 bug 修复 ③**编辑昵称无法保存根因=tab 页 sheet 被 tabBar 盖按钮区，sheet 层级 390/400** ④返回钮令牌化 --nb-back-bg ⑤home/profile 手动浅色档 .theme-light 钉浅渐变（混搭修复）⑥profile 去关于；automator 昵称保存链路实测+截图目验；**1.5.22 已上传，类目过后选它提审**）
 > 上一条：2026-10-01 二（条目 67：**真机五项反馈落地 + 1.5.21 上传**——①welcome 深色品牌字隐形（62 附记二同盲区）双通道令牌强制 light ②日程「＋安排」去重复加号 ③links 排版对齐日志页+收藏改双字段 sheet ④settings 转发行 cover 模式对齐+四列文字简化+补 .p 类历史笔误 ⑤**input-sheet 通用弹层组件**替换全部 8 处 showModal editable；专项 8/8+全量 86/89（3 失败=国庆高峰云写慢，SQL 实证最终落库）；**1.5.21 已上传，待「工具-天气」类目通过后与 1.5.20 同批重提审**）
 > 上一条：2026-10-01（条目 66：**八轮验收 89/89 一次全绿**——12 段单次跑完历史首次、假胶囊断言入 S1、review 零新问题；**无代码改动不发新版，1.5.20 在审即最新**）
@@ -32,14 +33,18 @@
 |---|---|
 | **生产环境** | CloudBase `gotrip-d1gb187o991f5260a`（个人版，付费至 2027-03-25）。云托管 gotrip 容器 = **gotrip-021 无状态代理**（2026-09-29 部署，**天气改高德主链路**：geocode 任意地名→adcode→weatherInfo，伊春真实命中；EnvParams 10 键/MaxNum=1 RMW 保留；⚠️ OpenAccessTypes 被 deploy 被动带回 OA——待顺手修回 PUBLIC+MINIAPP，身份门不受影响），`/health` 探针 `{"ok":true,"db":"none","mode":"proxy"}`。公网开着（Web 直连需要）。feat 分支=1.5.16 全部修复（见「仓库」行同步状态） |
 | **架构（原生化完成）** | 小程序 `@cloudbase/wx-cloud-client-sdk` models.*（openid 行级隔离）+ `utils/api.js` callContainer（**必须带 X-WX-SERVICE 头**，条目 60 P0）；容器=无状态代理（AI/飞哪儿/POI/天气/编码）。设计/映射/进度在 `docs/native-migration.md` |
-| 小程序 | **1.5.23 已上传（送审选它）**：1.5.22 全部内容+map 页遮挡修复（090c6eb）。**审核前置：mp 后台添加「工具-天气」类目**（1.5.20 驳回原因）→ 类目过后 1.5.23 提审。发布主体=miniprogram-app 原生 20 页。版本线见条目 61~69 |
+| 小程序 | **1.5.24 已上传（送审选它）**：1.5.23 全部内容+真机三项反馈（1cf0f28）。**审核前置：mp 后台添加「工具-天气」类目**（1.5.20 驳回原因）→ 类目过后 1.5.24 提审。发布主体=miniprogram-app 原生 20 页。版本线见条目 61~70 |
 | 数据库 | TDSQL-C MySQL 8.0（MCP 可直写：`queryMysqlDatabase`/`manageMysqlDatabase`，库名=`<envId>` schema）。**小兴安岭七日×2**（真机号 EBZKAZJUGG + 工具号 EC38PUC1S8，各 7 天/30 安排/全坐标；**同名同内容分属两账号，改动要考虑双账号**）：旧伊春种子支出 5 笔×2、种子打包 4 条×2 已按用户拍板清除（条目 62 补记）；工具号名下保留 16 条七日详规配套打包模板。**另有活跃的演示导入行程**（「国庆伊春深度游」×3，分属两个其它 openid，随 importDemo 生成）——正常业务数据，清理时**必须按 _id 精确删**，严禁按 title/金额模糊匹配 |
 | 验收 | `work/accept-0929.js` **12 段**分段自愈框架（ONLY=段选重跑；段失败自动重启工具重放）。**八轮（1001，1.5.20 送审后复验）：89/89 一次全绿、console 零错误——历史首次单次跑完**；七轮 46/46+首轮六段全绿；六轮 39→53→58→70→79→78。**已入册断言**：假胶囊移除（S1）、合规 ai 页不可达（S3/S9）、helper 攻略导入文案（S11）。**清进程 taskkill 重启比 cli quit 彻底**。报告 acceptance/REPORT-native-0930.md（含八轮补记）；专项脚本 verify-weather-1515 / verify-overview-ui / verify-ai-removal / verify-capsule-fix。定时验收 automation-88c53b0a 每天 09:00。**跑后残留核查：七轮已 SQL 补跑（三表零残留）；八轮 S4/S6/S7/S12 自清理断言全过** |
 | 冒烟 | `scripts/smoke.sh` **10/0**（容器代理 9 断言 + shared 纯函数）；rdb 数据层改动一律 `npm run build:rdb`（含 process.env 防护门） |
 | 仓库 | Gitee=origin 主同步 + GitHub **双远端已全同步**（2026-09-29 晚两轮收口：feat=805eb8d→**a5a16ea**、master=fcee398→**090d571**，ls-remote 双端实证；本条 docs 提交推送后各 +1 属常态，下次窗口顺手推平）。分支 feat/miniprogram；**master 已合并 feat（090d571）**；**工作区已归零**（schedule.js 在途改动已核实收口提交，见 63 附记三） |
-| 待办 Top3 | ① **用户：mp 后台添加「工具-天气」类目** → 类目通过后 **1.5.23 提交审核** → 过审设体验版 → 真机验收（含六项反馈+map 遮挡修复）② 深夜低峰全量验收已回 87/89（十轮，2 FAIL=高德编码外部波动）③ 容器 OpenAccessTypes 修回 PUBLIC+MINIAPP（公网探针 INVALID_HOST——RMW 后遗症） |
+| 待办 Top3 | ① **用户：mp 后台添加「工具-天气」类目** → 类目通过后 **1.5.24 提交审核** → 过审设体验版 → 真机验收（含六项+三项反馈：地图气泡策略/新建封面图/编辑弹层）② 全量验收深夜 87/89（十轮；2 FAIL=高德编码外部波动）③ 容器 OpenAccessTypes 修回 PUBLIC+MINIAPP（公网探针 INVALID_HOST——RMW 后遗症） |
 
 ## 2026-08~09 主要交付（按主题）
+
+70. **真机三项反馈 + 1.5.24（2026-10-02）**：① **map 气泡策略**——「按天筛选默认起气泡」：单天站点少 callout `ALWAYS` 全显；全部视图 30+ 挤压改 `BYCLICK` 点击显示（markers 生成按 `filter===0` 分支）。② **create 补封面图（可选）**——新建页原只有图标+颜色；补「封面图」区块：chooseMedia→compressImage(80)→`storage.uploadImage(up,'covers')`→fileID 入 data，`store.createTrip` **补透传 coverImage**（原固定字段白名单漏它）；不传回落图标+颜色。③ **home 编辑卡片弹层被 tabBar 遮挡**——两层修复：**z-index（1.5.22 已修，用户截图为旧体验版）+ 内容超高**（标题/12 图标/颜色/保存自然高度超屏）：内容区 `.sheet-scroll` 限高 46vh 滚动+保存按钮移出滚动区；**tab 页 sheet 底部抬到 tabBar 上方**（home/profile 页面级 `bottom: calc(112rpx+safe)`——z-index 400 只保证可点不保证不重叠）。
+    **验证**：`work/verify-ui-feedback7.js` 6/6——map 全部 BYCLICK/D1 ALWAYS、create 封面字段、home 弹层 scroll 容器+保存按钮底缘≤tabBar 顶（截图目验弹层完整悬于 tabBar 上方）。**教训**：① tab 页弹层两件事都要做——z-index 压过 tabBar **且** 几何上抬高 bottom，缺一都算「遮挡」；② 限高滚动只在内容超限时生效，内容自然超高时必须叠几何抬升。
+    **发版**：**1.5.24 已上传（类目过后提审选它）**。
 
 69. **map 页文字遮挡修复 + 1.5.23（2026-10-01 深夜）**：用户真机截图「优化这个页面的样式，比如文字遮挡」。**三处**：① **callout 遮挡/溢出**——marker 气泡用全称（「五营国家森林公园：少奇号小火车·红松林」20+ 字横穿屏幕左缘；密集区相邻气泡互相覆盖如「夜宿·汤旺河」被橙气泡盖）。修：**显示层截断**——`cutName(name)` 超 12 字截断+「…」（不碰数据；费用拼接保留），30 个 marker 实测全部 ≤15 字符。② **站点卡标题丢字**——截图显示「京飞伊春」缺「北」：**根因**=序号圆点 `.s-dot` 绝对定位（left 10~44rpx）压住 `.p-body` 标题开头（左 padding 仅 16rpx）；修：`.p-body` 左缩进 52rpx 让位。③ `.ms-head` 标题加 ellipsis 保护（防超长行程名挤压日期）。**验证**：`work/verify-map-fix.js`——真实路径（home→openTrip→overview→go callMethod 直驱，automator 的 UI tap 在 map 流程恒不触发入册）进 map，markers=30、callout 全≤15 字符、「北京飞伊春」完整显示；地图瓦片在 automator 截图中空白属模拟器原生组件合成时序（非改动引入）。**发版**：**1.5.23 已上传（类目过后提审选它）**。
 
