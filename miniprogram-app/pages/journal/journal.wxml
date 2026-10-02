@@ -45,19 +45,22 @@
       <text class="t">写手记</text>
       <view class="x" hover-class="press" bindtap="cancel"><view class="ic ic-close"></view></view>
     </view>
-    <view class="j-days">
-      <view class="j-day-chip {{form.moodIdx === index ? 'on' : ''}}" wx:for="{{moods}}" wx:key="*this"
-            hover-class="press" bindtap="pickMood" data-i="{{index}}">{{item}}</view>
-    </view>
-    <textarea class="j-input" value="{{form.text}}" placeholder="今天的心情、见闻、梗图素材…" placeholder-class="ph" show-confirm-bar="{{false}}" adjust-position="{{true}}"
-              bindinput="onText" maxlength="300" />
-    <view class="j-pick" hover-class="press" bindtap="chooseImages">
-      <view class="ic ic-camera" style="color:var(--sky500)"></view>
-      <text>添加图片（已选 {{form.images.length}}/9）</text>
-    </view>
-    <view class="j-imgs" wx:if="{{form.images.length}}">
-      <image wx:for="{{form.images}}" wx:key="*this" class="j-img" src="{{item}}" mode="aspectFill" />
-    </view>
+    <!-- 内容区限高滚动：多图时「发布手记」按钮曾被推出屏幕（1.5.25） -->
+    <scroll-view class="j-body" scroll-y>
+      <view class="j-days">
+        <view class="j-day-chip {{form.moodIdx === index ? 'on' : ''}}" wx:for="{{moods}}" wx:key="*this"
+              hover-class="press" bindtap="pickMood" data-i="{{index}}">{{item}}</view>
+      </view>
+      <textarea class="j-input" value="{{form.text}}" placeholder="今天的心情、见闻、梗图素材…" placeholder-class="ph" show-confirm-bar="{{false}}" adjust-position="{{true}}"
+                bindinput="onText" maxlength="300" />
+      <view class="j-pick" hover-class="press" bindtap="chooseImages">
+        <view class="ic ic-camera" style="color:var(--sky500)"></view>
+        <text>添加图片（已选 {{form.images.length}}/9）</text>
+      </view>
+      <view class="j-imgs" wx:if="{{form.images.length}}">
+        <image wx:for="{{form.images}}" wx:key="*this" class="j-img" src="{{item}}" mode="aspectFill" />
+      </view>
+    </scroll-view>
     <view class="btn btn-block j-save" hover-class="press" bindtap="saveEntry"><text>发布手记</text></view>
   </view>
 </view>

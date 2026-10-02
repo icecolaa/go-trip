@@ -76,5 +76,5 @@
   </scroll-view>
 </view>
 
-<input-sheet show="{{nickSheet.show}}" title="编辑昵称" fields="{{nickSheet.fields}}"
+<input-sheet show="{{nickSheet.show}}" title="编辑昵称" fields="{{nickSheet.fields}}" lift="{{true}}"
                bind:confirm="onNickSheet" bind:cancel="closeNickSheet" />

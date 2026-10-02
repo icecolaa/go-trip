@@ -42,3 +42,6 @@
 .j-pick { display: flex; align-items: center; gap: 12rpx; padding: 20rpx 4rpx; font-size: 24rpx; color: var(--ink2); }
 .j-pick .ic { width: 30rpx; height: 30rpx; }
 .j-save { margin-top: auto; margin-bottom: 20rpx; }
+
+/* 内容区限高滚动：多图时「发布手记」曾被推出屏幕（1.5.25） */
+.j-body { max-height: 46vh; }

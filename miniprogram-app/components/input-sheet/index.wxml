@@ -1,5 +1,5 @@
 <view wx:if="{{show}}" class="sheet-mask" bindtap="cancel"></view>
-<view wx:if="{{show}}" class="sheet is-sheet" catchtap="noop">
+<view wx:if="{{show}}" class="sheet is-sheet {{lift ? 'is-lift' : ''}}" catchtap="noop">
   <view class="grab"></view>
   <view class="is-head">
     <text class="t">{{title}}</text>

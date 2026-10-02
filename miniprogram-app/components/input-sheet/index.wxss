@@ -20,3 +20,6 @@
 .is-btn.ghost text { color: var(--ink2); }
 .is-btn.main { background: var(--sky500); box-shadow: 0 10rpx 26rpx rgba(46,146,237,.3); }
 .is-btn.main text { color: #fff; }
+
+/* tab 页抬升：底部离 tabBar（112rpx+safe）之上，按钮区不被压（1.5.25） */
+.is-lift { bottom: calc(112rpx + env(safe-area-inset-bottom)); border-radius: 48rpx 48rpx 0 0; }

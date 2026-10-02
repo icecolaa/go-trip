@@ -13,7 +13,9 @@ Component({
     show: { type: Boolean, value: false },
     title: { type: String, value: '' },
     confirmText: { type: String, value: '确定' },
-    fields: { type: Array, value: [] }
+    fields: { type: Array, value: [] },
+    /* tab 页传 lift：弹层抬到 tabBar 上方，底部按钮不被压（1.5.25） */
+    lift: { type: Boolean, value: false }
   },
   data: {
     values: {}
