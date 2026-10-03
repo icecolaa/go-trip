@@ -247,6 +247,12 @@ Page({
     if (url.indexOf('/pages/trip-mode/') === 0) wx.switchTab({ url })
     else wx.navigateTo({ url })
   },
+  /* 每日安排天卡 → 日程页定位到对应天（1.5.26 用户需求） */
+  goDay(e) {
+    const d = Number(e.currentTarget.dataset.d)
+    if (!d) return
+    wx.navigateTo({ url: '/pages/schedule/schedule?day=' + d })
+  },
   invite() { wx.navigateTo({ url: '/pages/invite/invite' }) },
   /* ---- 背景图：更换 / 恢复默认 ---- */
   changeCoverBg() {

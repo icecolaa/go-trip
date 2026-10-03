@@ -120,7 +120,7 @@
       <view class="more" hover-class="press" bindtap="go" data-url="/pages/schedule/schedule"><text>去日程</text><view class="ic ic-right"></view></view>
     </view>
 
-    <view class="day-card {{item.state}} anim-rise d1" wx:for="{{dayList}}" wx:key="d">
+    <view class="day-card {{item.state}} anim-rise d1" wx:for="{{dayList}}" wx:key="d" hover-class="press" bindtap="goDay" data-d="{{item.d}}">
       <view class="today-rib" wx:if="{{item.isToday}}">今天</view>
       <view class="day-badge"><text class="b">D{{item.d}}</text><text class="s">{{item.date}}</text></view>
       <view class="day-main">

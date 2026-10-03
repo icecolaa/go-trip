@@ -32,6 +32,11 @@ Page({
     dayStops: [],
     dayCost: 0
   },
+  /* 从总览天卡跳入：?day=N 定位到对应天（消费一次即清，返回再进不重定位） */
+  onLoad(options) {
+    const d = Number(options && options.day)
+    if (d > 0) this._pendingDay = d
+  },
   onShow() {
     this.setData({ themeClass: theme.currentClass() })
     this.boot()
@@ -45,7 +50,12 @@ Page({
         return
       }
       const days = t.days || []
-      const dayIdx = Math.min(this.data.dayIdx, Math.max(0, days.length - 1))
+      let dayIdx = Math.min(this.data.dayIdx, Math.max(0, days.length - 1))
+      if (this._pendingDay) {
+        const idx = days.findIndex(x => x.d === this._pendingDay)
+        if (idx >= 0) dayIdx = idx
+        this._pendingDay = 0
+      }
       this.setData({ loading: false, hasTrip: true, days, dayIdx })
       this.refresh()
     } catch (e) {
