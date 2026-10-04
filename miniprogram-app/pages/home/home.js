@@ -24,11 +24,27 @@ function greetWord() {
   if (h < 18) return '下午好'
   return '晚上好'
 }
+/* 行程卡视图模型（纯函数）：data 构造期与 applyTrips 共用，首帧直接渲染真实列表 */
+function tripVM(t) {
+  return {
+    id: t.id,
+    title: t.title || '未命名旅程',
+    destination: t.destination || '目的地待定',
+    emoji: t.coverEmoji || '🧭',
+    color: t.coverColor || '#2E92ED',
+    image: '',
+    range: rangeText(t.startDate, t.endDate),
+    count: t.activityCount || 0
+  }
+}
 
 Page({
   data: {
-    themeClass: '',
-    loading: true,
+    /* 构造时同步：welcome 品牌停留期间 store 已预热，进首页直接渲染内容
+       （原 themeClass:'' + loading:true 首帧骨架→内容两段切换 = 进入闪动，1.5.29） */
+    themeClass: theme.currentClass(),
+    loading: false,
+    trips: (store.trips || []).map(tripVM),
     refreshing: false,
     greet: greetWord(),
     sub: '',
@@ -64,16 +80,11 @@ Page({
       if (t.coverImage && !coverUrlCache[t.coverImage]) pending.push(t.coverImage)
     }
     const finish = () => {
-      const trips = list.map(t => ({
-        id: t.id,
-        title: t.title || '未命名旅程',
-        destination: t.destination || '目的地待定',
-        emoji: t.coverEmoji || '🧭',
-        color: t.coverColor || '#2E92ED',
-        image: t.coverImage ? (coverUrlCache[t.coverImage] || '') : '',
-        range: rangeText(t.startDate, t.endDate),
-        count: t.activityCount || 0
-      }))
+      const trips = list.map(t => {
+        const vm = tripVM(t)
+        if (t.coverImage) vm.image = coverUrlCache[t.coverImage] || ''
+        return vm
+      })
       this.setData({
         trips,
         greet: greetWord(),
