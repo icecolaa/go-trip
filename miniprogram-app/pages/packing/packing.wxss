@@ -26,3 +26,8 @@
 }
 .plus-ring { width: 40rpx; height: 40rpx; border-radius: 50%; background: var(--yel400); display: flex; align-items: center; justify-content: center; }
 .plus-ring .ic { width: 22rpx; height: 22rpx; color: #6B5200; }
+
+/* 分类手风琴箭头（1.5.28）：收起朝右、展开转下 */
+.pk-g-head .g-arr { margin-left: auto; display: flex; align-items: center; transition: transform .2s ease; }
+.pk-g-head .g-arr .ic { width: 26rpx; height: 26rpx; color: var(--ink3); }
+.pk-g-head .g-arr.open { transform: rotate(90deg); }

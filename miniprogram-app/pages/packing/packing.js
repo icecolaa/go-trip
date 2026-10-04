@@ -63,6 +63,13 @@ Page({
     const shown = groups.filter(g => g.items.length)
     let total = 0, done = 0
     shown.forEach(g => g.items.forEach(it => { total++; if (it.done) done++ }))
+    /* 手风琴：默认展开第一组、其余收起；_openCats 保持用户已展开状态（1.5.28） */
+    if (!this._openCats) {
+      this._openCats = {}
+      if (shown.length) this._openCats[shown[0].name] = true
+    }
+    shown.forEach(g => { g.open = !!this._openCats[g.name] })
+    console.log('[DBG] refresh _openCats =', JSON.stringify(this._openCats), '| groups =', JSON.stringify(shown.map(g => ({ n: g.name, open: g.open }))))
     this.setData({
       loading: false, groups: shown,
       totalCount: total, doneCount: done,
@@ -122,6 +129,14 @@ Page({
       }
     })
   },
+  /* 分类头点击：展开/收起该组（1.5.28） */
+  toggleGroup(e) {
+    const name = e.currentTarget.dataset.name
+    const cur = !!this._openCats[name]
+    this._openCats[name] = !cur
+    const idx = this.data.groups.findIndex(g => g.name === name)
+    if (idx >= 0) this.setData({ ['groups[' + idx + '].open']: !cur })
+  },
   addItem() {
     this.setData({
       itemSheet: {
@@ -138,6 +153,8 @@ Page({
     this.setData({ 'itemSheet.show': false })
     const raw = e.detail.cat || ''
     const cat = CATEGORIES.indexOf(raw) >= 0 ? raw : '其他'
+    this._openCats = this._openCats || {}
+    this._openCats[cat] = true
     this.importItems([{ title: e.detail.title, category: cat }])
   },
   importTemplate() {

@@ -15,11 +15,13 @@
     </view>
 
     <view class="pk-group anim-rise" style="animation-delay:{{70}}ms" wx:for="{{groups}}" wx:key="name">
-      <view class="pk-g-head">
+      <view class="pk-g-head" hover-class="press" bindtap="toggleGroup" data-name="{{item.name}}">
         <view class="ic ic-{{item.icon}}" style="color:{{item.color}}"></view>
         <text class="g-name">{{item.name}}</text>
         <text class="g-count">{{item.items.length}} 件</text>
+        <view class="g-arr {{item.open ? 'open' : ''}}"><view class="ic ic-right"></view></view>
       </view>
+      <block wx:if="{{item.open}}">
       <view class="pk-item" wx:for="{{item.items}}" wx:for-item="it" wx:key="id"
             hover-class="press" bindtap="toggleItem" bindlongpress="delItem" data-id="{{it.id}}">
         <view class="pk-check {{it.done ? 'on' : ''}}"><view wx:if="{{it.done}}" class="ic ic-check"></view></view>
@@ -27,6 +29,7 @@
         <text wx:if="{{it.qty}}" class="tag gray num">×{{it.qty}}</text>
         <text wx:if="{{it.note}}" class="pk-note">{{it.note}}</text>
       </view>
+      </block>
     </view>
 
     <view wx:if="{{!groups.length}}" class="anim-rise" style="padding:40rpx 20rpx;text-align:center;">
