@@ -30,7 +30,7 @@
           <text>{{item.leg}}</text>
         </view>
         <view class="tl-item {{index === dayStops.length - 1 ? 'last' : ''}}">
-          <view class="tl-time"><text>{{item.time}}</text></view>
+          <view class="tl-time" wx:if="{{hasTime}}"><text>{{item.time}}</text></view>
           <view class="tl-node">
             <view class="dot {{item.type === '餐饮' ? 'meal' : item.type === '住宿' ? 'stay' : ''}}"></view>
             <view class="bar" wx:if="{{index < dayStops.length - 1}}"></view>

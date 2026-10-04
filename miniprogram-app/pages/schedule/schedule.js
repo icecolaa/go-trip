@@ -30,7 +30,8 @@ Page({
     formLng: null,
     dayIdx: 0,
     dayStops: [],
-    dayCost: 0
+    dayCost: 0,
+    hasTime: false
   },
   /* 从总览天卡跳入：?day=N 定位到对应天（消费一次即清，返回再进不重定位） */
   onLoad(options) {
@@ -46,7 +47,7 @@ Page({
       await store.ready()
       const t = store.trip
       if (!t) {
-        this.setData({ loading: false, hasTrip: false, days: [], dayStops: [], dayCost: 0 })
+        this.setData({ loading: false, hasTrip: false, days: [], dayStops: [], dayCost: 0, hasTime: false })
         return
       }
       const days = t.days || []
@@ -83,7 +84,9 @@ Page({
     }))
     this.setData({
       dayStops: enriched,
-      dayCost: list.reduce((sum, s) => sum + (s.cost || 0), 0)
+      dayCost: list.reduce((sum, s) => sum + (s.cost || 0), 0),
+      /* 时间全空时隐藏时间列，时间线贴左（1.5.27 用户反馈） */
+      hasTime: enriched.some(x => x.time)
     })
   },
   pickDay(e) { this.setData({ dayIdx: Number(e.currentTarget.dataset.i) }, () => this.refresh()) },
