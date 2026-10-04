@@ -1,7 +1,8 @@
 # 交接文档（HANDOFF）
 
 > 面向下一个接手的开发者或 AI 会话。先读根目录 `CLAUDE.md`（规则手册），再读本文（现状、过程与经验）。
-> 更新：2026-10-03（条目 72：**天卡跳转日程 + 1.5.26 上传**——总览每日安排天卡点击 navigateTo schedule?day=N，schedule onLoad 接参+_pendingDay 就绪后定位消费一次即清；automator 实证 D5/D2 两次跳转精准；**1.5.26 已上传，类目过后提审选它**）
+> 更新：2026-10-04（条目 73：**日程时间线贴左 + 1.5.27 上传**——时间列 tl-time 按需显隐（hasTime=任一站有时间；时间全空行程原被 88rpx 空列顶右 196rpx），automator 实证首卡左缘 85rpx；**1.5.27 已上传，类目过后提审选它**）
+> 上一条：2026-10-03（条目 72：**天卡跳转日程 + 1.5.26 上传**——总览每日安排天卡点击 navigateTo schedule?day=N，schedule onLoad 接参+_pendingDay 就绪后定位消费一次即清；automator 实证 D5/D2 两次跳转精准；**1.5.26 已上传，类目过后提审选它**）
 > 上一条：2026-10-02 二（条目 71：**弹窗按钮遮挡全面治理 + 1.5.25 上传**——盘点全部 13 处弹层：input-sheet 组件加 lift property（profile tab 页接入，截图实证按钮完整可见）、journal 写手记限高 46vh 滚动；ledger/invite 固定高+按钮在顶、其余全非 tab 确认无风险；**1.5.25 已上传，类目过后提审选它**）
 > 上一条：2026-10-02（条目 70：**真机三项反馈 + 1.5.24 上传**——①map 按天筛选气泡 ALWAYS/全部 BYCLICK ②create 补封面图上传（可选，storage.uploadImage→fileID 随 createTrip 落库，store 透传补 coverImage）③home 编辑卡片弹层被 tabBar 遮挡：内容限高 46vh 滚动+**tab 页 sheet 底部抬到 tabBar 上方**（home/profile 页面级，z-index 之外的第二层修复）；automator 6/6 全过；**1.5.24 已上传，类目过后提审选它**）
 > 上一条：2026-10-01 四（条目 69：**map 页文字遮挡修复 + 1.5.23 上传**——callout 名称超 12 字截断（原气泡横穿屏幕+相邻重叠）、站点卡标题丢字根因=序号圆点压字（左缩进让位）；automator 实证 30 markers 全≤15 字符+「北京飞伊春」完整；**1.5.23 已上传，类目过后提审选它**）
@@ -35,14 +36,16 @@
 |---|---|
 | **生产环境** | CloudBase `gotrip-d1gb187o991f5260a`（个人版，付费至 2027-03-25）。云托管 gotrip 容器 = **gotrip-021 无状态代理**（2026-09-29 部署，**天气改高德主链路**：geocode 任意地名→adcode→weatherInfo，伊春真实命中；EnvParams 10 键/MaxNum=1 RMW 保留；⚠️ OpenAccessTypes 被 deploy 被动带回 OA——待顺手修回 PUBLIC+MINIAPP，身份门不受影响），`/health` 探针 `{"ok":true,"db":"none","mode":"proxy"}`。公网开着（Web 直连需要）。feat 分支=1.5.16 全部修复（见「仓库」行同步状态） |
 | **架构（原生化完成）** | 小程序 `@cloudbase/wx-cloud-client-sdk` models.*（openid 行级隔离）+ `utils/api.js` callContainer（**必须带 X-WX-SERVICE 头**，条目 60 P0）；容器=无状态代理（AI/飞哪儿/POI/天气/编码）。设计/映射/进度在 `docs/native-migration.md` |
-| 小程序 | **1.5.26 已上传（送审选它）**：1.5.25 全部内容+天卡跳转日程（6ac52cd）。**审核前置：mp 后台添加「工具-天气」类目**（1.5.20 驳回原因）→ 类目过后 1.5.26 提审。发布主体=miniprogram-app 原生 20 页。版本线见条目 61~72 |
+| 小程序 | **1.5.27 已上传（送审选它）**：1.5.26 全部内容+日程时间线贴左（a4b1433）。**审核前置：mp 后台添加「工具-天气」类目**（1.5.20 驳回原因）→ 类目过后 1.5.27 提审。发布主体=miniprogram-app 原生 20 页。版本线见条目 61~73 |
 | 数据库 | TDSQL-C MySQL 8.0（MCP 可直写：`queryMysqlDatabase`/`manageMysqlDatabase`，库名=`<envId>` schema）。**小兴安岭七日×2**（真机号 EBZKAZJUGG + 工具号 EC38PUC1S8，各 7 天/30 安排/全坐标；**同名同内容分属两账号，改动要考虑双账号**）：旧伊春种子支出 5 笔×2、种子打包 4 条×2 已按用户拍板清除（条目 62 补记）；工具号名下保留 16 条七日详规配套打包模板。**另有活跃的演示导入行程**（「国庆伊春深度游」×3，分属两个其它 openid，随 importDemo 生成）——正常业务数据，清理时**必须按 _id 精确删**，严禁按 title/金额模糊匹配 |
 | 验收 | `work/accept-0929.js` **12 段**分段自愈框架（ONLY=段选重跑；段失败自动重启工具重放）。**八轮（1001，1.5.20 送审后复验）：89/89 一次全绿、console 零错误——历史首次单次跑完**；七轮 46/46+首轮六段全绿；六轮 39→53→58→70→79→78。**已入册断言**：假胶囊移除（S1）、合规 ai 页不可达（S3/S9）、helper 攻略导入文案（S11）。**清进程 taskkill 重启比 cli quit 彻底**。报告 acceptance/REPORT-native-0930.md（含八轮补记）；专项脚本 verify-weather-1515 / verify-overview-ui / verify-ai-removal / verify-capsule-fix。定时验收 automation-88c53b0a 每天 09:00。**跑后残留核查：七轮已 SQL 补跑（三表零残留）；八轮 S4/S6/S7/S12 自清理断言全过** |
 | 冒烟 | `scripts/smoke.sh` **10/0**（容器代理 9 断言 + shared 纯函数）；rdb 数据层改动一律 `npm run build:rdb`（含 process.env 防护门） |
 | 仓库 | Gitee=origin 主同步 + GitHub **双远端已全同步**（2026-09-29 晚两轮收口：feat=805eb8d→**a5a16ea**、master=fcee398→**090d571**，ls-remote 双端实证；本条 docs 提交推送后各 +1 属常态，下次窗口顺手推平）。分支 feat/miniprogram；**master 已合并 feat（090d571）**；**工作区已归零**（schedule.js 在途改动已核实收口提交，见 63 附记三） |
-| 待办 Top3 | ① **用户：mp 后台添加「工具-天气」类目** → 类目通过后 **1.5.26 提交审核** → 过审设体验版 → 真机验收（含天卡跳转：总览点任意天卡直达日程对应天）② 全量验收深夜 87/89（十轮；十一轮实质全绿）③ 容器 OpenAccessTypes 修回 PUBLIC+MINIAPP（公网探针 INVALID_HOST——RMW 后遗症） |
+| 待办 Top3 | ① **用户：mp 后台添加「工具-天气」类目** → 类目通过后 **1.5.27 提交审核** → 过审设体验版 → 真机验收（含时间线贴左+天卡跳转）② 全量验收深夜 87/89（十轮；十一/十二轮实质全绿）③ 容器 OpenAccessTypes 修回 PUBLIC+MINIAPP（公网探针 INVALID_HOST——RMW 后遗症） |
 
 ## 2026-08~09 主要交付（按主题）
+
+73. **日程时间线贴左 + 1.5.27（2026-10-04）**：用户截图「贴左边」——日程时间线整体被顶到右侧 196rpx（左侧空白一条）。**根因**：时间列 `.tl-time` 固定 88rpx 宽，但行程数据 time 全空（小兴安岭重建未填时间）→ 空列白占。修：**时间列按需显隐**——refresh 算 `hasTime = enriched.some(x => x.time)` 入 data，wxml `tl-time` 加 `wx:if="{{hasTime}}"`（有时间的天照常显示，全空整列隐藏贴左）。**验证**：`work/verify-time-col.js`——真实路径（home→openTrip→schedule）hasTime=false + 首卡左缘 85rpx（原 196rpx）贴左 PASS。**注意**：按天显隐——某天填了时间该天自动恢复时间列。
 
 72. **天卡跳转日程 + 1.5.26（2026-10-03）**：用户需求「每日日程点击可跳转到对应天详情页」（总览每日安排 D1~D7 卡 → 日程页对应天时间线）。**实现**：overview 天卡加 `bindtap=goDay data-d` → `navigateTo('/pages/schedule/schedule?day=N')`；schedule 加 **onLoad**（原只有 onShow）接 `options.day` 存 `this._pendingDay`，boot 在 days 就绪后 `findIndex(d===pending)` 定位 dayIdx 并**消费一次即清**——返回总览再点别天仍可重定位，普通从其它入口进不受影响（无参不定位）。**验证**：`work/verify-day-jump.js`——overview→goDay(D5)→schedule dayIdx 精准=4、返回再 goDay(D2) 二次跳转 PASS、截图目验 D5 pill 高亮+时间线对应、console 零错误。**经验**：跨页定位参数用「实例变量暂存+数据就绪后消费一次」模式——不要在 onLoad 直接 setData dayIdx（boot 异步会用 Math.min(this.data.dayIdx) 覆盖）。
     **发版**：**1.5.26 已上传（类目过后提审选它）**。
