@@ -276,5 +276,6 @@
 ## 新窗口开场指南
 
 1. 读 `CLAUDE.md`（规则红线）→ 本文件（现状）→ 需要部署细节再读 `docs/deployment-pocketbay.md`。
-2. 常用命令：`npm run dev`（本地）、`npm run check`（TS 检查）、`bash scripts/smoke.sh`（冒烟，需服务在跑）。
+2. 常用命令：小程序上传=`cd miniprogram-app && node scripts/upload.js x.y.z "描述"`（工具通道优先/CI 降级）；Web 本地=`npm run dev`；冒烟=`bash scripts/smoke.sh`。
+3. **Web/H5 版决策（2026-10-05 冻结）**：H5 静态托管仍在但**暂不投入**（9 月底后所有迭代在小程序侧）；恢复前提=容器公网+一轮 Web 回归。小程序是唯一活跃端。
 3. 改完代码的标准收尾：本地冒烟 → `git commit` + push origin master（origin 配了 Gitee + GitHub 双 push URL，一条命令两边同步更新）→ 提交后对本次 diff 做 review（CLAUDE.md 红线 6）→ 按 deployment-pocketbay.md 重新部署 → 线上验证。

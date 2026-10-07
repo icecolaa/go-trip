@@ -34,7 +34,7 @@
         <view class="avatar {{item.av}}" wx:for="{{members}}" wx:key="id">{{item.initial}}</view>
       </view>
       <view class="invite-add" hover-class="press" bindtap="invite"><view class="ic ic-plus" style="color:#B8860B"></view></view>
-      <text class="invite-txt">{{ownerName}} 是管理员 · 邀请同伴协作</text>
+      <text class="invite-txt">{{ownerName}} 是管理员 · 同伴用于分账与指派</text>
       <text class="tag blue">{{members.length}} 人</text>
     </view>
   </view>
