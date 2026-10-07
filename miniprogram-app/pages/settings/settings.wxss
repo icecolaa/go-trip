@@ -16,8 +16,3 @@
 /* 转发触发层：透明 cover button 铺满所在 .cell（UA width:184px 被 100% 拉伸+opacity:0 归零可见性） */
 .st-share-cover { position: absolute; left: 0; top: 0; width: 100%; height: 100%; opacity: 0; margin: 0; padding: 0; border: none; border-radius: 0; background: transparent; z-index: 5; }
 .st-share-cover::after { border: none; }
-
-/* 页面级修正：全局 .cell-main 的描述样式选择器写的是 p 元素（137 行历史笔误），
-   .p 类从未命中 → h/p 连排一行。settings 四列在此统一两行排版（1.5.21） */
-.st-card .cell-main { display: flex; flex-direction: column; }
-.st-card .cell-main .p { font-size: 23rpx; color: var(--ink3); margin-top: 2rpx; }

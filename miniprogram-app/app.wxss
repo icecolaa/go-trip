@@ -134,9 +134,10 @@ button::after { border: none; }
 .cell { display: flex; align-items: center; gap: 24rpx; background: var(--card); border-radius: 28rpx; padding: 26rpx 28rpx; }
 .cell .cell-ic { width: 76rpx; height: 76rpx; border-radius: 24rpx; flex: none; display: flex; align-items: center; justify-content: center; }
 .cell .cell-ic .ic { width: 38rpx; height: 38rpx; }
-.cell .cell-main { flex: 1; min-width: 0; }
+.cell .cell-main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 .cell .cell-main .h { font-size: 29rpx; font-weight: 600; }
-.cell .cell-main p { font-size: 23rpx; color: var(--ink3); margin-top: 2rpx; }
+/* 历史笔误根修（1.5.30）：原写 p 元素选择器从未命中 text class="p"——此前依赖 settings 页面级补丁 */
+.cell .cell-main .p { font-size: 23rpx; color: var(--ink3); margin-top: 2rpx; }
 .cell .cell-right { display: flex; align-items: center; gap: 8rpx; color: var(--ink3); font-size: 24rpx; }
 .cell .cell-right .ic { width: 28rpx; height: 28rpx; }
 

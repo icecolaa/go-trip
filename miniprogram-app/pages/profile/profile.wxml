@@ -67,6 +67,15 @@
         </view>
         <view class="cell-right"><view class="ic ic-right"></view></view>
       </view>
+      <!-- 意见反馈：微信原生反馈组件（open-type=feedback，直达 mp 后台用户反馈）；cover 模式同转发按钮（1.5.30） -->
+      <view class="cell" style="position:relative" hover-class="press">
+        <view class="cell-ic yel"><view class="ic ic-edit" style="color:#FFC414"></view></view>
+        <view class="cell-main">
+          <text class="h">意见反馈</text>
+        </view>
+        <view class="cell-right"><view class="ic ic-right"></view></view>
+        <button class="feedback-cover" open-type="feedback" hover-class="none"></button>
+      </view>
     </view>
 
     <view class="ver">
