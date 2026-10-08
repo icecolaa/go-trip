@@ -16,6 +16,7 @@ import type { IncomingMessage, ServerResponse } from 'node:http';
 import { ApiError, json, readBody } from './util.ts';
 import { searchPois, geocodePlaces, cleanActivityQuery, reverseGeocode, type GeocodeItem } from './poi.ts';
 import { getWeather } from './weather.ts';
+import { buildTripPDF } from './pdf.ts';
 import { parseGuide, generatePlan, aiConfigured } from './ai.ts';
 import { buildHandbook, aiHandbook } from './handbook.ts';
 import { answerUsageQuestion, sanitizeHistory } from './assistant.ts';
@@ -295,4 +296,15 @@ route('GET', '/api/weather', async (req, res) => {
   const place = q.get('place') || '';
   const dates = (q.get('dates') || '').split(',').filter(Boolean).slice(0, 30);
   json(res, 200, await getWeather(place, dates));
+});
+
+/* ==================== 行程 PDF 导出（pdfkit，中文 NotoSansSC） ==================== */
+// 小程序传完整行程 JSON → 生成 A4 PDF（封面+每日站点+备注）→ base64 返回
+// （callContainer 响应 <1MiB：文字型 PDF 100~300KB，base64 后 ~400KB，实测余量充足）
+route('POST', '/api/trip/pdf', async (_req, res, _p, body) => {
+  if (!body || !Array.isArray(body.days)) throw new ApiError(400, '缺少行程数据');
+  if (!body.days.length) throw new ApiError(400, '行程没有任何天的安排');
+  const pdf = await buildTripPDF(body);
+  res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+  res.end(JSON.stringify({ ok: true, b64: pdf.toString('base64'), size: pdf.length }));
 });

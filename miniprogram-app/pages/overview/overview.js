@@ -24,7 +24,7 @@ function rangeTxt(s, e) {
 }
 
 // 天气速览：boot 渲染诚实 pending 槽位，loadWeather 拉容器真数据按 date 覆盖——任何情况不回落假数据
-const WX_DAYS = 4
+const WX_DAYS = 16 // Open-Meteo 主源 16 天窗口（1.5.31，容器 /api/weather 全窗口返回）
 const WX_TTL = 3 * 60 * 60 * 1000
 const weatherCache = {} // '城市|日期串' -> { at, rows }（只存真实行）
 
@@ -34,6 +34,7 @@ function isoAdd(baseISO, n) {
   return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate())
 }
 function wxTip(label, hi, lo) {
+  if (label && label.indexOf('Ø') >= 0) return '历史气候参考' // Ø=去年同期估算，非实时预报（1.5.31）
   if (label && (label.indexOf('雨') >= 0 || label.indexOf('雪') >= 0)) return '带雨具'
   if (hi != null && lo != null && hi - lo > 9) return '早晚温差大'
   return '适宜出行'
@@ -41,9 +42,9 @@ function wxTip(label, hi, lo) {
 // 初始槽位：未来行程给「预报未出」占位；行程已结束返回空（整卡隐藏）
 function buildWxSlots(days, today) {
   if (!days.length || today > days[days.length - 1].rawDate) return []
-  return days.slice(0, WX_DAYS).map(d => ({
+  return days.slice(0, WX_DAYS).map((d, i) => ({
     date: String(d.rawDate || '').slice(5).replace('-', '.'),
-    icon: '⏳', pending: true, tip: '出行前再查'
+    icon: i === 0 ? '⏳' : '·', pending: true, tip: i === 0 ? '出行前再查' : '暂无预报'
   }))
 }
 
@@ -209,7 +210,10 @@ Page({
     const city = t.city || t.destination || ''
     if (!city) return
     const dates = []
-    for (let i = 0; i < WX_DAYS; i++) dates.push(isoAdd(t.start || todayStr(), i))
+    const span = Math.max(1, Math.min(16, WX_DAYS))
+    const endCap = t.end && t.end > t.start ? t.end : ''
+    const nDays = endCap ? Math.min(16, Math.round((new Date(endCap + 'T00:00:00') - new Date((t.start || todayStr()) + 'T00:00:00')) / 86400000) + 1) : Math.min(span, 7)
+    for (let i = 0; i < nDays; i++) dates.push(isoAdd(t.start || todayStr(), i))
     if (todayStr() > dates[dates.length - 1]) return // 行程已结束：卡已隐藏，预报无意义
     const key = city + '|' + dates.join(',')
     let rows = null
@@ -222,13 +226,18 @@ Page({
         // 无温度的行是预报窗口外占位（weatherCode=-1），丢弃后保留 pending 槽位
         rows = (Array.isArray(list) ? list : [])
           .filter(d => d && d.tempMax != null && d.tempMin != null)
-          .map(d => ({
-            date: String(d.date || '').slice(5).replace('-', '.'),
-            icon: (d.icon || '—') + ' ' + (d.label || ''),
-            hi: d.tempMax,
-            lo: d.tempMin,
-            tip: wxTip(d.label, d.tempMax, d.tempMin)
-          }))
+          .map(d => {
+            const est = (d.label || '').indexOf('Ø') >= 0
+            const label = (d.label || '').replace('Ø ', '')
+            return {
+              date: String(d.date || '').slice(5).replace('-', '.'),
+              icon: (d.icon || '—') + ' ' + label,
+              est,
+              hi: d.tempMax,
+              lo: d.tempMin,
+              tip: wxTip(d.label, d.tempMax, d.tempMin)
+            }
+          })
         weatherCache[key] = { at: Date.now(), rows }
       } catch (e) { /* 容器不可达，保留 pending 槽位 */ }
     }
@@ -252,6 +261,46 @@ Page({
     const d = Number(e.currentTarget.dataset.d)
     if (!d) return
     wx.navigateTo({ url: '/pages/schedule/schedule?day=' + d })
+  },
+  /* 导出行程 PDF：容器 pdfkit 生成（封面+每日站点+备注）→ base64 → 本地文件 → 打开/分享（1.5.31） */
+  exportPDF() {
+    const t = store.trip
+    if (!t || !(t.days || []).length) { wx.showToast({ title: '还没有可导出的行程', icon: 'none' }); return }
+    const stops = store.stops || []
+    const days = t.days.map(day => ({
+      d: day.d,
+      title: day.title || '',
+      date: String(day.date || '').slice(5).replace('-', '.') + (day.week ? ' ' + day.week : ''),
+      stops: stops.filter(s => s.day === day.d).map(s => ({
+        time: s.time || '', name: s.name || '', place: s.place || '', note: s.note || '', cost: s.cost || 0
+      }))
+    }))
+    if (!days.some(x => x.stops.length)) { wx.showToast({ title: '还没有安排可导出', icon: 'none' }); return }
+    wx.showLoading({ title: '生成 PDF…', mask: true })
+    api.post('/api/trip/pdf', {
+      trip: {
+        title: t.title || '我的旅程',
+        destination: t.city || t.destination || '',
+        dateLabel: this.data.dateLabel || '',
+        coverColor: t.coverColor || '#2E92ED',
+        coverEmoji: t.coverEmoji || '🧭'
+      },
+      days
+    }).then(res => {
+      wx.hideLoading()
+      try {
+        const fsm = wx.getFileSystemManager()
+        const path = wx.env.USER_DATA_PATH + '/trip-' + Date.now() + '.pdf'
+        fsm.writeFileSync(path, wx.base64ToArrayBuffer(res.b64 || ''), 'binary')
+        wx.openDocument({
+          filePath: path, fileType: 'pdf', showMenu: true,
+          fail() { wx.showToast({ title: '打开失败，请重试', icon: 'none' }) }
+        })
+      } catch (e) { wx.showToast({ title: '文件写入失败', icon: 'none' }) }
+    }).catch(e => {
+      wx.hideLoading()
+      wx.showToast({ title: (e && e.message) || '导出失败，请重试', icon: 'none' })
+    })
   },
   invite() { wx.navigateTo({ url: '/pages/invite/invite' }) },
   /* ---- 背景图：更换 / 恢复默认 ---- */

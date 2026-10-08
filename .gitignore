@@ -30,3 +30,10 @@ skills-lock.json
 
 # 会话工作目录（含上传密钥备份/验收脚本等，绝不提交）
 work/
+pdf-req.json
+pdf-res.json
+pdf-res2.json
+trek-tree.json
+trek-weather-doc.md
+test-trip.pdf
+test2.pdf

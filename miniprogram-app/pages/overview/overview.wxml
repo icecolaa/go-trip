@@ -75,15 +75,15 @@
       <view class="wx-head">
         <text class="t">天气速览 · {{city}}</text>
       </view>
-      <view class="wx-days">
-        <view class="wx-day {{item.pending ? 'pend' : ''}}" wx:for="{{weather}}" wx:key="date">
+      <scroll-view class="wx-days" scroll-x enhanced show-scrollbar="{{false}}">
+        <view class="wx-day {{item.pending ? 'pend' : ''}} {{item.est ? 'est' : ''}}" wx:for="{{weather}}" wx:key="date">
           <text class="d">{{item.date}}</text>
           <text class="i">{{item.icon}}</text>
           <text class="t2 num" wx:if="{{!item.pending}}">{{item.lo}}~{{item.hi}}°C</text>
           <text class="t2" wx:else>预报未出</text>
           <text class="t3">{{item.tip}}</text>
         </view>
-      </view>
+      </scroll-view>
     </view>
 
     <!-- 出发模式 CTA -->
@@ -117,6 +117,7 @@
 
     <view class="sec">
       <text class="h">每日安排</text>
+      <view class="more" hover-class="press" bindtap="exportPDF" style="margin-right:24rpx"><text>导出PDF</text></view>
       <view class="more" hover-class="press" bindtap="go" data-url="/pages/schedule/schedule"><text>去日程</text><view class="ic ic-right"></view></view>
     </view>
 
