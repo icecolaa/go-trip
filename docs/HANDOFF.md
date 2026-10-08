@@ -1,7 +1,8 @@
 # 交接文档（HANDOFF）
 
 > 面向下一个接手的开发者或 AI 会话。先读根目录 `CLAUDE.md`（规则手册），再读本文（现状、过程与经验）。
-> 更新：2026-10-08（条目 78：**P1 清理批 + 1.5.31 上传**——①验收断言 tap→callMethod 治理（S11 遍历/S1 第 5 格/S10 帮助入口，段选 19/19+遍历 7/7）②死图标清扫（ic-more/circle 假胶囊遗孤）③协作文案诚实化（「邀请同伴协作」→「同伴用于分账与指派」）④Web/H5 冻结决策入册 ⑤云写乐观更新检查结论=高频路径已覆盖无需改；十四轮 b 79/94 为抖动窗口，基线由 87/89+89/89 背书；**1.5.31 已上传待提审**）
+> 更新：2026-10-08 二（条目 79：**天气 16 天 + 行程 PDF 导出 + 1.5.32 上传（参考 TREK 14.6k★）**——①容器 weather 重构：Open-Meteo 升主源（16 天真预报+超窗去年同期气候估算 Ø 前缀+archive 真历史+1h 缓存+失败不缓存占位），高德退降级 ②容器新增 /api/trip/pdf（pdfkit+NotoSansSC 8.3MB 字体，封面+每日站点+备注，base64 返回）③overview 天气速览 16 天横滑+est 置灰+「导出PDF」入口（callContainer→base64→FSM→openDocument）；gotrip-022 已部署，exportPDF 真链 b64=137KB 全通；**1.5.32 已上传（体验版/提审自定）**）
+> 上一条：2026-10-08（条目 78：**P1 清理批 + 1.5.31 上传**——①验收断言 tap→callMethod 治理（S11 遍历/S1 第 5 格/S10 帮助入口，段选 19/19+遍历 7/7）②死图标清扫（ic-more/circle 假胶囊遗孤）③协作文案诚实化（「邀请同伴协作」→「同伴用于分账与指派」）④Web/H5 冻结决策入册 ⑤云写乐观更新检查结论=高频路径已覆盖无需改；十四轮 b 79/94 为抖动窗口，基线由 87/89+89/89 背书；**1.5.31 已上传待提审**）
 > 更新：2026-10-07 二（条目 77：**P0 优化清单执行 + 1.5.30 上传**——①我的页「意见反馈」入口（open-type=feedback cover 模式，直达 mp 后台零后端）②全局 .cell 排版笔误根修（p 元素→.p 类，删 settings 页面级补丁）③**容器公网确认自愈零改动**（OpenAccessTypes 已含 PUBLIC+MINIAPP，新域名 .sh.run.tcloudbase.com 探针 /health 200+安全门 403 实测——旧 INVALID_HOST 系平台域名升级，新探针地址入册）；**1.5.30 已上传（体验版可先设，正式提审等 1.5.29 稳定运行观察期后或攒批改动）**）
 > 上一条：2026-10-07（条目 76：**🎉 正式上线**——「工具-天气」类目过审 + **1.5.29 已发布上线**（个人主体正式版，含 1.5.20 合规修复以来全部累计：AI 页摘除/假胶囊/五轮真机反馈/地图优化/弹窗治理/天卡跳转/时间线贴左/行李手风琴/首页闪动）；上线经验入册（类目前置条件先验证再提审）；**剩余待办=真机验收清单+容器访问类型**）
 > 上一条：2026-10-05 二（条目 75：**首页进入闪动优化 + 1.5.29 上传**——三处首帧状态同步化：themeClass 构造期读主题（深色用户首帧浅→深整页闪）/loading 初始 false（骨架→内容两段切换，welcome 期 store 已预热无需骨架）/提取 tripVM 纯函数 data.trips 构造期映射（原首帧空列表闪空态卡）；全链路回归 PASS；**1.5.29 已上传，类目过后提审选它**）
@@ -41,7 +42,7 @@
 |---|---|
 | **生产环境** | CloudBase `gotrip-d1gb187o991f5260a`（个人版，付费至 2027-03-25）。云托管 gotrip 容器 = **gotrip-021 无状态代理**（2026-09-29 部署，**天气改高德主链路**：geocode 任意地名→adcode→weatherInfo，伊春真实命中；EnvParams 10 键/MaxNum=1 RMW 保留；⚠️ OpenAccessTypes 被 deploy 被动带回 OA——待顺手修回 PUBLIC+MINIAPP，身份门不受影响），`/health` 探针 `{"ok":true,"db":"none","mode":"proxy"}`。公网开着（Web 直连需要）。feat 分支=1.5.16 全部修复（见「仓库」行同步状态） |
 | **架构（原生化完成）** | 小程序 `@cloudbase/wx-cloud-client-sdk` models.*（openid 行级隔离）+ `utils/api.js` callContainer（**必须带 X-WX-SERVICE 头**，条目 60 P0）；容器=无状态代理（AI/飞哪儿/POI/天气/编码）。设计/映射/进度在 `docs/native-migration.md` |
-| 小程序 | **正式版=1.5.29 线上运行中；开发版 1.5.31 已上传待提审**（=1.5.30 意见反馈+排版根修 +1.5.31 文案诚实化/清理）。**审核前置：「工具-天气」类目已过审**。发布主体=miniprogram-app 原生 20 页；Taro 版冻结在 miniprogram/。版本线条目 61~78 |
+| 小程序 | **正式版=1.5.29 线上运行中；开发版 1.5.32 已上传待提审**（=1.5.30/31 +天气 16 天+PDF 导出，**gotrip-022 容器已同步部署**）。审核前置（天气类目）已过审。发布主体=miniprogram-app 原生 20 页；Taro 版冻结在 miniprogram/。版本线条目 61~79 |
 | 数据库 | TDSQL-C MySQL 8.0（MCP 可直写：`queryMysqlDatabase`/`manageMysqlDatabase`，库名=`<envId>` schema）。**小兴安岭七日×2**（真机号 EBZKAZJUGG + 工具号 EC38PUC1S8，各 7 天/30 安排/全坐标；**同名同内容分属两账号，改动要考虑双账号**）：旧伊春种子支出 5 笔×2、种子打包 4 条×2 已按用户拍板清除（条目 62 补记）；工具号名下保留 16 条七日详规配套打包模板。**另有活跃的演示导入行程**（「国庆伊春深度游」×3，分属两个其它 openid，随 importDemo 生成）——正常业务数据，清理时**必须按 _id 精确删**，严禁按 title/金额模糊匹配 |
 | 验收 | `work/accept-0929.js` **12 段**分段自愈框架（ONLY=段选重跑；段失败自动重启工具重放）。**八轮（1001，1.5.20 送审后复验）：89/89 一次全绿、console 零错误——历史首次单次跑完**；七轮 46/46+首轮六段全绿；六轮 39→53→58→70→79→78。**已入册断言**：假胶囊移除（S1）、合规 ai 页不可达（S3/S9）、helper 攻略导入文案（S11）。**清进程 taskkill 重启比 cli quit 彻底**。报告 acceptance/REPORT-native-0930.md（含八轮补记）；专项脚本 verify-weather-1515 / verify-overview-ui / verify-ai-removal / verify-capsule-fix。定时验收 automation-88c53b0a 每天 09:00。**跑后残留核查：七轮已 SQL 补跑（三表零残留）；八轮 S4/S6/S7/S12 自清理断言全过** |
 | 冒烟 | `scripts/smoke.sh` **10/0**（容器代理 9 断言 + shared 纯函数）；rdb 数据层改动一律 `npm run build:rdb`（含 process.env 防护门） |
@@ -49,6 +50,11 @@
 | 待办 Top3 | ① **1.5.31 提审**（mp 后台手动，低风险文案清理）② 用户反馈驱动迭代：**「我的→意见反馈」入口已上线**，定期看 mp 后台「用户反馈」+「JS 错误」报表 ③ 低优先级留档：发布 CI 化（miniprogram-ci 通道已通）/天气 4 天窗口（用户拍板不改）/Web 版冻结（已入册） |
 
 ## 2026-08~09 主要交付（按主题）
+
+79. **天气 16 天 + 行程 PDF 导出 + 1.5.32（2026-10-08，参考 TREK mauriceboe/TREK 14.6k★）**：用户给 TREK 仓库+公众号文章拍板两项功能。**① 天气 16 天**——容器 `weather.ts` 重构：高德 geocode 一次拿 **adcode+经纬度**（原只取 adcode）→ **Open-Meteo forecast API 升主源**（today-92~**today+16** 真预报，行程全窗口一次请求）→ **超 16 天的未来日期用 archive API 去年同期历史气候估算**（label 加 **Ø 前缀**、weatherCode=-3 标识，TREK 同款约定）→ **1h 进程缓存**；**失败不缓存占位**（冒烟踩坑：首跑超时占位进缓存→1h 全命中空数据）；高德 weatherInfo 退降级（仅 today+3）。WMO weathercode→中文文案/emoji 映射沿用。**② PDF 导出**——容器新增 `POST /api/trip/pdf`（**pdfkit + NotoSansSC-Regular.otf 8.3MB** SubsetOTF 入 assets/fonts，pdfkit 内置字体无中文）：payload=trip 元信息+days/stops 全量 → A4 生成（封面色块+emoji+标题+日期 / 每日天标题+站点时间名称地点费用备注）→ **base64 JSON 返回**（callContainer 响应 1MiB 内，实测 54KB/真数据 137KB）。小程序端：总览「每日安排」sec 加**「导出PDF」**→ `api.post` → `wx.base64ToArrayBuffer` → FSM 写 USER_DATA_PATH → `wx.openDocument({showMenu:true})`（预览+转发/保存）。
+    **验证**：本地三分支冒烟（过去行程真数据/超窗 Ø 估算/16 天内真预报全 PASS）+ pdfkit 生成 pypdf 提文本中文正常 + **gotrip-022 部署**（探针 /health 200、/api/trip/pdf 403=路由存在+身份门正常）+ **automator 真链 exportPDF**：step1 payload 7 天→step2 b64=139896→step3 文件写入 ✓ console 零错误（openDocument 预览模拟器不弹，真机验证）。前端：天气速览槽位横滑（148rpx 定宽）+est 置灰 0.62+wxTip est 固定「历史气候参考」。
+    **发版**：**1.5.32 已上传**（体验版/提审自定——1.5.29 正式版稳定运行中，本版为功能增量）。
+    **经验**：① 外部 API 冒烟「全占位」先查**失败结果是否被缓存**（占位进缓存=后续全命中假数据）；② 跨页定位/首帧初始化之外第三个「消费一次」场景——**外部 API 失败不缓存**；③ 小程序二进制下发统一走 base64 JSON（callContainer 无 arraybuffer）。
 
 78. **P1 清理批 + 1.5.31（2026-10-08）**：用户拍板「天气不改，其他都改」。① **验收 tap 治理**：S11 功能格遍历改 callMethod 直驱（Element.attribute('data-url') 收集+逐格 go）段选 9/9（遍历 7/7）；S1 第 5 格/S10 帮助入口同治理；其余 tap 点保留（历史稳定率高，全面治理留档）。② **死代码清扫**：ic-more/ic-more-circle（假胶囊遗孤零消费）删除。③ **协作文案诚实化**：总览成员条「邀请同伴协作」→「同伴用于分账与指派」（invite 页提示本就诚实，总览对齐）。④ **Web/H5 冻结决策入册**（开场指南区：暂不投入，恢复前提=容器公网+Web 回归）。⑤ **云写乐观更新检查结论=无需改**：高频写路径已覆盖（packing toggleItem 先本地后云写/trip-mode toggleDone 纯本地 storage），表单类低频有 loading——**「要做的优化」先盘点现状，可能已经做过了**。
     **回归与判定**：十四轮 a 87/89（2 FAIL=S1/S10 旧 tap 残留→段选治理后 S1+S10 19/19）→ 十四轮 b 79/94（凌晨抖动窗口：trips=0 云读空+桥死，与历史抖动轮形态一致；基线由十三轮 89/89+十四轮 a 背书）。**1.5.31 已上传待提审**。
