@@ -1,6 +1,8 @@
 # 交接文档（HANDOFF）
 
 > 面向下一个接手的开发者或 AI 会话。先读根目录 `CLAUDE.md`（规则手册），再读本文（现状、过程与经验）。
+> 更新：2026-10-09 二（条目 80：**本窗口会话总结（1.5.28~1.5.32 五版）**——**1.5.32 已过审（2026-10-09），mp 后台点发布即成正式版**；本窗口完成=行李手风琴/首页闪动优化/十三轮验收 89/89 全绿/正式上线/用户元问题复盘（类目前置条件）/P0 三项/弹窗治理/P1 清理批/天气 16 天+PDF 导出，全部细节见条目 71~80 与验收报告；经验模式已散入各条目不再重复）
+> 上一条：2026-10-08 二（条目 79：**天气 16 天 + PDF 导出 + 1.5.32 上传（参考 TREK 14.6k★）**——①容器 weather 重构：Open-Meteo 升主源（16 天真预报+超窗去年同期气候估算 Ø 前缀+archive 真历史+1h 缓存+失败不缓存占位），高德退降级 ②容器新增 /api/trip/pdf（pdfkit+NotoSansSC 8.3MB 字体，封面+每日站点+备注，base64 返回）③overview 天气速览 16 天横滑+est 置灰+「导出PDF」入口（callContainer→base64→FSM→openDocument）；gotrip-022 已部署，exportPDF 真链 b64=137KB 全通）
 > 更新：2026-10-08 二（条目 79：**天气 16 天 + 行程 PDF 导出 + 1.5.32 上传（参考 TREK 14.6k★）**——①容器 weather 重构：Open-Meteo 升主源（16 天真预报+超窗去年同期气候估算 Ø 前缀+archive 真历史+1h 缓存+失败不缓存占位），高德退降级 ②容器新增 /api/trip/pdf（pdfkit+NotoSansSC 8.3MB 字体，封面+每日站点+备注，base64 返回）③overview 天气速览 16 天横滑+est 置灰+「导出PDF」入口（callContainer→base64→FSM→openDocument）；gotrip-022 已部署，exportPDF 真链 b64=137KB 全通；**1.5.32 已上传（体验版/提审自定）**）
 > 上一条：2026-10-08（条目 78：**P1 清理批 + 1.5.31 上传**——①验收断言 tap→callMethod 治理（S11 遍历/S1 第 5 格/S10 帮助入口，段选 19/19+遍历 7/7）②死图标清扫（ic-more/circle 假胶囊遗孤）③协作文案诚实化（「邀请同伴协作」→「同伴用于分账与指派」）④Web/H5 冻结决策入册 ⑤云写乐观更新检查结论=高频路径已覆盖无需改；十四轮 b 79/94 为抖动窗口，基线由 87/89+89/89 背书；**1.5.31 已上传待提审**）
 > 更新：2026-10-07 二（条目 77：**P0 优化清单执行 + 1.5.30 上传**——①我的页「意见反馈」入口（open-type=feedback cover 模式，直达 mp 后台零后端）②全局 .cell 排版笔误根修（p 元素→.p 类，删 settings 页面级补丁）③**容器公网确认自愈零改动**（OpenAccessTypes 已含 PUBLIC+MINIAPP，新域名 .sh.run.tcloudbase.com 探针 /health 200+安全门 403 实测——旧 INVALID_HOST 系平台域名升级，新探针地址入册）；**1.5.30 已上传（体验版可先设，正式提审等 1.5.29 稳定运行观察期后或攒批改动）**）
@@ -50,6 +52,13 @@
 | 待办 Top3 | ① **发布 1.5.32**（mp 后台已过审版本点发布，替代 1.5.29；含天气 16 天+PDF 导出+此前全部修复）② 用户反馈驱动迭代：**「我的→意见反馈」入口已上线**，定期看 mp 后台「用户反馈」+「JS 错误」报表 ③ 低优先级留档：发布 CI 化（miniprogram-ci 通道已通）/Web 版冻结（已入册） |
 
 ## 2026-08~09 主要交付（按主题）
+
+80. **本窗口会话总结（2026-10-05~09，1.5.28→1.5.32 五版 + 正式上线）**：本窗口从「1.5.27 已发布」起步，连续交付并闭环。**版本与主题**：1.5.28 行李手风琴 → 1.5.29 首页闪动优化（**该版过审发布=正式上线**）→ 1.5.30 意见反馈+P0 → 1.5.31 P1 清理批 → 1.5.32 天气 16 天+PDF 导出（已过审待发布）。**验收**：十一~十三轮全量（89/89 全绿两次）+六项专项脚本（verify-day-jump/packing-acc/sheet-lift/ui-feedback5/6/7/verify-map-fix/verify-console-0929 全在 work/）。
+    **跨条目经验聚合（新窗口优先读）**：① **上线堵点必须验证前置条件**——类目过审前五轮上传全是无效动作（条目 76 复盘）；② **tab 页弹层双修**——z-index 压过 tabBar（1.5.22）+几何抬 bottom（1.5.24/25 input-sheet lift 组件化），缺一算遮挡；③ **主题三通道**——媒体查询+.theme-dark+.theme-light 必须成对覆盖，凡媒体查询写的主题样式都要配类通道（welcome/home/profile 三页踩坑）；④ **首帧构造期同步化**——启动页预热过的页面 data 直接从内存初始化（themeClass/loading/trips），onShow 晚绑定=闪动根因；⑤ **跨页定位参数**——实例变量暂存+数据就绪后消费一次（schedule pendingDay 模式）；⑥ **外部 API 失败不缓存**（weather 占位进缓存=1h 假数据）；⑦ **小程序二进制下发=base64 JSON**（callContainer 无 arraybuffer，PDF b64 137KB 实测）；⑧ **open-type button 一律 cover 透明触发层**（转发/反馈同款，UA width:184px 无解）；⑨ **automator 顽疾速查**=memory/automator-lessons + 本文件验收行。
+    **当前状态**：正式版 1.5.29 线上；**1.5.32 已过审待发布**（发布即替代）；工作区干净；双远端同步（最新=条目 80 本条提交）；真机验收 10-07 闭环；用户反馈入口已上线（mp 后台看反馈）。
+    **下一步候选**（未拍板）：意见反馈内容驱动迭代 / 天气小时级预报（Open-Meteo hourly）/ PDF 含手记图片（base64 限流内可做）/ 发布 CI 化。
+
+79. **天气 16 天 + PDF 导出 + 1.5.32（2026-10-08，参考 TREK mauriceboe/TREK 14.6k★）**
 
 79. **天气 16 天 + 行程 PDF 导出 + 1.5.32（2026-10-08，参考 TREK mauriceboe/TREK 14.6k★）**：用户给 TREK 仓库+公众号文章拍板两项功能。**① 天气 16 天**——容器 `weather.ts` 重构：高德 geocode 一次拿 **adcode+经纬度**（原只取 adcode）→ **Open-Meteo forecast API 升主源**（today-92~**today+16** 真预报，行程全窗口一次请求）→ **超 16 天的未来日期用 archive API 去年同期历史气候估算**（label 加 **Ø 前缀**、weatherCode=-3 标识，TREK 同款约定）→ **1h 进程缓存**；**失败不缓存占位**（冒烟踩坑：首跑超时占位进缓存→1h 全命中空数据）；高德 weatherInfo 退降级（仅 today+3）。WMO weathercode→中文文案/emoji 映射沿用。**② PDF 导出**——容器新增 `POST /api/trip/pdf`（**pdfkit + NotoSansSC-Regular.otf 8.3MB** SubsetOTF 入 assets/fonts，pdfkit 内置字体无中文）：payload=trip 元信息+days/stops 全量 → A4 生成（封面色块+emoji+标题+日期 / 每日天标题+站点时间名称地点费用备注）→ **base64 JSON 返回**（callContainer 响应 1MiB 内，实测 54KB/真数据 137KB）。小程序端：总览「每日安排」sec 加**「导出PDF」**→ `api.post` → `wx.base64ToArrayBuffer` → FSM 写 USER_DATA_PATH → `wx.openDocument({showMenu:true})`（预览+转发/保存）。
     **验证**：本地三分支冒烟（过去行程真数据/超窗 Ø 估算/16 天内真预报全 PASS）+ pdfkit 生成 pypdf 提文本中文正常 + **gotrip-022 部署**（探针 /health 200、/api/trip/pdf 403=路由存在+身份门正常）+ **automator 真链 exportPDF**：step1 payload 7 天→step2 b64=139896→step3 文件写入 ✓ console 零错误（openDocument 预览模拟器不弹，真机验证）。前端：天气速览槽位横滑（148rpx 定宽）+est 置灰 0.62+wxTip est 固定「历史气候参考」。
