@@ -1776,3 +1776,14 @@ img, svg, video, canvas { max-width: 100%; }
 /* 顶栏 trip-switch 桌面也截断（防止长行程名挤变形顶栏） */
 .topbar .trip-switch { max-width: 340px; min-width: 0; }
 .topbar .trip-switch .t { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* ---------- 行程卡删除钮（与编辑钮同族，hover 常驻触屏常显） ---------- */
+.trip-del-btn {
+  position: absolute; left: 50px; bottom: 10px; z-index: 2;
+  width: 30px; height: 30px; border-radius: var(--radius-ctl);
+  border: 1px solid var(--line); background: var(--card); font-size: 14px;
+  cursor: pointer; opacity: 0; transition: opacity .15s ease, border-color .15s ease;
+}
+.trip-card:hover .trip-del-btn { opacity: 1; }
+.trip-del-btn:hover { border-color: var(--red); }
+@media (hover: none) { .trip-del-btn { opacity: .9; } }
