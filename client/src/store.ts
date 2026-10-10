@@ -23,12 +23,17 @@ export const useApp = create<AppState>((set, get) => ({
   toasts: [],
 
   loadMe: async () => {
-    try {
-      const me = await restoreSession();
-      set({ me, ready: true });
-    } catch {
-      set({ me: null, ready: true });
+    // 冷启动重试：服务端建表初始化期间 me 打 503，约 18s 窗口内自愈；401 已在 restoreSession 内短路
+    for (let i = 0; i < 6; i++) {
+      try {
+        const me = await restoreSession();
+        set({ me, ready: true });
+        return;
+      } catch {
+        await new Promise(r => setTimeout(r, 3000));
+      }
     }
+    set({ me: null, ready: true });
   },
 
   login: async (username, password) => {
