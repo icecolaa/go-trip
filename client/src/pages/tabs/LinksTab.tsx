@@ -83,7 +83,7 @@ export default function LinksTab({ bundle, canEdit }: TabCtx) {
           {shown.map(l => (
             <article className="card link-card" key={l.id}>
               <div className="link-card-head">
-                <span className="link-type">{TYPE_META[l.type].icon} {TYPE_META[l.type].label}</span>
+                <span className="link-type">{TYPE_META[l.type]?.icon ?? '🌐'} {TYPE_META[l.type]?.label ?? l.type}</span>
                 {canEdit && (
                   <button className="btn sm ghost link-del" title="删除" onClick={() => remove(l)}>✕</button>
                 )}

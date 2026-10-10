@@ -72,6 +72,8 @@ export default function DashboardPage() {
       toast('行程已删除');
       load();
     } catch (e: any) {
+      // 退场动画已播：删除失败必须把卡片恢复回来，否则用户以为删了实际没删
+      if (el) { el.style.opacity = ''; el.style.transform = ''; }
       toast(e instanceof Error ? e.message : '删除失败', true);
     }
   };

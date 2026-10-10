@@ -25,14 +25,13 @@ function systemPrefersDark(): boolean {
   return typeof matchMedia === 'function' && matchMedia('(prefers-color-scheme: dark)').matches;
 }
 
-/** 把主题写到 <html data-theme>，并同步浏览器 UI 色与 color-scheme */
+/** 把主题写到 <html data-theme>，并同步浏览器 UI 色与 color-scheme。
+ * 注：曾试挂 theme-anim 类做 200ms 全局色面过渡——同帧挂类+换 CSS 变量会让
+ * 变量传播失效（元素 color 冻结在旧值，干净环境二次实锤），回退为即切。 */
 export function applyTheme(resolved: 'light' | 'dark'): void {
   const root = document.documentElement;
-  // 一次性过渡窗口：色面 200ms 平滑切换，结束即摘避免常驻 * 过渡
-  root.classList.add('theme-anim');
   root.setAttribute('data-theme', resolved);
   root.style.colorScheme = resolved;
-  window.setTimeout(() => root.classList.remove('theme-anim'), 240);
   const meta = document.querySelector('meta[name="theme-color"]');
   if (meta) meta.setAttribute('content', resolved === 'dark' ? '#0D1626' : '#F3F8FC');
 }
