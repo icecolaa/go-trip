@@ -36,9 +36,10 @@ const CORS_ALLOW = (process.env.CORS_ORIGINS || '')
 function applyCors(req: http.IncomingMessage, res: http.ServerResponse): boolean {
   const origin = req.headers.origin;
   if (origin) {
+    // PocketBay 壳把应用嵌在跨源 iframe（gotrip--e.pocketbay.app），API 走主域绝对地址时必须放行
     const allowed = CORS_ALLOW.length > 0
       ? CORS_ALLOW.includes(origin)
-      : origin.endsWith('.tcloudbaseapp.com') || origin.endsWith('.wxcloudrun.com');
+      : origin.endsWith('.tcloudbaseapp.com') || origin.endsWith('.wxcloudrun.com') || origin.endsWith('.pocketbay.app');
     if (allowed) {
       res.setHeader('Access-Control-Allow-Origin', origin);
       res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PATCH,DELETE,OPTIONS');

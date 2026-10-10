@@ -1,6 +1,15 @@
-/** 服务通道（Web 全栈版）：AI/飞哪儿/POI/天气走同源 /api（server 内置模块，Bearer 会话）。
- * 旧云托管公网域名 + x-gotrip-key 共享密钥通道随 PocketBay 部署退役。 */
+/** 服务通道（Web 全栈版）：AI/飞哪儿/POI/天气走 /api（server 内置模块，Bearer 会话）。
+ * 旧云托管公网域名 + x-gotrip-key 共享密钥通道随 PocketBay 部署退役。
+ * PocketBay 壳跨源 iframe：非主域时打主域绝对地址（与 api.ts 的 API_BASE 同规则）。 */
 import { getToken } from '../api';
+
+const API_BASE = (() => {
+  try {
+    const h = location.hostname;
+    if (h === 'gotrip.pocketbay.app' || !h.endsWith('pocketbay.app')) return '';
+    return 'https://gotrip.pocketbay.app';
+  } catch { return ''; }
+})();
 
 export class ApiFail extends Error {
   status: number;
@@ -17,7 +26,7 @@ async function call<T>(path: string, method: 'GET' | 'POST', body?: unknown): Pr
   if (body !== undefined) headers['Content-Type'] = 'application/json';
   let resp: Response;
   try {
-    resp = await fetch(path, {
+    resp = await fetch(API_BASE + path, {
       method,
       headers,
       body: body !== undefined ? JSON.stringify(body) : undefined,

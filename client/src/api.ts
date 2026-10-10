@@ -1,5 +1,15 @@
 /** Web 版 API 客户端（PocketBay 全栈部署，2026-10-10）。
- * 数据与 AI/飞哪儿/天气等全部走同源 /api；Bearer token 会话存 localStorage。 */
+ * 数据与 AI/飞哪儿/天气等全部走 /api；Bearer token 会话存 localStorage。
+ * ⚠️ PocketBay 壳把应用嵌在跨源 iframe（gotrip--e.pocketbay.app）里，同源 /api 不存在——
+ * 非主域时 API 一律打主域绝对地址（server CORS 放行 *.pocketbay.app）。 */
+
+const API_BASE = (() => {
+  try {
+    const h = location.hostname;
+    if (h === 'gotrip.pocketbay.app' || !h.endsWith('pocketbay.app')) return '';
+    return 'https://gotrip.pocketbay.app';
+  } catch { return ''; }
+})();
 
 const TOKEN_KEY = 'gotrip_token';
 
@@ -29,7 +39,7 @@ async function request<T>(method: string, url: string, body?: any): Promise<T> {
   if (body !== undefined) headers['Content-Type'] = 'application/json';
   let resp: Response;
   try {
-    resp = await fetch(url, { method, headers, body: body !== undefined ? JSON.stringify(body) : undefined });
+    resp = await fetch(API_BASE + url, { method, headers, body: body !== undefined ? JSON.stringify(body) : undefined });
   } catch {
     throw new ApiFail(0, '网络连接失败，请稍后重试');
   }
