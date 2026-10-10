@@ -9,6 +9,10 @@ export function aiConfigured(): boolean {
   return !!(AI_BASE && AI_KEY && AI_MODEL);
 }
 
+/** 最近一次 AI 调用失败原因（运维诊断用，随 /api/ai/status 暴露给登录用户） */
+let aiLastError = '';
+export function aiLastErrorGet(): string { return aiLastError; }
+
 /** 调用 OpenAI 兼容接口（智谱/DeepSeek/通义/Moonshot 等），导出供锦囊/助手模块复用 */
 export async function chat(system: string, user: string, timeoutMs = 30000, jsonMode = true): Promise<string | null> {
   if (!aiConfigured()) return null;
@@ -29,11 +33,18 @@ export async function chat(system: string, user: string, timeoutMs = 30000, json
       body: JSON.stringify(body),
       signal: AbortSignal.timeout(timeoutMs),
     });
-    if (!resp.ok) return null;
+    if (!resp.ok) {
+      const bodyText = await resp.text().catch(() => '');
+      aiLastError = `HTTP ${resp.status} @ ${AI_BASE} model=${AI_MODEL}: ${bodyText.slice(0, 120)}`;
+      console.error('[ai] chat failed:', aiLastError);
+      return null;
+    }
     const data: any = await resp.json();
     const content = data?.choices?.[0]?.message?.content;
     return typeof content === 'string' ? content : null;
-  } catch {
+  } catch (e: any) {
+    aiLastError = `fetch failed @ ${AI_BASE} model=${AI_MODEL}: ${String(e?.message || e).slice(0, 120)}`;
+    console.error('[ai] chat error:', aiLastError);
     return null;
   }
 }

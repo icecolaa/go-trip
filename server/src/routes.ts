@@ -18,7 +18,7 @@ import { hasValidSession } from './webauth.ts';
 import { searchPois, geocodePlaces, cleanActivityQuery, reverseGeocode, type GeocodeItem } from './poi.ts';
 import { getWeather } from './weather.ts';
 import { buildTripPDF } from './pdf.ts';
-import { parseGuide, generatePlan, aiConfigured } from './ai.ts';
+import { parseGuide, generatePlan, aiConfigured, aiLastErrorGet } from './ai.ts';
 import { buildHandbook, aiHandbook } from './handbook.ts';
 import { answerUsageQuestion, sanitizeHistory } from './assistant.ts';
 import { flywhereSearch, flywhereAiAdvice, flyaiConfigured, feePolicy as flywhereFeePolicy } from './flywhere.ts';
@@ -212,7 +212,7 @@ route('POST', '/api/assistant', async (_req, res, _p, body) => {
 });
 
 route('GET', '/api/ai/status', async (_req, res) => {
-  json(res, 200, { configured: aiConfigured() });
+  json(res, 200, { configured: aiConfigured(), lastError: aiLastErrorGet() });
 });
 
 /* ==================== 飞哪儿 ==================== */
