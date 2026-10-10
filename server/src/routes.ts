@@ -14,6 +14,7 @@
 import crypto from 'node:crypto';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { ApiError, json, readBody } from './util.ts';
+import { hasValidSession } from './webauth.ts';
 import { searchPois, geocodePlaces, cleanActivityQuery, reverseGeocode, type GeocodeItem } from './poi.ts';
 import { getWeather } from './weather.ts';
 import { buildTripPDF } from './pdf.ts';
@@ -30,10 +31,11 @@ function route(method: string, pattern: string, handler: Handler): void {
   ROUTES.push({ method, pattern, handler });
 }
 
-/** 身份门（双通道）：
+/** 身份门（三通道）：
  *  - 小程序：callContainer 网关注入 x-wx-source（公网直连会被剥离，2026-09-25 实测）
- *  - Web/H5：无 callContainer，走公网直连 + 共享密钥 x-gotrip-key（= 环境变量 WEB_PROXY_KEY；
- *    密钥随前端 bundle 可见属可接受风险——作用是提高白嫖门槛，非机密边界）
+ *  - Web 全栈（PocketBay）：同源 /api + Bearer 会话（webauth 校验 gt_sessions）
+ *  - 旧 Web/H5 云托管通道：共享密钥 x-gotrip-key（= 环境变量 WEB_PROXY_KEY；密钥随前端
+ *    bundle 可见属可接受风险——作用是提高白嫖门槛，非机密边界）
  *  价格记忆已移到客户端（gt_flywhere_watch 按用户私有），分享读暂缓。 */
 const WEB_PROXY_KEY = process.env.WEB_PROXY_KEY || '';
 
@@ -46,7 +48,9 @@ export async function handleApi(req: IncomingMessage, res: ServerResponse): Prom
     if (!params) continue;
     const wxChannel = Boolean(String(req.headers['x-wx-source'] || ''));
     const webChannel = Boolean(WEB_PROXY_KEY) && req.headers['x-gotrip-key'] === WEB_PROXY_KEY;
-    if (!wxChannel && !webChannel) {
+    // Web 全栈通道：Bearer 会话有效即放行（AI/飞哪儿/POI 是登录后功能，与 /api/data 同门槛）
+    const authChannel = await hasValidSession(req);
+    if (!wxChannel && !webChannel && !authChannel) {
       json(res, 403, { error: '非可信通道调用已拒绝' });
       return true;
     }

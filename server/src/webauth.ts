@@ -42,6 +42,16 @@ export async function requireUser(req: IncomingMessage): Promise<UserRow> {
   return row as UserRow;
 }
 
+/** Bearer 会话是否有效（不抛错；身份门第三通道用）。数据库未就绪时返回 false。 */
+export async function hasValidSession(req: IncomingMessage): Promise<boolean> {
+  try {
+    await requireUser(req);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 async function issueSession(userId: string): Promise<string> {
   const token = crypto.randomBytes(32).toString('hex');
   await db().prepare('INSERT INTO gt_sessions (token, user_id, created_at) VALUES (?, ?, ?)').run(token, userId, nowISO());
