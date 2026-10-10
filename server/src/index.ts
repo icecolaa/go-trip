@@ -121,7 +121,8 @@ const server = http.createServer(async (req, res) => {
     if (e instanceof ApiError) json(res, e.status, { error: e.message });
     else {
       console.error('[server]', e);
-      json(res, 500, { error: '服务器内部错误' });
+      // 诊断期带 detail（稳定后收回）：平台日志需控制台登录才能看
+      json(res, 500, { error: '服务器内部错误', detail: String(e?.message || e).slice(0, 160) });
     }
   }
 });

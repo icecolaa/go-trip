@@ -35,7 +35,8 @@ export function db(): { prepare: (sql: string) => Stmt } {
     return {
       prepare(sql: string): Stmt {
         const pgSql = toPgSql(sql);
-        const isInsert = /^\s*insert/i.test(sql) && !/returning/i.test(sql);
+        // sessions 表主键是 token，没有 id 列，不能追加 RETURNING id
+        const isInsert = /^\s*insert/i.test(sql) && !/returning/i.test(sql) && !/\binsert\s+into\s+gt_sessions\b/i.test(sql);
         const finalSql = isInsert ? `${pgSql} RETURNING id` : pgSql;
         return {
           async get(...params: any[]) {
