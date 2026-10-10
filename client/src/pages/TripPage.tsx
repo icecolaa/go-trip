@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useParams, Link, useSearchParams } from 'react-router-dom';
 import { loadTripBundle } from '../rdb/trip';
+import { rememberTrip } from '../components/Sidebar';
 import { proxy } from '../rdb/proxy';
 import type { TripBundle, WeatherDay } from '../types';
 import { useApp } from '../store';
@@ -64,7 +65,9 @@ export default function TripPage() {
   const load = useCallback(async () => {
     setLoadErr('');
     try {
-      setBundle(await loadTripBundle(tripId));
+      const b = await loadTripBundle(tripId);
+        rememberTrip(tripId, b.trip.title);
+        setBundle(b);
     } catch (e: any) {
       setLoadErr(e.message || '加载失败');
     }
@@ -73,6 +76,7 @@ export default function TripPage() {
   // 天气：客户端把目的地名+日期区间传给容器代理（容器不再读库）
   const loadWeather = useCallback(() => {
     loadTripBundle(tripId).then((b) => {
+      rememberTrip(tripId, b.trip.title);
       const counts = new Map<string, number>();
       for (const d of b.days) counts.set(d.place || '', (counts.get(d.place || '') || 0) + 1);
       const main = [...counts.entries()].sort((a, b2) => b2[1] - a[1])[0]?.[0] || b.trip.destination || '';

@@ -5,6 +5,7 @@ import './styles.css';
 import { useApp } from './store';
 import { useThemeBootstrap } from './theme';
 import { Toasts, TopBar } from './components/ui';
+import { Sidebar } from './components/Sidebar';
 import UsageAssistant from './components/UsageAssistant';
 import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
@@ -22,13 +23,26 @@ function Shell() {
   if (!ready) return <div className="spin" style={{ marginTop: 120 }} />;
 
   const bare = loc.pathname === '/login';
+  if (bare) {
+    return (
+      <>
+        <Toasts />
+        <Outlet />
+      </>
+    );
+  }
   return (
-    <>
-      <Toasts />
-      {me && <UsageAssistant />}
-      {!bare && <TopBar me={me} />}
-      <Outlet />
-    </>
+    <div style={{ display: 'flex', minHeight: '100vh', background: 'var(--bg)' }}>
+      <Sidebar me={me ? { nickname: me.nickname } : null} />
+      <div className="main">
+        <TopBar me={me} />
+        <Toasts />
+        {me && <UsageAssistant />}
+        <div className="content">
+          <Outlet />
+        </div>
+      </div>
+    </div>
   );
 }
 

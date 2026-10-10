@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useApp } from '../../store';
-import { Modal, yuan, EXPENSE_CATS, EXPENSE_CAT_ICON } from '../../components/ui';
+import { Modal, yuan, Avatar, EXPENSE_CATS, EXPENSE_CAT_ICON } from '../../components/ui';
 import { createExpense, updateExpense, deleteExpense } from '../../rdb/ops';
 import type { TabCtx } from './tabCtx';
 import type { Expense } from '../../types';
@@ -30,109 +30,145 @@ export default function BudgetTab({ bundle, reload, canEdit }: TabCtx) {
     } catch (err) { toast(err instanceof Error ? err.message : '删除失败', true); }
   };
 
+  /** 分类条形色轮换（晴空航线：住宿绿/餐饮黄/门票蓝/交通青/其他灰） */
+  const catColor = (c: string): string => ({
+    '住宿': 'var(--green)',
+    '餐饮': 'var(--yel400)',
+    '门票': 'var(--sky500)',
+    '交通': 'var(--teal)',
+  } as Record<string, string>)[c] || 'var(--ink-faint)';
+
   return (
-    <div>
-      <div className="row-ops" style={{ marginBottom: 14 }}>
-        <h2 className="section-title" style={{ margin: 0, flex: 1 }}>旅行钱包</h2>
-        {canEdit && <button className="btn sm primary" onClick={() => setAdding(true)}>＋ 记一笔</button>}
-      </div>
-
-      <div className="budget-cards">
-        <div className="card budget-card">
-          <div className="lab">团队总花费</div>
-          <div className="val">{yuan(budget.total)}</div>
-          <div className="muted">共 {expenses.length} 笔 · 人均 {yuan(avg)}</div>
-        </div>
-        <div className="card budget-card">
-          <div className="lab">我垫付的</div>
-          <div className="val">{yuan(myPaid)}</div>
-          <div className="muted">我应摊 {yuan(myShare)}</div>
-        </div>
-        <div className="card budget-card">
-          <div className="lab">{myBalance >= 0 ? '待收回' : '待支付'}</div>
-          <div className="val orange">{yuan(Math.abs(myBalance))}</div>
-          <div className="muted">{myBalance >= 0 ? '大家应还给你' : '你应转给垫付的伙伴'}</div>
-        </div>
-        {trip.budget > 0 && (
-          <div className="card budget-card">
-            <div className="lab">预算使用</div>
-            <div className="val">{budgetPct}%</div>
-            <div className="muted">总预算 {yuan(trip.budget)}</div>
-            <div className="cat-bar" style={{ marginTop: 6 }}><div style={{ width: `${budgetPct}%`, background: budgetPct > 90 ? 'var(--red)' : 'var(--green)' }} /></div>
+    <div className="budget-web">
+      {/* 左列：stat 三卡 + 账单明细表格 */}
+      <div className="bw-left">
+        <div className="budget-cards">
+          <div className="card stat-card">
+            <div className="lab">行程支出</div>
+            <div className="val">{yuan(budget.total)}</div>
+            <div className="sub">{expenses.length} 笔 · {members.length} 人</div>
           </div>
-        )}
+          <div className="card stat-card">
+            <div className="lab">人均消耗</div>
+            <div className="val">{yuan(Math.round(avg))}</div>
+            <div className="sub">按 {members.length} 人均摊</div>
+          </div>
+          <div className="card stat-card">
+            <div className="lab">团队预算 {trip.budget > 0 ? yuan(trip.budget) : '未设置'}</div>
+            <div className="val">{trip.budget > 0 ? `已用 ${budgetPct}%` : '—'}</div>
+            {trip.budget > 0 && (
+              <>
+                <div className="cat-bar" style={{ marginTop: 8 }}>
+                  <div style={{ width: `${budgetPct}%`, background: budgetPct > 90 ? 'var(--red)' : 'linear-gradient(90deg, var(--yel400), var(--yel500))' }} />
+                </div>
+                <div className="sub">剩余 {yuan(Math.max(0, trip.budget - budget.total))}{budgetPct <= 70 ? ' · 余量充足' : budgetPct <= 90 ? ' · 留意开销' : ' · 已接近上限'}</div>
+              </>
+            )}
+          </div>
+        </div>
+
+        <div className="card" style={{ padding: '18px 20px' }}>
+          <div className="sec-h">
+            <span className="t">账单明细</span>
+            <span className="more" onClick={() => setAdding(true)} style={{ cursor: canEdit ? 'pointer' : 'default' }}>按天分组 · 共 {expenses.length} 笔</span>
+          </div>
+          {expenses.length === 0 ? (
+            <div className="empty"><span className="big">💰</span>还没有记账<br />机票、住宿、门票……记下来一起算</div>
+          ) : (
+            <table className="tbl">
+              <thead>
+                <tr><th>分类</th><th>项目</th><th>垫付人</th><th>分摊</th><th>日期</th><th style={{ textAlign: 'right' }}>金额</th>{canEdit ? <th aria-label="操作" /> : null}</tr>
+              </thead>
+              <tbody>
+                {expenses.map(e => {
+                  const payer = byMember.get(e.payerMemberId);
+                  return (
+                    <tr key={e.id}>
+                      <td><span className="tag blue">{e.category}</span></td>
+                      <td style={{ fontWeight: 600 }}>{e.title}</td>
+                      <td>{payer?.displayName || '未知'}</td>
+                      <td className="muted">{e.splitMode === 'payer' ? '自付' : `${e.participants.length || members.length} 人均摊`}</td>
+                      <td className="muted">{e.date.slice(5)}</td>
+                      <td className="num" style={{ textAlign: 'right' }}>{yuan(e.amount)}</td>
+                      {canEdit && (
+                        <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
+                          <button className="btn sm ghost" onClick={() => setEditing(e)}>改</button>{' '}
+                          <button className="btn sm ghost" style={{ color: 'var(--red)' }} onClick={() => del(e)}>删</button>
+                        </td>
+                      )}
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          )}
+        </div>
       </div>
 
-      {/* 分类统计 */}
-      {budget.byCategory.length > 0 && (
-        <>
-          <h3 className="section-title">花在了哪里</h3>
-          <div className="card" style={{ padding: '14px 18px', marginBottom: 18 }}>
+      {/* 右列：分类统计条形 + 智能结算 */}
+      <div className="bw-right">
+        {budget.byCategory.length > 0 && (
+          <div className="card" style={{ padding: '18px 20px', marginBottom: 16 }}>
+            <div className="sec-h"><span className="t">分类统计</span></div>
             {budget.byCategory.map(c => (
-              <div key={c.category} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '5px 0', fontSize: 13.5 }}>
-                <span style={{ width: 22 }}>{EXPENSE_CAT_ICON[c.category] || '📌'}</span>
-                <span style={{ width: 44 }}>{c.category}</span>
-                <div className="cat-bar" style={{ flex: 1 }}>
-                  <div style={{ width: `${(c.amount / budget.total) * 100}%`, background: 'var(--green)' }} />
-                </div>
-                <b style={{ width: 90, textAlign: 'right' }}>{yuan(c.amount)}</b>
+              <div key={c.category} className="cat-row">
+                <span className="n">{c.category}</span>
+                <div className="track"><div className="fill" style={{ width: `${Math.max(3, (c.amount / budget.total) * 100)}%`, background: catColor(c.category) }} /></div>
+                <span className="v">{yuan(c.amount)} · {Math.round((c.amount / budget.total) * 100)}%</span>
               </div>
             ))}
           </div>
-        </>
-      )}
+        )}
 
-      {/* 结算建议 */}
-      {budget.settlements.length > 0 && (
-        <>
-          <h3 className="section-title">🧾 结算方案（转账最少）</h3>
-          <div className="card settle-box" style={{ marginBottom: 18 }}>
+        {budget.settlements.length > 0 && (
+          <div className="card" style={{ padding: '18px 20px' }}>
+            <div className="sec-h">
+              <span className="t">智能结算</span>
+              <span className="tag green">转账最少 · {budget.settlements.length} 笔</span>
+            </div>
             {budget.settlements.map((s, i) => {
               const from = byMember.get(s.fromMemberId);
               const to = byMember.get(s.toMemberId);
               return (
-                <div key={i} className="settle-row">
-                  <b style={{ color: 'var(--red)' }}>{from?.displayName}</b>
-                  <span>→ 转账 →</span>
-                  <b style={{ color: 'var(--green-deep)' }}>{to?.displayName}</b>
-                  <span style={{ marginLeft: 'auto', fontWeight: 500, color: 'var(--orange)' }}>{yuan(s.amount)}</span>
+                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 0' }}>
+                  <Avatar name={from?.displayName || '?'} color={from?.avatarColor || '#93A5B8'} size="sm" />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 13, fontWeight: 700 }}>{from?.displayName}</div>
+                    <div className="muted" style={{ fontSize: 11 }}>应付</div>
+                  </div>
+                  <i className="ic ic-transfer" style={{ width: 18, height: 18, color: 'var(--sky400)' }} />
+                  <div style={{ flex: 1, minWidth: 0, textAlign: 'right' }}>
+                    <div style={{ fontSize: 13, fontWeight: 700 }}>{to?.displayName}</div>
+                    <div className="muted" style={{ fontSize: 11 }}>收款</div>
+                  </div>
+                  <Avatar name={to?.displayName || '?'} color={to?.avatarColor || '#93A5B8'} size="sm" />
+                  <b style={{ width: 74, textAlign: 'right', color: 'var(--sky700)', fontVariantNumeric: 'tabular-nums' }}>{yuan(s.amount)}</b>
                 </div>
               );
             })}
-            <div className="muted" style={{ padding: '7px 16px' }}>按此方案转账后全员两清，谁也不多垫一分钱。</div>
+            <div className="muted" style={{ marginTop: 8, fontSize: 12 }}>按此方案转账后全员两清，谁也不多垫一分钱。</div>
           </div>
-        </>
-      )}
+        )}
 
-      {/* 账目列表（票券风） */}
-      <h3 className="section-title">全部账目</h3>
-      {expenses.length === 0 ? (
-        <div className="card empty"><span className="big">💰</span>还没有记账<br />机票、住宿、门票……记下来一起算</div>
-      ) : (
-        <div className="ticket">
-          {expenses.map(e => {
-            const payer = byMember.get(e.payerMemberId);
-            return (
-              <div key={e.id} className="ticket-row">
-                <span style={{ fontSize: 20 }}>{EXPENSE_CAT_ICON[e.category] || '📌'}</span>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontWeight: 500, fontSize: 14.5 }}>{e.title}</div>
-                  <div className="muted" style={{ marginTop: 2 }}>
-                    {e.date} · {payer?.displayName || '未知'} 垫付 · {e.splitMode === 'payer' ? '自付' : `全体均摊（${e.participants.length || members.length} 人）`}
-                  </div>
-                </div>
-                <b style={{ fontSize: 16, color: 'var(--orange)' }}>{yuan(e.amount)}</b>
-                {canEdit && (
-                  <div className="act-ops">
-                    <button className="btn sm ghost" onClick={() => setEditing(e)}>改</button>
-                    <button className="btn sm ghost" style={{ color: 'var(--red)' }} onClick={() => del(e)}>删</button>
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      )}
+        {trip.budget > 0 && (
+          <div className="card" style={{ padding: '18px 20px', marginTop: 16 }}>
+            <div className="sec-h"><span className="t">我的账本</span></div>
+            <div className="cat-row">
+              <span className="n">已垫付</span>
+              <div className="track"><div className="fill" style={{ width: `${myShare > 0 ? Math.min(100, (myPaid / myShare) * 100) : 0}%`, background: 'var(--sky500)' }} /></div>
+              <span className="v">{yuan(myPaid)}</span>
+            </div>
+            <div className="cat-row">
+              <span className="n">应摊</span>
+              <div className="track"><div className="fill" style={{ width: myPaid > 0 ? `${Math.min(100, (myShare / myPaid) * 100)}%` : '0%', background: 'var(--yel400)' }} /></div>
+              <span className="v">{yuan(myShare)}</span>
+            </div>
+            <div className="muted" style={{ marginTop: 6 }}>
+              {myBalance >= 0 ? `待收回 ${yuan(myBalance)} · 大家应还给你` : `待支付 ${yuan(Math.abs(myBalance))} · 转给垫付的伙伴`}
+            </div>
+          </div>
+        )}
+      </div>
 
       {(adding || editing) && (
         <ExpenseModal

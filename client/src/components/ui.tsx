@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useApp } from '../store';
 import { useTheme } from '../theme';
 
@@ -57,25 +57,39 @@ export function ThemeToggle() {
   );
 }
 
-/* ---------- 顶栏 ---------- */
+/* ---------- 工作台顶栏（晴空航线桌面层）：旅程切换 + 搜索 + 头像 ---------- */
 export function TopBar({ me }: { me: { nickname: string; avatarColor: string } | null }) {
-  const { logout } = useApp();
+  const nav = useNavigate();
+  const loc = useLocation();
+  const inTrip = loc.pathname.startsWith('/trip/');
+  let tripTitle = '';
+  let tripId = '';
+  try {
+    tripTitle = localStorage.getItem('gotrip_last_trip_title') || '';
+    tripId = localStorage.getItem('gotrip_last_trip') || '';
+  } catch { /* ignore */ }
+  const switchTo = inTrip ? loc.pathname + loc.search : (tripId ? `/trip/${tripId}` : '/');
   return (
     <header className="topbar">
-      <div className="topbar-inner">
-        <Link to="/" className="logo">
-          <span className="mark">🧭</span>出发吧<small>GOTRIP</small>
-        </Link>
-        <div style={{ flex: 1 }} />
-        <ThemeToggle />
-        <Link to="/flywhere" className="btn sm ghost" title="按票价探索目的地">飞哪儿</Link>
-        {me && (
-          <>
-            <Link className="btn sm" to="/settings">我的</Link>
-            <button className="btn sm ghost" onClick={() => logout()}>退出</button>
-          </>
-        )}
+      <div className="trip-switch" onClick={() => nav(switchTo)} title="当前旅程工作台">
+        <i className="ic ic-flag" />
+        <span className="t">{tripTitle || '选择旅程'}</span>
+        <span className="live" />
       </div>
+      <div className="spacer" />
+      <div className="input search" style={{ height: 38 }}>
+        <i className="ic ic-search" />
+        <span>搜索地点 / 账单 / 日志…</span>
+      </div>
+      <ThemeToggle />
+      {me && (
+        <Link
+          to="/settings"
+          className="avatar"
+          title={me.nickname + ' · 设置'}
+          style={{ background: me.avatarColor || 'linear-gradient(135deg, var(--sky400), var(--sky600))', textDecoration: 'none' }}
+        >{me.nickname.slice(0, 1)}</Link>
+      )}
     </header>
   );
 }

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { listTrips } from '../rdb/trip';
 import { tempUrls } from '../rdb/storage';
 import { seedDemoTrip } from '../rdb/seed';
+import { rememberTrip } from '../components/Sidebar';
 import type { TripCardInfo } from '../types';
 import { useApp } from '../store';
 import { Avatar, Modal, countdownText, yuan } from '../components/ui';
@@ -91,14 +92,14 @@ export default function DashboardPage() {
         </div>
       ) : (
         <div className="trip-grid">
-          {shown.map(t => <TripCard key={t.id} t={t} onClick={() => nav(`/trip/${t.id}`)} onEdit={() => setEditing(t)} />)}
+          {shown.map(t => <TripCard key={t.id} t={t} onClick={() => { rememberTrip(t.id, t.title); nav(`/trip/${t.id}`); }} onEdit={() => setEditing(t)} />)}
         </div>
       )}
 
       {creating && (
         <CreateTripModal
           onClose={() => setCreating(false)}
-          onCreated={(id) => { setCreating(false); nav(`/trip/${id}`); }}
+          onCreated={(id) => { setCreating(false); rememberTrip(id); nav(`/trip/${id}`); }}
         />
       )}
       {editing && (

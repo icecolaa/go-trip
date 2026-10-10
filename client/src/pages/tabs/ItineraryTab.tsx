@@ -256,6 +256,10 @@ export default function ItineraryTab({ bundle, reload, weather, canEdit, goTab }
                   onDragOver={e => e.preventDefault()}
                   onDrop={e => { e.stopPropagation(); onDrop(day.id, i); }}>
                   {canEdit && <span className="drag-handle" title="拖拽排序">⋮⋮</span>}
+                  <span className="tl-rail" aria-hidden>
+                    <i className={`tl-dot ${a.kind === 'food' ? 'meal' : ''}`} />
+                    <i className="tl-bar" />
+                  </span>
                   <span className="act-time">
                     {a.time || '待定'}
                     {a.endTime && <span className="act-end">–{a.endTime}</span>}
