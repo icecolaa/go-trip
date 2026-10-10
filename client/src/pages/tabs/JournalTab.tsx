@@ -200,7 +200,7 @@ export default function JournalTab({ bundle, reload, canEdit }: TabCtx) {
                 {mine && canEdit && (
                   <>
                     <button className="btn sm ghost" onClick={() => setEditing({ id: j.id, content: j.content, mood: j.mood, images: j.images || [] })}>编辑</button>
-                    <button className="btn sm ghost" style={{ color: 'var(--red)' }} onClick={() => del(j.id)}>删除</button>
+                    <button className="btn sm danger" onClick={() => del(j.id)}>删除</button>
                   </>
                 )}
               </div>

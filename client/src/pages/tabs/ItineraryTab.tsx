@@ -291,7 +291,7 @@ export default function ItineraryTab({ bundle, reload, weather, canEdit, goTab }
                     {canEdit && (
                       <div className="act-ops">
                         <button className="btn sm ghost" onClick={() => setEditing(a)}>修改</button>
-                        <button className="btn sm ghost" style={{ color: 'var(--red)' }} onClick={() => removeAct(a)}>删除</button>
+                        <button className="btn sm danger" onClick={() => removeAct(a)}>删除</button>
                       </div>
                     )}
                   </div>

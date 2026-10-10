@@ -96,7 +96,7 @@ export default function BudgetTab({ bundle, reload, canEdit }: TabCtx) {
                       {canEdit && (
                         <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
                           <button className="btn sm ghost" onClick={() => setEditing(e)}>改</button>{' '}
-                          <button className="btn sm ghost" style={{ color: 'var(--red)' }} onClick={() => del(e)}>删</button>
+                          <button className="btn sm danger" onClick={() => del(e)}>删</button>
                         </td>
                       )}
                     </tr>

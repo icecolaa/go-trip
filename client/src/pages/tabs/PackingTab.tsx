@@ -147,7 +147,7 @@ export default function PackingTab({ bundle, reload, reloadWeather, weather, can
                         <span className="tag gray assignee">{assignee.displayName}</span>
                       ) : null}
                       {canEdit && (
-                        <button className="btn sm ghost" style={{ color: 'var(--red)', padding: '2px 6px' }} onClick={() => remove(it.id)}>×</button>
+                        <button className="btn mini danger" onClick={() => remove(it.id)}>×</button>
                       )}
                     </div>
                   );

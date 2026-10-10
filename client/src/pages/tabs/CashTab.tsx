@@ -91,7 +91,7 @@ export function CashSection({ bundle, reload, canEdit }: TabCtx) {
                 </div>
               )}
               <div className="ops">
-                {canEdit && <button className="btn sm ghost" style={{ color: 'var(--red)' }} onClick={() => remove(c.id)}>删除</button>}
+                {canEdit && <button className="btn sm danger" onClick={() => remove(c.id)}>删除</button>}
               </div>
             </div>
           ))}
