@@ -1726,3 +1726,53 @@ img, svg, video, canvas { max-width: 100%; }
   .day-head { background: var(--card); border-radius: var(--r-md); }
   .day-weather { background: var(--sky50); border-radius: 999px; }
 }
+
+/* ============================================================
+   Review 修复（2026-10-10 晚）
+   ============================================================ */
+/* R2: tl-rail 只在桌面时间轴形态渲染，移动端不占位 */
+.tl-rail { display: none; }
+
+/* R6: 侧边栏桌面跟随视口（body 滚动时导航常驻） */
+@media (min-width: 901px) {
+  .sb { position: sticky; top: 0; height: 100vh; overflow-y: auto; }
+  .topbar { position: sticky; }
+}
+
+/* R1: 移动端壳——≤900px 隐藏侧边栏，行程内恢复 trip-nav，顶栏收敛 */
+@media (max-width: 900px) {
+  .sb { display: none; }
+  .topbar { padding: 0 12px; gap: 8px; }
+  .topbar .search { display: none; }
+  .topbar .fw-top-link { display: inline-flex; }
+  .trip-switch { max-width: 46vw; }
+  .trip-switch .t { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .content { padding: 12px 12px 48px; }
+  /* 行程内恢复原横滚 tab 导航（侧边栏在移动端的替代物） */
+  .content .trip-nav {
+    display: flex;
+    position: sticky; top: 48px; z-index: 40;
+    flex-direction: row; align-items: center; gap: 6px;
+    overflow-x: auto; -webkit-overflow-scrolling: touch;
+    padding: 8px; margin: 0 0 14px; scrollbar-width: none;
+    background: var(--bg); border-bottom: 1px solid var(--line);
+    border-radius: var(--r-md);
+  }
+  .content .trip-nav::-webkit-scrollbar { display: none; }
+  .content .trip-layout { display: block; }
+}
+/* 飞哪儿入口：桌面走侧边栏，移动端顶栏显示 */
+.topbar .fw-top-link { display: none; }
+
+/* ---------- R10 超长内容防护 ---------- */
+/* hero 标题两行截断（小程序 1.5.x 同规） */
+.cover-title {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+}
+/* 顶栏 trip-switch 桌面也截断（防止长行程名挤变形顶栏） */
+.topbar .trip-switch { max-width: 340px; min-width: 0; }
+.topbar .trip-switch .t { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

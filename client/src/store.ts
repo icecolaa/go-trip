@@ -53,6 +53,11 @@ export const useApp = create<AppState>((set, get) => ({
 
   logout: async () => {
     await authLogout();
+    // 清最近行程记忆：防止跨账号残留（A 账号行程名泄漏到 B 账号顶栏）
+    try {
+      localStorage.removeItem('gotrip_last_trip');
+      localStorage.removeItem('gotrip_last_trip_title');
+    } catch { /* ignore */ }
     set({ me: null });
   },
 

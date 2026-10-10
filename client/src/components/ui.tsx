@@ -81,6 +81,7 @@ export function TopBar({ me }: { me: { nickname: string; avatarColor: string } |
         <i className="ic ic-search" />
         <span>搜索地点 / 账单 / 日志…</span>
       </div>
+      <Link to="/flywhere" className="btn sm ghost fw-top-link" title="按票价探索目的地">飞哪儿</Link>
       <ThemeToggle />
       {me && (
         <Link

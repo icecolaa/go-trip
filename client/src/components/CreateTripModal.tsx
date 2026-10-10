@@ -70,7 +70,7 @@ function dataUrlToFile(dataUrl: string, name: string): File {
 export default function CreateTripModal({ trip, onClose, onCreated, onSaved }: {
   trip?: TripCardInfo;
   onClose: () => void;
-  onCreated?: (id: string) => void;
+  onCreated?: (id: string, title?: string) => void;
   onSaved?: () => void;
 }) {
   const editing = Boolean(trip);
@@ -147,7 +147,7 @@ export default function CreateTripModal({ trip, onClose, onCreated, onSaved }: {
       } else {
         toast('旅程已创建');
       }
-      onCreated?.(id);
+      onCreated?.(id, title.trim());
     } catch (e: any) {
       toast(e.message || '创建失败', true);
       setBusy('');

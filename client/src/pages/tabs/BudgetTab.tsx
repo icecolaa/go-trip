@@ -70,7 +70,10 @@ export default function BudgetTab({ bundle, reload, canEdit }: TabCtx) {
         <div className="card" style={{ padding: '18px 20px' }}>
           <div className="sec-h">
             <span className="t">账单明细</span>
-            <span className="more" onClick={() => setAdding(true)} style={{ cursor: canEdit ? 'pointer' : 'default' }}>按天分组 · 共 {expenses.length} 笔</span>
+            <span style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <span className="more">共 {expenses.length} 笔</span>
+              {canEdit && <button className="btn sm primary" onClick={() => setAdding(true)}>＋ 记一笔</button>}
+            </span>
           </div>
           {expenses.length === 0 ? (
             <div className="empty"><span className="big">💰</span>还没有记账<br />机票、住宿、门票……记下来一起算</div>

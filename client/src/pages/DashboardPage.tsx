@@ -99,7 +99,7 @@ export default function DashboardPage() {
       {creating && (
         <CreateTripModal
           onClose={() => setCreating(false)}
-          onCreated={(id) => { setCreating(false); rememberTrip(id); nav(`/trip/${id}`); }}
+          onCreated={(id, title) => { setCreating(false); rememberTrip(id, title); nav(`/trip/${id}`); }}
         />
       )}
       {editing && (
