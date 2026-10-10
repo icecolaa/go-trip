@@ -61,6 +61,13 @@
   --r-lg: 20px;
   --r-md: 14px;
   --r-sm: 10px;
+  /* 动效令牌（AUDIT.md 标准值）：入场用强 ease-out，抽屉类用 iOS 曲线 */
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+  --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
+  --dur-fast: 150ms;
+  --dur-ui: 200ms;
+  --dur-panel: 240ms;
   /* 兼容旧令牌 */
   --radius: 14px;
   --radius-ui: 14px;
@@ -513,12 +520,12 @@ textarea.input { resize: vertical; min-height: 72px; line-height: 1.6; }
 .modal-mask {
   position: fixed; inset: 0; background: rgba(0, 0, 0, .55); z-index: 100;
   display: flex; align-items: center; justify-content: center; padding: 20px;
-  animation: fadeIn .15s ease;
+  animation: fadeIn .15s var(--ease-out);
 }
 .modal {
   background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow-lg);
   width: 100%; max-width: 460px; max-height: 88dvh; overflow: auto;
-  padding: 22px 24px; animation: popIn .18s ease;
+  padding: 22px 24px; animation: popIn var(--dur-ui) var(--ease-out);
 }
 .modal h3 { margin: 0 0 16px; font-size: 20px; color: var(--ink); }
 .modal .modal-ops { display: flex; justify-content: flex-end; gap: 10px; margin-top: 18px; }
@@ -529,7 +536,11 @@ textarea.input { resize: vertical; min-height: 72px; line-height: 1.6; }
 .toast-wrap { position: fixed; top: 18px; left: 50%; transform: translateX(-50%); z-index: 200; display: flex; flex-direction: column; gap: 8px; align-items: center; }
 .toast {
   background: var(--ink); color: var(--bg); font-size: 13.5px; padding: 9px 18px; border-radius: var(--radius-ctl);
-  animation: popIn .18s ease; max-width: 90vw;
+  max-width: 90vw;
+  transition: opacity .18s var(--ease-out), transform .18s var(--ease-out);
+}
+@starting-style {
+  .toast { opacity: 0; transform: translateY(-6px) scale(.97); }
 }
 .toast.err { outline: 2px solid var(--signal); outline-offset: 2px; }
 
@@ -594,7 +605,7 @@ textarea.input { resize: vertical; min-height: 72px; line-height: 1.6; }
   background: var(--card);
   box-shadow: var(--shadow-lg);
   display: flex; flex-direction: column;
-  animation: tmIn .22s ease;
+  animation: tmIn var(--dur-panel) var(--ease-drawer);
   border-left: 1px solid var(--line); border-right: 1px solid var(--line);
 }
 @keyframes tmIn { from { transform: translateY(26px); opacity: 0; } }
@@ -756,8 +767,7 @@ textarea.input { resize: vertical; min-height: 72px; line-height: 1.6; }
    Editorial 排版润色
    ============================================================ */
 .section-title { position: relative; } /* Apple：标题无装饰眉条 */
-.tab-pane { animation: riseIn .28s ease; }
-@keyframes riseIn { from { opacity: 0; transform: translateY(10px); } }
+.tab-pane { animation: fadeIn .15s var(--ease-out); }
 .trip-card .trip-cover::after { content: none; }
 
 /* ============================================================
@@ -789,14 +799,15 @@ textarea.input { resize: vertical; min-height: 72px; line-height: 1.6; }
 .ua-fab-x:hover { opacity: .85; }
 .ua-restore {
   position: fixed; right: 0; top: 58%; z-index: 90;
-  width: 26px; height: 50px; padding: 0;
+  width: 32px; height: 50px; padding: 0;
   border: none; border-radius: var(--radius-ctl) 0 0 var(--radius-ctl);
   background: var(--ink); color: var(--bg);
   font-size: 13px; cursor: pointer;
   opacity: .5; box-shadow: none;
-  transition: opacity .15s ease, width .15s ease;
+  transform: translateX(6px); /* 常态藏 6px，视觉=旧 26px 宽；hover 探出等效用 transform */
+  transition: opacity .15s ease, transform .15s ease;
 }
-.ua-restore:hover { opacity: 1; width: 32px; }
+.ua-restore:hover { opacity: 1; transform: translateX(0); }
 .ua-fab-label { font-family: var(--sans); letter-spacing: .06em; }
 
 .ua-panel {
@@ -809,7 +820,7 @@ textarea.input { resize: vertical; min-height: 72px; line-height: 1.6; }
   border-radius: var(--radius);
   box-shadow: var(--shadow-lg);
   overflow: hidden;
-  animation: uaIn .2s ease;
+  animation: uaIn var(--dur-ui) var(--ease-out);
 }
 @keyframes uaIn { from { opacity: 0; transform: translateY(14px) scale(.98); } }
 
@@ -1349,11 +1360,15 @@ img, svg, video, canvas { max-width: 100%; }
 .place-item .ops { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 2px; }
 
 /* ---------- 地图地点卡片（景点/餐厅联动高亮目标） ---------- */
-.map-place-card { scroll-margin-top: 96px; }
-.map-place-card.flash { animation: placeFlash 1.6s ease; }
-@keyframes placeFlash {
-  0%, 100% { box-shadow: none; }
-  15%, 65% { box-shadow: 0 0 0 3px var(--accent); }
+.map-place-card { scroll-margin-top: 96px; position: relative; }
+.map-place-card.flash::after {
+  content: ''; position: absolute; inset: 0; border-radius: inherit;
+  box-shadow: 0 0 0 3px var(--accent); opacity: 0; pointer-events: none;
+  animation: placeRing 1.6s var(--ease-out);
+}
+@keyframes placeRing {
+  0%, 100% { opacity: 0; }
+  15%, 65% { opacity: 1; }
 }
 
 /* ---------- 行程日卡 ---------- */
@@ -1787,3 +1802,54 @@ img, svg, video, canvas { max-width: 100%; }
 .trip-card:hover .trip-del-btn { opacity: 1; }
 .trip-del-btn:hover { border-color: var(--red); }
 @media (hover: none) { .trip-del-btn { opacity: .9; } }
+
+/* ============================================================
+   动效质感批（plans/001~007，基线 2e5c5e5）
+   ============================================================ */
+
+/* ---------- 007-A 按压反馈：缩放替代下移 ---------- */
+.btn:active:not(:disabled) { transform: scale(0.97); }
+.btn {
+  transition: background-color .15s ease, border-color .15s ease, color .15s ease, transform 160ms var(--ease-out);
+}
+
+/* ---------- 007-B 工作台卡片入场 stagger（仅挂载，筛选不重放） ---------- */
+@keyframes cardIn { from { opacity: 0; transform: translateY(8px); } }
+.trip-grid .trip-card { animation: cardIn var(--dur-ui) var(--ease-out) backwards; }
+.trip-grid .trip-card:nth-child(2) { animation-delay: 40ms; }
+.trip-grid .trip-card:nth-child(3) { animation-delay: 80ms; }
+.trip-grid .trip-card:nth-child(n+4) { animation-delay: 120ms; }
+
+/* ---------- 007-C 主题切换平滑窗口（theme.ts 挂类 240ms 后摘除） ---------- */
+html.theme-anim, html.theme-anim * {
+  transition: background-color 200ms ease, color 200ms ease, border-color 200ms ease !important;
+}
+
+/* ---------- 007-E trip-switch 呼吸点（opacity ring，合成路径） ---------- */
+.trip-switch .live { position: relative; }
+.trip-switch .live::after {
+  content: ''; position: absolute; inset: -3px; border-radius: 50%;
+  background: var(--green); opacity: 0; pointer-events: none;
+  animation: livePulse 2.4s var(--ease-in-out) infinite;
+}
+@keyframes livePulse { 50% { opacity: .35; } }
+
+/* ---------- 007-F 卡片 hover：蓝边+浅投影同步浮起 ---------- */
+.trip-card { transition: border-color .2s var(--ease-out), box-shadow .2s var(--ease-out); }
+.trip-card:hover { border-color: var(--sky300); box-shadow: var(--sh-card); }
+
+/* ---------- 003 无障碍：prefers-reduced-motion（减弱而非清零） ---------- */
+@media (prefers-reduced-motion: reduce) {
+  /* 入场/弹层类：瞬时呈现（保留出现本身，去掉位移与时长） */
+  .modal-mask, .modal, .toast, .tab-pane, .tm-overlay, .tm-panel, .ua-panel, .journal-lightbox, .trip-grid .trip-card {
+    animation-duration: 0.01ms !important;
+  }
+  /* 主题过渡窗口同步失效 */
+  html.theme-anim, html.theme-anim * { transition-duration: 0.01ms !important; }
+  /* 纯装饰无限动画：停止（骨架微光/AI 呼吸/高亮 ring/呼吸点） */
+  .skel::after, .ai-progress, .map-place-card.flash::after, .trip-switch .live::after {
+    animation: none !important;
+  }
+  /* 加载指示（.spin 旋转、.ua-dots 闪烁）保留——状态必需 */
+  :root { --dur-fast: 0.01ms; --dur-ui: 0.01ms; --dur-panel: 0.01ms; }
+}

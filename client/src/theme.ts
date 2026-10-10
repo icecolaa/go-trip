@@ -28,10 +28,13 @@ function systemPrefersDark(): boolean {
 /** 把主题写到 <html data-theme>，并同步浏览器 UI 色与 color-scheme */
 export function applyTheme(resolved: 'light' | 'dark'): void {
   const root = document.documentElement;
+  // 一次性过渡窗口：色面 200ms 平滑切换，结束即摘避免常驻 * 过渡
+  root.classList.add('theme-anim');
   root.setAttribute('data-theme', resolved);
   root.style.colorScheme = resolved;
+  window.setTimeout(() => root.classList.remove('theme-anim'), 240);
   const meta = document.querySelector('meta[name="theme-color"]');
-  if (meta) meta.setAttribute('content', resolved === 'dark' ? '#000000' : '#f5f5f7');
+  if (meta) meta.setAttribute('content', resolved === 'dark' ? '#0D1626' : '#F3F8FC');
 }
 
 export const useTheme = create<ThemeState>((set, get) => ({

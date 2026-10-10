@@ -54,6 +54,13 @@ export default function DashboardPage() {
   /** 删除行程：级联清 11 张子表（服务端 deleteTrip），清最近行程记忆后刷新列表 */
   const removeTrip = async (t: TripCardInfo) => {
     if (!window.confirm(`删除行程「${t.title}」？\n行程、安排、账目、清单、日志等全部数据将一并删除，不可恢复。`)) return;
+    const el = document.querySelector<HTMLElement>(`[data-trip-id="${t.id}"]`);
+    if (el) {
+      el.style.transition = 'opacity 160ms var(--ease-out), transform 160ms var(--ease-out)';
+      el.style.opacity = '0';
+      el.style.transform = 'scale(0.97)';
+      await new Promise(r => setTimeout(r, 160));
+    }
     try {
       await deleteTrip(t.id);
       try {
@@ -147,7 +154,7 @@ function TripCard({ t, onClick, onEdit, onDelete }: { t: TripCardInfo; onClick: 
   }, [t.coverImage]);
   const showImg = !!imgSrc && !imgFailed;
   return (
-    <div className="card trip-card" onClick={onClick}>
+    <div className="card trip-card" data-trip-id={t.id} onClick={onClick}>
       {/* 有封面图时用图片底，否则退回封面色+图标（DESIGN.md：不做彩色整块底） */}
       <div className="trip-cover" style={{ ['--cover-accent' as string]: t.coverColor }}>
         {showImg && <img className="trip-cover-img" src={imgSrc} alt="" onError={() => setImgFailed(true)} loading="lazy" />}
