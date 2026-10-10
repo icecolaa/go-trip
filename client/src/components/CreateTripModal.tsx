@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { createTrip, updateTrip, ensureProfile } from '../rdb/trip';
+import { createTrip, updateTrip } from '../rdb/trip';
 import type { TripCardInfo } from '../types';
 import { applyGuideToTrip } from '../rdb/apply-guide';
 import { uploadImage, tempUrls } from '../rdb/storage';
@@ -117,7 +117,8 @@ export default function CreateTripModal({ trip, onClose, onCreated, onSaved }: {
     if (endDate < startDate) { toast('结束日期不能早于开始日期', true); return; }
     setBusy('creating');
     try {
-      const me = await ensureProfile();
+      const me = useApp.getState().me;
+      const ownerName = me?.nickname || '旅行者';
       let coverFileId: string | null = null;
       if (coverImage) {
         setBusy('parsing');
@@ -133,12 +134,12 @@ export default function CreateTripModal({ trip, onClose, onCreated, onSaved }: {
         coverEmoji: emoji,
         coverColor: color,
         coverImage: coverFileId,
-      }, me.nickname);
+      }, ownerName);
       if (guideText.trim()) {
         setBusy('parsing');
         try {
           const guide = await proxy.post<any>(`/api/trips/${id}/ai/parse-guide`, { text: guideText });
-          const r = await applyGuideToTrip(id, guide, { tripStartDate: startDate }, me.nickname);
+          const r = await applyGuideToTrip(id, guide, { tripStartDate: startDate }, ownerName);
           toast(`创建成功，${r.activityCount} 项安排已写入（${guide.source === 'ai' ? 'AI 解析' : '智能模板解析'}）`);
         } catch {
           toast('创建成功，但攻略解析失败，可稍后在行程页重试', true);

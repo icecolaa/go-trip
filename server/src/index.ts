@@ -3,6 +3,9 @@ import { readFileSync, existsSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { handleApi } from './routes.ts';
+import { handleWebAuth } from './webauth.ts';
+import { handleWebData } from './webdata.ts';
+import { ensureSchema, dbDriver } from './db.ts';
 import { json, ApiError } from './util.ts';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -70,13 +73,41 @@ function serveStatic(req: http.IncomingMessage, res: http.ServerResponse): boole
   return true;
 }
 
+/* ---------- 数据库就绪：后台建表（平台 PG 可能晚于应用就绪），/health 反映状态 ---------- */
+let dbReady = false;
+let dbError = '';
+void (async () => {
+  for (let i = 0; i < 30 && !dbReady; i++) {
+    try {
+      await ensureSchema();
+      dbReady = true;
+      console.log(`  🗄️ 数据库就绪（${dbDriver()}）`);
+    } catch (e: any) {
+      dbError = e?.message || String(e);
+      console.error(`  ⏳ 数据库暂不可用（第 ${i + 1} 次）：${dbError}`);
+      await new Promise((r) => setTimeout(r, 3000));
+    }
+  }
+})();
+
 const server = http.createServer(async (req, res) => {
   if (applyCors(req, res)) return;
   const url = req.url || '/';
   try {
     if (url === '/health' || url === '/healthz') {
-      // 无状态代理：恒 200（平台上按状态码判实例健康）
-      json(res, 200, { ok: true, db: 'none', mode: 'proxy' });
+      json(res, 200, dbReady
+        ? { ok: true, db: dbDriver(), mode: 'fullstack' }
+        : { ok: false, db: 'starting', lastError: dbError });
+      return;
+    }
+    if (url.startsWith('/api/auth/')) {
+      const handled = await handleWebAuth(req, res);
+      if (!handled) json(res, 404, { error: '接口不存在' });
+      return;
+    }
+    if (url.startsWith('/api/data/')) {
+      if (!dbReady) { json(res, 503, { error: '数据库尚在初始化，请稍后重试' }); return; }
+      await handleWebData(req, res);
       return;
     }
     if (url.startsWith('/api/')) {
@@ -97,7 +128,7 @@ const server = http.createServer(async (req, res) => {
 
 server.listen(PORT, () => {
   console.log('');
-  console.log('  🧭 GoTrip 出发吧 · 代理服务已启动（数据走 CloudBase 数据模型）');
+  console.log('  🧭 GoTrip 出发吧 · 全栈服务（Web 数据走内置 PG/SQLite 数据层）');
   console.log(`  ➜ http://localhost:${PORT}`);
   console.log('');
 });

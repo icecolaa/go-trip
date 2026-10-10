@@ -38,7 +38,7 @@ function markerIcon(label: string, color: string): L.DivIcon {
       width:30px;height:30px;border-radius:50% 50% 50% 4px;
       background:${color};transform:rotate(-45deg);
       box-shadow:0 3px 8px rgba(40,30,10,.35);
-      border:2.5px solid #fffdf6;display:flex;align-items:center;justify-content:center;">
+      border:2.5px solid #ffffff;display:flex;align-items:center;justify-content:center;">
       <span style="transform:rotate(45deg);color:#fff;font-size:11.5px;font-weight:400;">${label}</span>
     </div>`,
     iconSize: [30, 30],

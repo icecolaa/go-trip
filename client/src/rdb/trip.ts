@@ -25,15 +25,15 @@ export interface TripCardLike {
 
 /* ---------------- profile ---------------- */
 
-export async function ensureProfile(): Promise<Profile> {
-  const rows = await listRows('gt_users');
-  if (rows.length) return rows[0] as unknown as Profile;
-  return createRow('gt_users', {
-    nickname: '旅行者',
-    avatarColor: '#2f6e4f',
-    bio: '',
-    avatarUrl: null,
-  }) as unknown as Profile;
+/** 登录态 → 本地档案（gt_users 行由服务端在建号时创建，此处零查询直映）。 */
+export async function ensureProfile(user: { id: string; nickname: string; avatarColor?: string; bio?: string; avatarUrl?: string | null }): Promise<Profile> {
+  return {
+    id: user.id,
+    nickname: user.nickname,
+    avatarColor: user.avatarColor || '#0071e3',
+    bio: user.bio || '',
+    avatarUrl: user.avatarUrl ?? null,
+  };
 }
 
 export async function updateProfile(id: string, patch: Partial<Profile>): Promise<void> {

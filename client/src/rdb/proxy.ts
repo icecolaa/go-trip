@@ -1,6 +1,6 @@
-/** 容器代理通道（Web）：AI/飞哪儿/POI/天气走云托管公网域名。
- * 身份门：x-gotrip-key 共享密钥（容器 WEB_PROXY_KEY 校验），CORS 已在容器放行本域名族。 */
-import { CLOUD_RUN_URL, WEB_PROXY_KEY } from '../config';
+/** 服务通道（Web 全栈版）：AI/飞哪儿/POI/天气走同源 /api（server 内置模块，Bearer 会话）。
+ * 旧云托管公网域名 + x-gotrip-key 共享密钥通道随 PocketBay 部署退役。 */
+import { getToken } from '../api';
 
 export class ApiFail extends Error {
   status: number;
@@ -11,13 +11,13 @@ export class ApiFail extends Error {
 }
 
 async function call<T>(path: string, method: 'GET' | 'POST', body?: unknown): Promise<T> {
-  const headers: Record<string, string> = {
-    'x-gotrip-key': WEB_PROXY_KEY,
-    ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}),
-  };
+  const headers: Record<string, string> = {};
+  const token = getToken();
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+  if (body !== undefined) headers['Content-Type'] = 'application/json';
   let resp: Response;
   try {
-    resp = await fetch(CLOUD_RUN_URL + path, {
+    resp = await fetch(path, {
       method,
       headers,
       body: body !== undefined ? JSON.stringify(body) : undefined,

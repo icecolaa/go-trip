@@ -1,50 +1,52 @@
-/* ============ GoTrip 设计系统 —— 旅行手册风（米白 / 深绿 / 少量橙） ============
- * 层级只靠表面色与发丝边，无阴影；圆角全系统仅两种：卡片/图片/输入 8px，按钮/标签 980px。
- * 深色模式：html[data-theme="dark"] 覆盖同名 token，组件一律只引用 token。 */
+/* ============ GoTrip 设计系统 —— 苹果风（雾灰 / 碳黑 / 苹果蓝） ============
+ * 雾灰画布 #f5f5f7 上浮白卡（8px 圆角、无阴影、发丝边 #d2d2d7），文字碳黑。
+ * 苹果蓝是唯一交互彩色：只进填充按钮与选中态；描边按钮/链接用深一档 #0066cc；#2997ff 仅装饰。
+ * 层级只靠表面色（雾灰 #f5f5f7 → 白 → 卵石灰 #e2e2e5）与发丝边；圆角全系统仅两种：卡片/图片/输入 8px，按钮/标签 980px。
+ * 深色模式：html[data-theme="dark"] 覆盖同名 token（纯黑画布 + #1d1d1f 卡片，Apple dark 惯例），组件一律只引用 token。 */
 :root {
-  /* 表面：米白画布 → 近白卡片 → 卵石灰台阶 */
-  --bg: #f7f4ec;
-  --bg-soft: #f1eee4;
-  --card: #fffefa;
-  --card-warm: #f4f1e7;
-  --frost: #f1eee4;
-  /* 文本：深绿墨 → 次级 → 弱化 */
-  --ink: #1c2b22;
-  --ink-soft: #3f5046;
-  --ink-faint: #6b7a70;
+  /* 表面：雾灰画布 → 白卡片 → 卵石灰台阶（卡内嵌底复用画布色） */
+  --bg: #f5f5f7;
+  --bg-soft: #e2e2e5;
+  --card: #ffffff;
+  --card-warm: #f5f5f7;
+  --frost: #e2e2e5;
+  /* 文本：碳黑 → 次级烟灰 → 弱化灰 */
+  --ink: #1d1d1f;
+  --ink-soft: #333333;
+  --ink-faint: #707070;
   /* 边框 */
-  --line: #dfe0d6;
-  --line-strong: #1c2b22;
-  /* 主色：深绿（唯一交互色，填充按钮/选中态/焦点环） */
-  --accent: #1f4d3a;
-  --accent-ink: #f7f4ec;
-  --accent-soft: #e4ece5;
-  /* 少量点缀橙：仅用于倒计时、价格、eyebrow 等提示，不做大面积底色 */
-  --orange: #d9722f;
-  --orange-soft: #f8ebe0;
+  --line: #d2d2d7;
+  --line-strong: #1d1d1f;
+  /* 主色：苹果蓝（唯一交互色，填充按钮/选中态/焦点环） */
+  --accent: #0071e3;
+  --accent-ink: #ffffff;
+  --accent-soft: #e8f2ff;
+  /* 数据强调橙：仅用于倒计时、价格等数字提示，不做大面积底色、不做交互 */
+  --orange: #c93400;
+  --orange-soft: #f9e5dc;
   /* 交互色别名（历史规则继续可用） */
-  --cta: #1f4d3a;
-  --cta-ink: #f7f4ec;
-  --link: #1a5c42;
-  --signal: #3f8f68;
-  --danger: #a8422a;
-  /* 顶栏/反色表面：两种主题都保持深色横条（导航是身份，不随主题反转） */
-  --chrome: #1c2b22;
-  --chrome-ink: #f7f4ec;
-  --chrome-faint: #9aa89d;
-  /* flywhere 橙红系并入统一点缀橙 */
-  --fw-accent: #d9722f;
-  --fw-accent-soft: #f8ebe0;
-  --fw-green: #1f4d3a;
-  /* 旧令牌退役映射（收敛为深绿系，避免第二交互色） */
-  --green: #1f4d3a;
-  --green-deep: #1f4d3a;
-  --green-soft: #e4ece5;
-  --orange-legacy: #d9722f;
-  --red: #a8422a;
+  --cta: #0071e3;
+  --cta-ink: #ffffff;
+  --link: #0066cc;
+  --signal: #2997ff;
+  --danger: #d70015;
+  /* 顶栏/反色表面：两种主题都保持碳黑横条（导航是身份，不随主题反转） */
+  --chrome: #1d1d1f;
+  --chrome-ink: #f5f5f7;
+  --chrome-faint: #86868b;
+  /* flywhere 点缀并入苹果蓝系 */
+  --fw-accent: #0071e3;
+  --fw-accent-soft: #e8f2ff;
+  --fw-green: #1d1d1f;
+  /* 旧令牌退役映射（收敛为苹果蓝系，避免第二交互色） */
+  --green: #0071e3;
+  --green-deep: #1d1d1f;
+  --green-soft: #e8f2ff;
+  --orange-legacy: #c93400;
+  --red: #d70015;
   --gold: #858585;
-  --blue: #1a5c42;
-  --violet: #3f8f68;
+  --blue: #0066cc;
+  --violet: #2997ff;
   /* 无阴影：层级靠表面色与发丝边 */
   --shadow: none;
   --shadow-lg: none;
@@ -60,42 +62,42 @@
   color-scheme: light;
 }
 
-/* ---------- 深色模式：同一组 token 换成深墨绿底 + 提亮表面，对比度 ≥ 4.5:1 ---------- */
+/* ---------- 深色模式：纯黑画布 + #1d1d1f 卡片（Apple dark 惯例），文字/交互色提亮保对比 ≥ 4.5:1 ---------- */
 html[data-theme="dark"] {
-  --bg: #12180f;
-  --bg-soft: #171f16;
-  --card: #1b241a;
-  --card-warm: #202a1e;
-  --frost: #171f16;
-  --ink: #eef2ea;
-  --ink-soft: #c3cdc2;
-  --ink-faint: #93a094;
-  --line: #2e3a2b;
-  --line-strong: #4a5a46;
-  --accent: #7fc79f;
-  --accent-ink: #0e1509;
-  --accent-soft: #233024;
-  --orange: #e8945a;
-  --orange-soft: #33241a;
-  --cta: #6fbf94;
-  --cta-ink: #0e1509;
-  --link: #8fd3ae;
-  --signal: #6fbf94;
-  --danger: #e08066;
-  --chrome: #0b1008;
-  --chrome-ink: #e8efe6;
-  --chrome-faint: #8b9a8d;
-  --fw-accent: #e8945a;
-  --fw-accent-soft: #33241a;
-  --fw-green: #7fc79f;
-  --green: #7fc79f;
-  --green-deep: #7fc79f;
-  --green-soft: #233024;
-  --orange-legacy: #e8945a;
-  --red: #e08066;
-  --gold: #858585;
-  --blue: #8fd3ae;
-  --violet: #6fbf94;
+  --bg: #000000;
+  --bg-soft: #2c2c2e;
+  --card: #1d1d1f;
+  --card-warm: #2c2c2e;
+  --frost: #2c2c2e;
+  --ink: #f5f5f7;
+  --ink-soft: #a1a1a6;
+  --ink-faint: #7c7c81;
+  --line: #38383d;
+  --line-strong: #6e6e73;
+  --accent: #2997ff;
+  --accent-ink: #000000;
+  --accent-soft: #0d2d4d;
+  --orange: #ff9f0a;
+  --orange-soft: #3a2a18;
+  --cta: #0071e3;
+  --cta-ink: #ffffff;
+  --link: #2997ff;
+  --signal: #2997ff;
+  --danger: #ff453a;
+  --chrome: #161617;
+  --chrome-ink: #f5f5f7;
+  --chrome-faint: #86868b;
+  --fw-accent: #2997ff;
+  --fw-accent-soft: #0d2d4d;
+  --fw-green: #f5f5f7;
+  --green: #2997ff;
+  --green-deep: #f5f5f7;
+  --green-soft: #0d2d4d;
+  --orange-legacy: #ff9f0a;
+  --red: #ff453a;
+  --gold: #86868b;
+  --blue: #2997ff;
+  --violet: #2997ff;
   color-scheme: dark;
 }
 
@@ -129,18 +131,6 @@ body {
   font-variant-numeric: tabular-nums; /* 价格、预算等数字对齐不跳动 */
 }
 
-/* 弥散式背景：奶油基底上的桃橙/粉光晕（fixed 层，滚动稳定，卡片浮在其上） */
-body::before {
-  content: '';
-  position: fixed; inset: 0; z-index: -1; pointer-events: none;
-  background:
-    radial-gradient(42rem 30rem at 10% -6%, rgba(248, 205, 168, 0.52), transparent 64%),
-    radial-gradient(38rem 26rem at 92% -4%, rgba(247, 196, 186, 0.46), transparent 62%),
-    radial-gradient(52rem 34rem at 48% 110%, rgba(250, 216, 172, 0.48), transparent 62%),
-    radial-gradient(30rem 22rem at 98% 74%, rgba(244, 186, 180, 0.32), transparent 60%),
-    radial-gradient(28rem 20rem at 2% 86%, rgba(252, 226, 192, 0.38), transparent 60%),
-    radial-gradient(60rem 40rem at 50% 42%, rgba(253, 247, 235, 0.5), transparent 70%);
-}
 h1, h2, h3, .serif {
   font-family: var(--sans);
   font-weight: 600; /* DESIGN.md：标题最大 600 */
@@ -466,7 +456,7 @@ textarea.input { resize: vertical; min-height: 72px; line-height: 1.6; }
 .member-card .tid { font-size: 12px; color: var(--ink-faint); font-family: var(--mono); }
 .member-card .loc { font-size: 12.5px; color: var(--ink-soft); background: var(--card-warm); border-radius: 8px; padding: 7px 10px; }
 .member-card .ops { display: flex; gap: 6px; flex-wrap: wrap; }
-.online-badge { position: absolute; top: 14px; right: 16px; font-size: 11.5px; color: var(--green); display: flex; align-items: center; gap: 4px; }
+.online-badge { position: absolute; top: 14px; right: 16px; font-size: 11.5px; color: #30d158; display: flex; align-items: center; gap: 4px; }
 .online-badge .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ink); }
 .role-select { border: 1px solid var(--line-strong); border-radius: var(--radius-ui); padding: 4px 6px; background: transparent; font-size: 12.5px; }
 
@@ -1247,10 +1237,10 @@ img, svg, video, canvas { max-width: 100%; }
   position: absolute; inset: 0; z-index: -1;
   background: linear-gradient(180deg, rgba(12,20,10,.12) 0%, rgba(12,20,10,.42) 58%, rgba(12,20,10,.78) 100%);
 }
-.cover-body { position: relative; padding: 26px 26px 22px; display: flex; flex-direction: column; gap: 6px; color: #f7f4ec; }
+.cover-body { position: relative; padding: 26px 26px 22px; display: flex; flex-direction: column; gap: 6px; color: #ffffff; }
 .cover-hero.narrow .cover-body { padding: 22px 16px 18px; }
 .cover-eyebrow { margin: 0; font-size: 12px; letter-spacing: .14em; text-transform: uppercase; opacity: .88; }
-.cover-title { margin: 0; font-size: 30px; font-weight: 600; line-height: 1.22; color: #fffefa; text-shadow: 0 1px 12px rgba(0,0,0,.35); }
+.cover-title { margin: 0; font-size: 30px; font-weight: 600; line-height: 1.22; color: #ffffff; text-shadow: 0 1px 12px rgba(0,0,0,.35); }
 .cover-hero.narrow .cover-title { font-size: 23px; }
 .cover-dates { margin: 0; font-size: 13.5px; opacity: .92; font-variant-numeric: tabular-nums; }
 
@@ -1433,18 +1423,18 @@ img, svg, video, canvas { max-width: 100%; }
 .cover-hero-side { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-left: auto; }
 .cover-chip {
   font-size: 12px; padding: 3px 10px; border-radius: var(--radius-ctl);
-  background: rgba(255,255,255,.16); border: 1px solid rgba(255,255,255,.28); color: #fffefa;
+  background: rgba(255,255,255,.16); border: 1px solid rgba(255,255,255,.28); color: #ffffff;
 }
-.cover-chip .dot-online { background: #4ade80; }
+.cover-chip .dot-online { background: #30d158; }
 .cover-avatars { margin-top: 8px; }
 .cover-hero .avatar-online-dot {
   position: absolute; right: -1px; bottom: -1px; width: 11px; height: 11px; border-radius: 50%;
-  background: #4ade80; border: 2px solid rgba(0,0,0,.35);
+  background: #30d158; border: 2px solid rgba(0,0,0,.35);
 }
 .cover-hero .cd-cell { background: rgba(255,255,255,.14); border-color: rgba(255,255,255,.26); }
-.cover-hero .cd-num { color: #fffefa; }
+.cover-hero .cd-num { color: #ffffff; }
 .cover-hero .cd-label { color: rgba(255,255,255,.78); }
-.cover-hero .btn.sm { background: rgba(255,255,255,.16); border: 1px solid rgba(255,255,255,.3); color: #fffefa; }
+.cover-hero .btn.sm { background: rgba(255,255,255,.16); border: 1px solid rgba(255,255,255,.3); color: #ffffff; }
 .cover-hero .btn.sm:hover { background: rgba(255,255,255,.26); }
 
 /* ---------- 路线总览 + 下一段交通 + 进度 ---------- */

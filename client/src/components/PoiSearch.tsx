@@ -32,7 +32,7 @@ export default function PoiSearch({ defaultCity, onPick }: { defaultCity: string
         <button className="btn sm" onClick={search} disabled={busy}>{busy ? '…' : '搜索'}</button>
       </div>
       {results != null && (
-        <div style={{ maxHeight: 150, overflow: 'auto', marginTop: 6, border: '1px solid var(--line)', borderRadius: 10, background: '#fffef9' }}>
+        <div style={{ maxHeight: 150, overflow: 'auto', marginTop: 6, border: '1px solid var(--line)', borderRadius: 8, background: 'var(--card)' }}>
           {results.length === 0 && <div className="muted" style={{ padding: 10 }}>没找到，试试换个关键词或城市</div>}
           {results.map((p, i) => (
             <div key={i} className="poi-item" onClick={() => onPick(p.name, p.lat ?? 0, p.lng ?? 0)}>
