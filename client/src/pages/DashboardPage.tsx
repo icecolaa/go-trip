@@ -6,7 +6,7 @@ import { seedDemoTrip } from '../rdb/seed';
 import { lastTripId, rememberTrip } from '../components/Sidebar';
 import type { TripCardInfo } from '../types';
 import { useApp } from '../store';
-import { Avatar, Modal, countdownText, yuan } from '../components/ui';
+import { Avatar, countdownText, yuan } from '../components/ui';
 import CreateTripModal from '../components/CreateTripModal';
 import UsageGuideModal from '../components/UsageGuideModal';
 
@@ -136,6 +136,7 @@ export default function DashboardPage() {
         <DashHero
           t={currentTrip}
           onOpen={() => { rememberTrip(currentTrip.id, currentTrip.title); nav(`/trip/${currentTrip.id}`); }}
+          onGo={tab => { rememberTrip(currentTrip.id, currentTrip.title); nav(`/trip/${currentTrip.id}?tab=${tab}`); }}
         />
       )}
 
@@ -187,62 +188,59 @@ export default function DashboardPage() {
   );
 }
 
-/** 工作台 Hero 面板（设计稿 w2）：当前行程封面横幅——阶段徽章+标题+目的地/安排+预算进度+继续规划 */
-function DashHero({ t, onOpen }: { t: TripCardInfo; onOpen: () => void }) {
+/** 当前旅程：封面与阶段信息 + 预算概况和规划入口。 */
+function DashHero({ t, onOpen, onGo }: { t: TripCardInfo; onOpen: () => void; onGo: (tab: string) => void }) {
   const [imgSrc, setImgSrc] = useState('');
   const [imgFailed, setImgFailed] = useState(false);
   useEffect(() => {
+    let active = true;
     setImgSrc('');
     setImgFailed(false);
     if (t.coverImage && !t.coverImage.startsWith('data:')) {
-      tempUrls([t.coverImage]).then(m => setImgSrc(m[t.coverImage!] || '')).catch(() => undefined);
+      tempUrls([t.coverImage]).then(m => { if (active) setImgSrc(m[t.coverImage!] || ''); }).catch(() => undefined);
     } else if (t.coverImage) setImgSrc(t.coverImage);
+    return () => { active = false; };
   }, [t.coverImage]);
   const phase = heroPhase(t);
   const showImg = !!imgSrc && !imgFailed;
   const nights = Math.max(0, daysBetween(t.startDate, t.endDate));
-  const budgetPct = t.budget > 0 ? Math.min(100, Math.round((t.totalSpent / t.budget) * 100)) : null;
+  const budgetPct = t.budget > 0 ? Math.max(0, Math.round((t.totalSpent / t.budget) * 100)) : null;
   return (
-    <section
-      className={`dash-hero ph-${phase.cls}`}
-      data-trip-hero={t.id}
-      onClick={onOpen}
-      role="link"
-      aria-label={`继续规划：${t.title}`}
-    >
-      {showImg ? (
+    <section className="dash-current" aria-label="当前旅程" data-trip-hero={t.id}>
+      <div className={`dash-hero ph-${phase.cls} ${showImg ? 'has-photo' : ''}`}>
+      {showImg && (
         <img className="dash-hero-bg" src={imgSrc} alt="" onError={() => setImgFailed(true)} />
-      ) : (
-        <div
-          className="dash-hero-bg"
-          aria-hidden="true"
-          style={{ background: `linear-gradient(135deg, ${t.coverColor || '#2E92ED'} 0%, #0A233C 78%)` }}
-        />
       )}
-      <div className="dash-hero-scrim" aria-hidden="true" />
+      {showImg && <div className="dash-hero-scrim" aria-hidden="true" />}
       <div className="dash-hero-in">
         <div className="row1">
-          <span className="chip-live">{phase.cls === 'live' && <i />}{phase.label}</span>
-          {!!t.startDate && (
+          <span className="chip-live">{phase.label}</span>
+          {!!t.startDate && !!t.endDate && (
             <span className="range-tag">{shortDate(t.startDate)} – {shortDate(t.endDate)} · {nights + 1}天{nights}晚</span>
           )}
         </div>
-        <div className="ht-title">{t.title}</div>
+        <h2 className="ht-title">{t.title}</h2>
         <div className="ht-meta">
           <i className="ic ic-pin" />{t.destination || '目的地待定'}
           <span className="sep">|</span>
           <i className="ic ic-route" />已安排 {t.activityCount} 项
         </div>
         <div className="ht-foot">
-          {budgetPct != null && (
-            <div className="ht-progress" role="img" aria-label={`预算已用 ${budgetPct}%`}>
-              <i style={{ width: `${budgetPct}%` }} />
-            </div>
-          )}
-          <span className="ht-ptxt">
-            {budgetPct != null ? `已花 ${yuan(t.totalSpent)} / 预算 ${yuan(t.budget)}` : `已花 ${yuan(t.totalSpent)}`}
-          </span>
-          <button className="btn yellow sm" onClick={e => { e.stopPropagation(); onOpen(); }}>继续规划</button>
+          <button className="btn primary sm" onClick={onOpen}>继续规划</button>
+        </div>
+      </div>
+      </div>
+      <div className="dash-current-info">
+        <div className="dash-current-heading"><h3>旅程概况</h3><span>{t.activityCount} 项安排</span></div>
+        <div className="dash-current-money"><span>已花费</span><strong>{yuan(t.totalSpent)}</strong><span>{t.budget > 0 ? `预算 ${yuan(t.budget)}` : '尚未设置预算'}</span></div>
+        {budgetPct != null && <>
+          <div className="dash-budget-track" role="progressbar" aria-label="预算使用比例" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.min(100, budgetPct)} aria-valuetext={`预算已用 ${budgetPct}%`}><i style={{ width: `${Math.min(100, budgetPct)}%` }} /></div>
+          <p className="dash-budget-caption">{t.totalSpent > t.budget ? `超出预算 ${yuan(t.totalSpent - t.budget)}` : `剩余预算 ${yuan(t.budget - t.totalSpent)}`} · 已用 {budgetPct}%</p>
+        </>}
+        <div className="dash-current-links" aria-label="旅程快捷入口">
+          <button className="btn sm" onClick={() => onGo('itinerary')}>每日行程</button>
+          <button className="btn sm" onClick={() => onGo('map')}>旅行地图</button>
+          <button className="btn sm ghost" onClick={() => onGo('budget')}>团队预算 →</button>
         </div>
       </div>
     </section>

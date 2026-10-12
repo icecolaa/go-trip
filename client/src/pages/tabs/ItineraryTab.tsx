@@ -44,6 +44,7 @@ function weatherIcon(code: number | null): string {
 export default function ItineraryTab({ bundle, reload, weather, canEdit, goTab }: TabCtx) {
   const { toast } = useApp();
   const [editing, setEditing] = useState<Activity | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const [addingToDay, setAddingToDay] = useState<TripDay | null>(null);
   const [aiOpen, setAiOpen] = useState(false);
   const [tripMode, setTripMode] = useState(false);
@@ -119,6 +120,15 @@ export default function ItineraryTab({ bundle, reload, weather, canEdit, goTab }
     const first = [...days].sort((a, b) => a.dayNumber - b.dayNumber)[0];
     return first ? first.dayNumber : null;
   });
+
+  // 从最新聚合数据取详情，修改/删除/换天后不保留旧对象。
+  const visibleDay = days.find(d => d.dayNumber === openDay);
+  const visibleActs = visibleDay ? actsByDay.get(visibleDay.id) || [] : [];
+  const selected = visibleActs.find(a => a.id === selectedId) || visibleActs[0] || null;
+  const selectedMember = selected ? members.find(m => m.id === selected.assigneeMemberId) : null;
+  const hasCoords = selected != null && selected.lat != null && selected.lng != null
+    && Number.isFinite(selected.lat) && Number.isFinite(selected.lng)
+    && Math.abs(selected.lat) <= 90 && Math.abs(selected.lng) <= 180;
 
   /* 拖拽排序：放下后按新顺序提交 */
   const onDrop = async (targetDayId: string, beforeIndex: number) => {
@@ -207,6 +217,8 @@ export default function ItineraryTab({ bundle, reload, weather, canEdit, goTab }
         </div>
       )}
 
+      <div className="schedule-workspace">
+      <div className="schedule-days">
       {days.map(day => {
         const acts = actsByDay.get(day.id) || [];
         const w = weatherByDate.get(day.date);
@@ -218,7 +230,10 @@ export default function ItineraryTab({ bundle, reload, weather, canEdit, goTab }
         return (
           <details className="day-block day-card" key={day.id} id={`day-${day.dayNumber}`} data-day={day.dayNumber}
             open={openDay === day.dayNumber}
-            onToggle={e => setOpenDay((e.currentTarget as HTMLDetailsElement).open ? day.dayNumber : null)}
+            onToggle={e => {
+              const isOpen = e.currentTarget.open;
+              setOpenDay(current => isOpen ? day.dayNumber : current === day.dayNumber ? null : current);
+            }}
             onDragOver={e => e.preventDefault()}
             onDrop={() => onDrop(day.id, acts.length)}>
             <summary className="day-head">
@@ -250,7 +265,8 @@ export default function ItineraryTab({ bundle, reload, weather, canEdit, goTab }
               {acts.length === 0 && <div className="empty" style={{ padding: '18px' }}>这一天还没安排，睡到自然醒也很幸福 🛌</div>}
               {acts.map((a, i) => (
                 <div key={a.id}
-                  className={`act-row ${dragId === a.id ? 'dragging' : ''}`}
+                  className={`act-row ${dragId === a.id ? 'dragging' : ''} ${selected?.id === a.id ? 'selected' : ''}`}
+                  data-activity-id={a.id}
                   draggable={canEdit}
                   onDragStart={() => setDragId(a.id)}
                   onDragOver={e => e.preventDefault()}
@@ -267,7 +283,12 @@ export default function ItineraryTab({ bundle, reload, weather, canEdit, goTab }
                   <span className={`act-icon kind-${a.kind}`}>{KIND_META[a.kind]?.icon || '📌'}</span>
                   <div className="act-main">
                     <div className="act-title">
-                      {a.title}
+                      <button className="activity-select" aria-pressed={selected?.id === a.id} aria-controls="activity-inspector" onClick={() => {
+                        setSelectedId(a.id);
+                        if (window.matchMedia('(max-width: 1200px)').matches) {
+                          requestAnimationFrame(() => document.getElementById('activity-inspector')?.scrollIntoView({ block: 'start', behavior: 'smooth' }));
+                        }
+                      }}>{a.title}</button>
                       {isNextDayArrival(a) && <span className="ticket-nextday" style={{ marginLeft: 6 }}>次日抵达</span>}
                       {a.assigneeMemberId != null && (() => {
                         const m = members.find(m => m.id === a.assigneeMemberId);
@@ -306,6 +327,30 @@ export default function ItineraryTab({ bundle, reload, weather, canEdit, goTab }
           </details>
         );
       })}
+
+      </div>
+      <aside className="activity-inspector" id="activity-inspector" aria-label="安排详情">
+        {selected && visibleDay ? <>
+          <div className="inspector-heading"><span>D{visibleDay.dayNumber} · 第 {visibleActs.findIndex(a => a.id === selected.id) + 1} 站</span><span>{KIND_META[selected.kind]?.label || '其他'}</span></div>
+          <h3>{selected.title}</h3>
+          <StatusBadge status={selected.status as any} />
+          <dl className="inspector-fields">
+            <div><dt>日期</dt><dd>{fmtDate(visibleDay.date)} · {weekOf(visibleDay.date)}</dd></div>
+            <div><dt>时间</dt><dd>{selected.time || '待定'}{selected.endTime ? ` – ${selected.endTime}` : ''}</dd></div>
+            <div><dt>地点</dt><dd>{selected.place || '尚未填写'}</dd></div>
+            <div><dt>费用</dt><dd>{yuan(selected.cost)}</dd></div>
+            <div><dt>负责</dt><dd>{selectedMember?.displayName || '未指派'}</dd></div>
+            <div><dt>坐标</dt><dd>{hasCoords ? `${selected.lat!.toFixed(5)}, ${selected.lng!.toFixed(5)}` : '尚未定位'}</dd></div>
+          </dl>
+          <div className="inspector-notes"><h4>备注</h4><p>{selected.notes ? <SensitiveText text={selected.notes} /> : '暂无备注'}</p></div>
+          <div className="inspector-actions">
+            {canEdit && <button className="btn primary sm" onClick={() => setEditing(selected)}>修改安排</button>}
+            <button className="btn sm" onClick={() => goTab('map')}>查看地图</button>
+            {hasCoords && <a className="btn sm ghost" href={`https://uri.amap.com/navigation?to=${selected.lng},${selected.lat},${encodeURIComponent(selected.place || selected.title)}&mode=car&coordinate=gaode&callnative=0`} target="_blank" rel="noopener noreferrer">高德导航 ↗</a>}
+          </div>
+        </> : <div className="inspector-empty"><h3>安排详情</h3><p>{visibleDay ? '这一天还没有安排，添加后可查看详情。' : '展开一天，选择安排查看详情。'}</p></div>}
+      </aside>
+      </div>
 
       {addingToDay && (
         <ActivityModal

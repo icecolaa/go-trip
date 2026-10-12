@@ -1,5 +1,7 @@
 # 交接文档（HANDOFF）
 
+> 最新开发：2026-10-12 条目 83，工作台概况面板 + 时间轴详情卡已完成本地验证（浏览器 23/23、冒烟 10/10），尚未部署生产；500 detail 回显已在 e67470f 收回。
+
 > 面向下一个接手的开发者或 AI 会话。先读根目录 `CLAUDE.md`（规则手册），再读本文（现状、过程与经验）。
 > 更新：2026-10-12（条目 82 附记一：**线上天气/PDF/飞哪儿/POI 回归 7/7 全绿**——脚本 work/regress-online-1012.mjs；AI 真调实锤 GLM 仍 429 余额不足、lastError=none 不可作 AI 可用证据；⚠️PocketBay 唤醒机制平台侧升级为**开页自动唤醒**无需手动点，部署文档已修正）
 > 上一条：2026-10-10 五（条目 81：**Web 版切 PocketBay PG 全栈 + 苹果风换肤 + 配对部署**——CloudBase 资源点 4 万/4 万超额环境隔离（小程序等 10-25 周期重置自愈），Web 解冻迁 PocketBay：server 新增可选数据层（PG/SQLite 双驱动 14 张 gt_* 表+webauth+webdata 通用 CRUD）、client rdb 层同签名换 REST 底座（@cloudbase/js-sdk 退役）、登录页加回自助注册、DESIGN.md 苹果风换肤；三修=gt_sessions RETURNING id 崩 500/冷启动 503 重试/壳跨源 iframe API 打主域+CORS；配对部署流程入册，线上 https://gotrip.pocketbay.app 全链路验证过）
@@ -319,3 +321,11 @@
 2. 常用命令：小程序上传=`cd miniprogram-app && node scripts/upload.js x.y.z "描述"`（工具通道优先/CI 降级）；Web 本地=`npm run dev`；冒烟=`bash scripts/smoke.sh`。
 3. **Web/H5 版决策（2026-10-05 冻结）**：H5 静态托管仍在但**暂不投入**（9 月底后所有迭代在小程序侧）；恢复前提=容器公网+一轮 Web 回归。小程序是唯一活跃端。
 3. 改完代码的标准收尾：本地冒烟 → `git commit` + push origin master（origin 配了 Gitee + GitHub 双 push URL，一条命令两边同步更新）→ 提交后对本次 diff 做 review（CLAUDE.md 红线 6）→ 按 deployment-pocketbay.md 重新部署 → 线上验证。
+
+## 83. 工作台概况面板与时间轴详情卡（2026-10-12）
+
+用户选定继续开发「工作台 hero 面板与时间轴详情卡」。在 e67470f 横幅基础上完善为封面/阶段/日期 + 预算概况双区布局，增加每日行程、地图、预算快捷入口；无预算诚实占位、超预算显示真实超额，列表数据层补传 coverImage（原漏字段使已上传封面不显示），图片失败回退中性表面。
+
+时间轴新增右侧 sticky 详情卡，点标题选择站点；默认当前展开日第一站，展示时间/地点/费用/负责人/坐标/脱敏备注，复用修改弹窗并支持地图和高德导航。详情按 id 从最新 bundle 派生，修改/删除/换天后同步；修复 details 旧天关闭事件清空新天展开态的问题。<=1200px 详情置于列表下方，点站点自动滚到详情；手机行改网格避免操作按钮挤压正文，列表长文本两行摘要、详情保留全文。新增界面按 DESIGN.md 中性表面/8px 卡片/药丸按钮/无阴影，适配深浅主题。
+
+验证：浏览器专项 23/23（真实本地 API、天气浏览器请求隔离），类型检查与构建通过，API/shared 冒烟 10/10；报告 acceptance/REPORT-web-panels-1012.md，脚本 work/verify-panels-1012.cjs，截图 work/panels-1012/。测试旅程已级联清场，会话登出。**尚未部署生产；线上仍为此前版本**。工作台天气/动态整套稿未纳入本次选择的两块开发范围。

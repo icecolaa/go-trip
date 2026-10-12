@@ -62,6 +62,7 @@ export async function listTrips(): Promise<TripCardInfo[]> {
       endDate: t.endDate,
       coverEmoji: t.coverEmoji,
       coverColor: t.coverColor,
+      coverImage: t.coverImage,
       budget: t.budget,
       memberPreview: mem.slice(0, 3).map(m => ({ displayName: m.displayName, avatarColor: m.avatarColor })),
       totalSpent: Math.round((expenses as unknown as Expense[]).reduce((s, e) => s + e.amount, 0) * 100) / 100,
