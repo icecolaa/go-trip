@@ -286,7 +286,9 @@ export default function ItineraryTab({ bundle, reload, weather, canEdit, goTab }
                       <button className="activity-select" aria-pressed={selected?.id === a.id} aria-controls="activity-inspector" onClick={() => {
                         setSelectedId(a.id);
                         if (window.matchMedia('(max-width: 1200px)').matches) {
-                          requestAnimationFrame(() => document.getElementById('activity-inspector')?.scrollIntoView({ block: 'start', behavior: 'smooth' }));
+                          requestAnimationFrame(() => document.getElementById('activity-inspector')?.scrollIntoView({
+                            block: 'start', behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth',
+                          }));
                         }
                       }}>{a.title}</button>
                       {isNextDayArrival(a) && <span className="ticket-nextday" style={{ marginLeft: 6 }}>次日抵达</span>}

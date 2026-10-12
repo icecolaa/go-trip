@@ -1853,7 +1853,7 @@ html[data-theme="dark"] .dash-current, html[data-theme="dark"] .schedule-workspa
 .dash-current .dash-hero-in { position: relative; inset: auto; padding: 24px; min-height: 252px; color: var(--panel-ink); }
 .dash-current .has-photo .dash-hero-in { color: #fff; }
 .dash-current .dash-hero-scrim { background: linear-gradient(90deg, rgba(0,0,0,.76), rgba(0,0,0,.35)); }
-.dash-current .chip-live, .dash-current .range-tag { background: var(--panel-surface); color: var(--panel-secondary); border: 1px solid var(--panel-line); border-radius: 980px; font-weight: 400; }
+.dash-current .dash-hero .chip-live, .dash-current .range-tag { background: var(--panel-surface); color: var(--panel-secondary); border: 1px solid var(--panel-line); border-radius: 980px; font-weight: 400; }
 .dash-current .ht-title { margin: 16px 0 8px; font-size: 28px; font-weight: 600; text-shadow: none; white-space: normal; overflow-wrap: anywhere; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
 .dash-current .ht-meta { flex-wrap: wrap; overflow-wrap: anywhere; }
 .dash-current .ht-foot { margin-top: 20px; }
@@ -1870,8 +1870,6 @@ html[data-theme="dark"] .dash-current, html[data-theme="dark"] .schedule-workspa
 .dash-current .btn, .activity-inspector .btn { background: transparent; border: 1px solid #0066cc; color: #0066cc; border-radius: 980px; box-shadow: none; font-weight: 400; text-decoration: none; }
 .dash-current .btn.primary, .activity-inspector .btn.primary { background: #0071e3; border-color: #0071e3; color: #fff; }
 .dash-current .btn.ghost, .activity-inspector .btn.ghost { border-color: transparent; }
-html[data-theme="dark"] .dash-current .btn:not(.primary), html[data-theme="dark"] .activity-inspector .btn:not(.primary) { color: #2997ff; border-color: #2997ff; }
-html[data-theme="dark"] .dash-current .btn.ghost, html[data-theme="dark"] .activity-inspector .btn.ghost { border-color: transparent; }
 .schedule-workspace { display: grid; grid-template-columns: minmax(0, 1fr) 308px; gap: 20px; align-items: start; }
 .schedule-days { min-width: 0; }
 .schedule-workspace .day-card { border-radius: 8px; box-shadow: none; border: 1px solid var(--panel-line); background: var(--panel-surface); }
