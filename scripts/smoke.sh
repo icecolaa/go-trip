@@ -18,7 +18,7 @@ check() {
 }
 
 echo "== A1. 健康 / 门槛 =="
-check "health 200 proxy 模式" "$(curl -s -m 5 $BASE/health)" '"mode":"proxy"'
+check "health 200 服务就绪(proxy/fullstack 两形态,81 后本地=fullstack)" "$(curl -s -m 5 $BASE/health)" '"ok":true'
 check "无 x-wx-source 一律 403" "$(curl -s -m 5 -o /dev/null -w '%{http_code}' $BASE/api/ai/status)" '^403$'
 check "带 x-wx-source 可达" "$(curl -s -m 5 $BASE/api/ai/status -H 'x-wx-source: wx')" 'configured'
 check "旧 CRUD 路由已删(404)" "$(curl -s -m 5 -o /dev/null -w '%{http_code}' $BASE/api/trips -H 'x-wx-source: wx')" '^404$'
