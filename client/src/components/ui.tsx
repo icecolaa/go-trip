@@ -112,6 +112,7 @@ export function daysUntil(dateStr: string): number {
   return Math.round((target.getTime() - today.getTime()) / 86400000);
 }
 export function countdownText(trip: { startDate: string; endDate: string }): string {
+  if (!trip.startDate) return '日期待定';
   const s = daysUntil(trip.startDate);
   const e = daysUntil(trip.endDate);
   if (e < 0) return '已结束';

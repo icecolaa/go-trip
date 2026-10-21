@@ -12,9 +12,9 @@
   /* 墨色 */
   --ink: #182A3D;
   --ink-soft: #51637A;
-  --ink-faint: #93A5B8;
+  --ink-faint: #7A8FA5; /* 小程序 --ink3；比原 #93A5B8 深一度，对比度 2.6→3.3:1 */
   --ink2: #51637A;
-  --ink3: #93A5B8;
+  --ink3: #7A8FA5;
   /* 功能色 */
   --green: #2FA96E; --red: #F0655A; --wechat: #07C160;
   --coral: #FF8A5C; --violet: #7B8CFF; --teal: #2BB8A8;
@@ -27,6 +27,15 @@
   /* 边框 */
   --line: #E6EEF6;
   --line-strong: #C9D6E3;
+  /* 交互控件的边界色：浅色沿用发丝边（与小程序/Apple 同语言）；
+     深色下 --line(#23364B) 落在深卡面(#152334) 上仅 1.26:1，控件边界几乎不可见，
+     WCAG 1.4.11 非文本元素要求 ≥3:1 —— 深色改用小程序 --ink3 级中性 slate（≈3.5:1）。
+     --ctl-line-strong 是同一套语义的「稍强一档」（图标钮/分段控件/下拉），深色 ≈5:1。 */
+  --ctl-line: var(--line);
+  --ctl-line-strong: var(--line-strong);
+  /* 选中态底色：浅色用最浅的 sky50；深色 sky50(#12233A) 反而比卡面(#152334)更暗，
+     选中态必须比卡面更亮 —— 深色改用 sky100(#17304B)。 */
+  --sel-bg: var(--sky50);
   /* 交互色（蓝渐变胶囊体系）：cta=渐变端色，accent=纯色等价 */
   --accent: #2E92ED;
   --accent-ink: #FFFFFF;
@@ -53,10 +62,10 @@
   --gold: #93A5B8;
   --blue: #1B78D8;
   --violet2: #7B8CFF;
-  /* 影（蓝调投影=晴空航线层级语言） */
-  --shadow: 0 6px 18px rgba(23, 84, 153, .08);
+  /* 影（蓝调投影=晴空航线层级语言；--shadow/--sh-card 与小程序 --sh-card 同为双层：近距离接触影 + 远层柔影） */
+  --shadow: 0 1px 4px rgba(23, 84, 153, .04), 0 6px 18px rgba(23, 84, 153, .08);
   --shadow-lg: 0 10px 28px rgba(23, 84, 153, .18);
-  --sh-card: 0 6px 18px rgba(23, 84, 153, .08);
+  --sh-card: 0 1px 4px rgba(23, 84, 153, .04), 0 6px 18px rgba(23, 84, 153, .08);
   --sh-float: 0 10px 28px rgba(23, 84, 153, .18);
   --sh-yellow: 0 6px 16px rgba(255, 196, 20, .35);
   /* 角：三档 20/14/10 */
@@ -82,23 +91,28 @@
   color-scheme: light;
 }
 
-/* ---------- 深色模式：深空蓝底 + 提亮 sky ramp，对比度 ≥ 4.5:1 ---------- */
+/* ---------- 深色模式：深空蓝底 + 提亮 sky ramp，对比度 ≥ 4.5:1 ----------
+   取值逐格对齐小程序 app.wxss（--bg #0D1724 / --card #152334 / --ink #E8F0F9 / --ink2 #9FB3C8 / --line #23364B）。
+   例外：--ink3 / --ink-faint 保留比小程序更亮的值（小程序 #64798F 在 #152334 卡面仅 3.5:1，低于 AA 4.5:1）。 */
 html[data-theme="dark"] {
-  --bg: #0D1626;
+  --bg: #0D1724;
   --bg-soft: #16233A;
-  --card: #14202F;
+  --card: #152334;
   --card-warm: #16233A;
   --frost: #16233A;
-  --ink: #EAF2FB;
-  --ink-soft: #B8C7D9;
+  --ink: #E8F0F9;
+  --ink-soft: #9FB3C8;
   --ink-faint: #7E93AB;
-  --ink2: #B8C7D9;
+  --ink2: #9FB3C8;
   --ink3: #8FA3BC;
-  --line: #22344C;
+  --line: #23364B;
   --line-strong: #3D5470;
-  --sky50: #14243B;
-  --sky100: #1A2E4C;
-  --sky200: #24406B;
+  --ctl-line: #64798F; /* 控件边界：小程序深色 --ink3，深卡面上 3.5:1（--line 只有 1.26:1） */
+  --ctl-line-strong: #7E93AB; /* 图标钮/分段/下拉：深卡面上 5.1:1 */
+  --sel-bg: var(--sky100);
+  --sky50: #12233A;
+  --sky100: #17304B;
+  --sky200: #1E3F63;
   --sky300: #3F6BA8;
   --sky400: #55ACF3;
   --sky500: #4BA0F0;
@@ -127,9 +141,9 @@ html[data-theme="dark"] {
   --gold: #7E93AB;
   --blue: #6FB6F5;
   --violet2: #97A5FF;
-  --shadow: 0 6px 18px rgba(0, 0, 0, .35);
+  --shadow: 0 1px 4px rgba(0, 0, 0, .18), 0 6px 18px rgba(0, 0, 0, .35);
   --shadow-lg: 0 10px 28px rgba(0, 0, 0, .5);
-  --sh-card: 0 6px 18px rgba(0, 0, 0, .35);
+  --sh-card: 0 1px 4px rgba(0, 0, 0, .18), 0 6px 18px rgba(0, 0, 0, .35);
   --sh-float: 0 10px 28px rgba(0, 0, 0, .5);
   --sh-yellow: 0 6px 16px rgba(255, 196, 20, .25);
   color-scheme: dark;
@@ -177,16 +191,16 @@ b, strong { font-weight: 500; }
 button { font-family: inherit; cursor: pointer; }
 input, textarea, select { font-family: inherit; font-size: 14px; color: var(--ink); }
 
-/* 键盘可达性：统一焦点环（规范 Form Input：2px 苹果蓝） */
+/* 键盘可达性：统一焦点环（原 var(--cta) 是渐变，作为 outline-color 无效会回落到 currentColor） */
 :where(a, button, [role='button'], input, textarea, select):focus-visible {
-  outline: 2px solid var(--cta);
+  outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
 
 /* ---------- 通用组件 ---------- */
 .btn {
   display: inline-flex; align-items: center; gap: 6px; justify-content: center;
-  border: 1px solid var(--line);
+  border: 1px solid var(--ctl-line); /* 非 --line：深色下控件边界需 ≥3:1，见 --ctl-line 注释 */
   background: var(--card);
   color: var(--ink);
   border-radius: var(--radius-ctl); /* DESIGN.md：按钮一律 980px 药丸 */
@@ -261,21 +275,18 @@ textarea.input { resize: vertical; min-height: 72px; line-height: 1.6; }
 .empty .big { font-size: 34px; display: block; margin-bottom: 8px; }
 
 /* ---------- 布局 ---------- */
-/* 顶栏：全宽深色导航条 + 发丝底线（两种主题都保持深色） */
-.topbar {
-  position: sticky; top: 0; z-index: 50;
-  background: var(--chrome);
-  border-bottom: 1px solid var(--line-strong);
-}
-/* 导航内元素统一转浅色小字链接（Global Nav 规范） */
-.topbar .btn { background: transparent; border: none; color: var(--chrome-ink); font-size: 12.5px; font-weight: 400; padding: 6px 10px; }
-.topbar .btn:hover { color: var(--chrome-ink); text-decoration: none; opacity: .85; }
+/* 顶栏：sticky 卡片 + 发丝底线（桌面层 .topbar 段给具体高度与表面色，见「Web 工作台桌面适配」） */
+.topbar { position: sticky; top: 0; z-index: 50; }
+/* 顶栏按钮落在浅色卡面上，必须用中性墨色：旧「全宽深色 chrome 条」配色（--chrome-ink）在白底上等同白字，不可读 */
+.topbar .btn { background: transparent; border: none; color: var(--ink-soft); font-size: 12.5px; font-weight: 400; padding: 6px 10px; }
+.topbar .btn:hover { color: var(--ink); text-decoration: none; opacity: 1; }
 .topbar .btn.primary { background: var(--cta); color: var(--accent-ink); padding: 4px 12px; }
 .topbar .btn.primary:hover { opacity: .9; }
-.topbar .muted { color: var(--chrome-faint); }
+.topbar .muted { color: var(--ink-faint); }
 .logo { font-family: var(--sans); font-size: 16px; font-weight: 600; color: var(--ink); display: flex; align-items: center; gap: 8px; letter-spacing: -0.01em; }
-.topbar .logo { color: var(--chrome-ink); }
-.topbar .logo small { color: var(--chrome-faint); }
+/* 顶栏已改为浅色卡面（--card），logo 必须随之中性墨色：沿用 --chrome-ink（近白）会变成白底白字 */
+.topbar .logo { color: var(--ink); }
+.topbar .logo small { color: var(--ink-faint); }
 .logo .mark { font-size: 18px; }
 .logo small { font-size: 10px; color: var(--ink-faint); font-weight: 400; margin-left: 2px; letter-spacing: .12em; font-family: var(--mono); }
 
@@ -344,7 +355,7 @@ textarea.input { resize: vertical; min-height: 72px; line-height: 1.6; }
 .trip-edit-btn {
   position: absolute; left: 12px; bottom: 10px; z-index: 2;
   width: 30px; height: 30px; border-radius: var(--radius-ctl);
-  border: 1px solid var(--line); background: var(--card); font-size: 14px;
+  border: 1px solid var(--ctl-line); background: var(--card); font-size: 14px;
   cursor: pointer; opacity: 0; transition: opacity .15s ease;
 }
 .trip-card:hover .trip-edit-btn { opacity: 1; }
@@ -362,7 +373,7 @@ textarea.input { resize: vertical; min-height: 72px; line-height: 1.6; }
 /* 筛选 chips（可交互，属按钮族 → 药丸） */
 .chips { display: flex; gap: 8px; flex-wrap: wrap; }
 .chip {
-  border: 1px solid var(--line); background: var(--card); border-radius: var(--radius-ctl);
+  border: 1px solid var(--ctl-line); background: var(--card); border-radius: var(--radius-ctl);
   padding: 6px 14px; font-size: 13px; color: var(--ink-soft);
   transition: background-color .15s ease, border-color .15s ease, color .15s ease, transform .1s ease;
 }
@@ -380,8 +391,9 @@ textarea.input { resize: vertical; min-height: 72px; line-height: 1.6; }
 .trip-hero h1 { margin: 0; font-size: 32px; color: var(--ink); }
 .trip-hero .emoji-big { font-size: 38px; }
 .trip-hero .meta { color: var(--ink-soft); font-size: 13.5px; margin-top: 8px; display: flex; gap: 16px; flex-wrap: wrap; align-items: center; }
-.progress-line { height: 3px; background: var(--bg-soft); border-radius: 0; overflow: hidden; margin-top: 12px; max-width: 420px; }
-.progress-line > div { height: 100%; background: var(--ink); border-radius: 0; }
+/* 行程进度：对齐小程序 .progress——sky100 轨道 + 黄渐变填充 + 药丸（原直角 3px 灰条为 Apple 期残留） */
+.progress-line { height: 7px; background: var(--sky100); border-radius: 980px; overflow: hidden; margin-top: 12px; max-width: 420px; }
+.progress-line > div { height: 100%; background: linear-gradient(90deg, var(--yel400), var(--yel500)); border-radius: 980px; }
 
 .trip-layout { display: grid; grid-template-columns: 190px 1fr; gap: 18px; align-items: start; }
 /* 关键：sticky 的包含块必须是「比导航高」的祖先。桌面两列时网格行被内容撑高，吸顶有效；
@@ -511,7 +523,7 @@ textarea.input { resize: vertical; min-height: 72px; line-height: 1.6; }
 .member-card .ops { display: flex; gap: 6px; flex-wrap: wrap; }
 .online-badge { position: absolute; top: 14px; right: 16px; font-size: 11.5px; color: #30d158; display: flex; align-items: center; gap: 4px; }
 .online-badge .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ink); }
-.role-select { border: 1px solid var(--line-strong); border-radius: var(--radius-ui); padding: 4px 6px; background: transparent; font-size: 12.5px; }
+.role-select { border: 1px solid var(--ctl-line-strong); border-radius: var(--radius-ui); padding: 4px 6px; background: transparent; font-size: 12.5px; }
 
 .invite-panel { padding: 18px 20px; margin-bottom: 16px; }
 .invite-code {
@@ -642,7 +654,7 @@ textarea.input { resize: vertical; min-height: 72px; line-height: 1.6; }
 .tm-topline small { font-size: 10.5px; letter-spacing: .22em; opacity: .75; font-weight: 400; font-family: var(--mono); }
 .tm-topline strong { display: block; font-family: var(--serif); font-size: 24px; margin-top: 4px; letter-spacing: .04em; }
 .tm-close {
-  width: 36px; height: 36px; border-radius: var(--radius-ctl); border: 1px solid var(--line-strong);
+  width: 36px; height: 36px; border-radius: var(--radius-ctl); border: 1px solid var(--ctl-line-strong);
   background: transparent; color: var(--ink); font-size: 19px; line-height: 1;
 }
 .tm-close:hover { background: var(--bg-soft); }
@@ -651,7 +663,7 @@ textarea.input { resize: vertical; min-height: 72px; line-height: 1.6; }
 .tm-days::-webkit-scrollbar { display: none; }
 .tm-day {
   flex-shrink: 0; min-width: 108px; text-align: left;
-  border: 1px solid var(--line-strong); background: transparent;
+  border: 1px solid var(--ctl-line-strong); background: transparent;
   color: var(--ink-soft); border-radius: 8px; padding: 7px 11px;
 }
 .tm-day b { display: block; font-family: var(--mono); font-size: 11.5px; letter-spacing: .05em; }
@@ -659,7 +671,7 @@ textarea.input { resize: vertical; min-height: 72px; line-height: 1.6; }
 .tm-day.is-active { background: var(--ink); color: var(--bg); border-color: var(--ink); font-weight: 500; }
 .tm-arrow {
   flex-shrink: 0; width: 30px; height: 30px; border-radius: var(--radius-ctl);
-  border: 1px solid var(--line-strong); background: transparent; color: var(--ink); font-size: 15px;
+  border: 1px solid var(--ctl-line-strong); background: transparent; color: var(--ink); font-size: 15px;
 }
 .tm-arrow:hover { background: var(--bg-soft); }
 
@@ -728,7 +740,7 @@ textarea.input { resize: vertical; min-height: 72px; line-height: 1.6; }
 .tm-stop-actions { display: flex; flex-direction: column; gap: 6px; flex-shrink: 0; }
 .tm-act-link {
   font-size: 12px; text-align: center; padding: 5px 12px; border-radius: 980px;
-  border: 1px solid var(--line-strong); color: var(--ink-soft); white-space: nowrap;
+  border: 1px solid var(--ctl-line-strong); color: var(--ink-soft); white-space: nowrap;
 }
 .tm-act-link:hover { border-color: var(--ink-soft); color: var(--ink); }
 .tm-act-link.is-xhs { border-color: transparent; background: var(--orange-soft); color: var(--orange); }
@@ -857,7 +869,7 @@ textarea.input { resize: vertical; min-height: 72px; line-height: 1.6; }
 .ua-head b { font-size: 16px; letter-spacing: -0.01em; }
 .ua-head .kicker { color: var(--ink-faint); }
 .ua-close {
-  width: 30px; height: 30px; border-radius: var(--radius-ctl); border: 1px solid var(--line-strong);
+  width: 30px; height: 30px; border-radius: var(--radius-ctl); border: 1px solid var(--ctl-line-strong);
   background: transparent; color: var(--ink); font-size: 16px; line-height: 1;
 }
 .ua-close:hover { background: var(--bg); }
@@ -1126,14 +1138,14 @@ textarea.input { resize: vertical; min-height: 72px; line-height: 1.6; }
 
 /* 飞哪儿 v2：条件 chips / 分段控件 / 工具栏 / 目的地卡片 / 查询记录 */
 .fw-chiprow { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 12px; }
-.fw-chip { font-size: 12px; color: var(--ink-soft); background: var(--card); border: 1px solid var(--line); border-radius: var(--radius-ctl); padding: 3px 11px; white-space: nowrap; }
+.fw-chip { font-size: 12px; color: var(--ink-soft); background: var(--card); border: 1px solid var(--ctl-line); border-radius: var(--radius-ctl); padding: 3px 11px; white-space: nowrap; }
 .fw-chip-btn { cursor: pointer; font-family: inherit; color: var(--ink); background: var(--card); border-color: var(--line); }
 .fw-chip-btn:hover { border-color: var(--ink); color: var(--ink); }
 .fw-spacer { flex: 1; }
 .fw-seg { display: inline-flex; gap: 3px; padding: 3px; border: 1px solid var(--line); border-radius: var(--radius-ctl); background: var(--bg-soft); }
 .fw-seg button { border: 0; background: transparent; padding: 5px 16px; border-radius: var(--radius-ctl); font-size: 13px; color: var(--ink-faint); cursor: pointer; font-family: inherit; transition: background-color .15s ease, color .15s ease; }
 .fw-seg button.on { background: var(--card); color: var(--ink); border: 1px solid var(--line); }
-.fw-step { display: inline-flex; align-items: center; border: 1px solid var(--line); border-radius: var(--radius-ctl); background: var(--card); }
+.fw-step { display: inline-flex; align-items: center; border: 1px solid var(--ctl-line); border-radius: var(--radius-ctl); background: var(--card); }
 .fw-step button { width: 34px; align-self: stretch; border: 0; background: transparent; border-radius: 980px; font-size: 16px; color: var(--ink-soft); cursor: pointer; font-family: inherit; }
 .fw-step button:hover { background: var(--bg-soft); color: var(--ink); border-radius: var(--radius-ctl); }
 .fw-step input { width: 44px; align-self: stretch; border: 0; text-align: center; font-size: 14px; background: transparent; outline: none; color: var(--ink); font-family: var(--mono); -moz-appearance: textfield; appearance: textfield; }
@@ -1422,8 +1434,8 @@ img, svg, video, canvas { max-width: 100%; }
 
 /* ---------- 清单六类 + 进度 + 清除 ---------- */
 .pack-progress { margin-bottom: 12px; }
-.pack-progress .bar { height: 9px; border-radius: var(--radius-ctl); background: var(--bg-soft); overflow: hidden; border: 1px solid var(--line); }
-.pack-progress .bar > div { height: 100%; background: var(--accent); border-radius: var(--radius-ctl); }
+.pack-progress .bar { height: 9px; border-radius: 980px; background: var(--sky100); overflow: hidden; border: 0; }
+.pack-progress .bar > div { height: 100%; background: linear-gradient(90deg, var(--yel400), var(--yel500)); border-radius: 980px; }
 .pack-progress .txt { font-size: 12.5px; color: var(--ink-soft); margin-top: 5px; }
 .pack-cat > summary .cnt { color: var(--ink-faint); font-size: 12px; font-weight: 400; }
 .pack-clear-ops { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line); }
@@ -1787,7 +1799,7 @@ img, svg, video, canvas { max-width: 100%; }
 .trip-del-btn {
   position: absolute; left: 50px; bottom: 10px; z-index: 2;
   width: 30px; height: 30px; border-radius: var(--radius-ctl);
-  border: 1px solid var(--line); background: var(--card); font-size: 14px;
+  border: 1px solid var(--ctl-line); background: var(--card); font-size: 14px;
   cursor: pointer; opacity: 0; transition: opacity .15s ease, border-color .15s ease;
 }
 .trip-card:hover .trip-del-btn { opacity: 1; }
@@ -1838,17 +1850,20 @@ img, svg, video, canvas { max-width: 100%; }
   .budget-web .card { overflow-x: auto; }
 }
 
-/* 当前旅程与安排详情：DESIGN.md 的中性表面、8px 卡片、药丸操作。 */
+/* 当前旅程与安排详情：面板表面跟随全站晴空令牌（与小程序同一套表面语言），
+   不再引入独立的 Apple 表面色/8px 圆角——深浅切换与色彩漂移统一由根令牌承担。
+   下面只做「面板作用域别名」，方便局部规则表达层级。 */
 .dash-current, .schedule-workspace {
-  --panel-ink: #1d1d1f; --panel-secondary: #333333; --panel-muted: #707070;
-  --panel-surface: #fff; --panel-wash: #f5f5f7; --panel-line: #d2d2d7;
+  --panel-ink: var(--ink);
+  --panel-secondary: var(--ink-soft);
+  --panel-muted: var(--ink-faint);
+  --panel-surface: var(--card);
+  --panel-wash: var(--bg-soft);
+  --panel-line: var(--line);
+  --panel-radius: 16px; /* 与桌面层 .card 同半径（小程序日卡 32rpx=16px） */
   color: var(--panel-ink);
 }
-html[data-theme="dark"] .dash-current, html[data-theme="dark"] .schedule-workspace {
-  --panel-ink: #f5f5f7; --panel-secondary: #e2e2e5; --panel-muted: #a1a1a6;
-  --panel-surface: #1d1d1f; --panel-wash: #000; --panel-line: #474747;
-}
-.dash-current { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(280px, 1fr); gap: 0; margin-bottom: 24px; border: 1px solid var(--panel-line); border-radius: 8px; overflow: hidden; background: var(--panel-surface); }
+.dash-current { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(280px, 1fr); gap: 0; margin-bottom: 24px; border: 1px solid var(--panel-line); border-radius: var(--panel-radius); overflow: hidden; background: var(--panel-surface); }
 .dash-current .dash-hero { height: auto; min-height: 252px; margin: 0; border-radius: 0; box-shadow: none; background: var(--panel-wash); cursor: default; }
 .dash-current .dash-hero-in { position: relative; inset: auto; padding: 24px; min-height: 252px; color: var(--panel-ink); }
 .dash-current .has-photo .dash-hero-in { color: #fff; }
@@ -1863,20 +1878,19 @@ html[data-theme="dark"] .dash-current, html[data-theme="dark"] .schedule-workspa
 .dash-current-heading > span, .dash-current-money > span, .dash-budget-caption { font-size: 14px; color: var(--panel-muted); }
 .dash-current-money { display: flex; flex-direction: column; gap: 8px; margin: 20px 0 16px; }
 .dash-current-money strong { font-size: 28px; font-weight: 600; overflow-wrap: anywhere; }
-.dash-budget-track { height: 8px; border-radius: 980px; background: var(--panel-wash); overflow: hidden; border: 1px solid var(--panel-line); }
-.dash-budget-track i { display: block; height: 100%; background: var(--panel-secondary); border-radius: 980px; }
+.dash-budget-track { height: 8px; border-radius: 980px; background: var(--sky100); overflow: hidden; border: 0; }
+.dash-budget-track i { display: block; height: 100%; background: linear-gradient(90deg, var(--yel400), var(--yel500)); border-radius: 980px; }
 .dash-budget-caption { margin: 8px 0 16px; }
 .dash-current-links { display: flex; flex-wrap: wrap; gap: 8px; margin-top: auto; }
-.dash-current .btn, .activity-inspector .btn { background: transparent; border: 1px solid #0066cc; color: #0066cc; border-radius: 980px; box-shadow: none; font-weight: 400; text-decoration: none; }
-.dash-current .btn.primary, .activity-inspector .btn.primary { background: #0071e3; border-color: #0071e3; color: #fff; }
-.dash-current .btn.ghost, .activity-inspector .btn.ghost { border-color: transparent; }
+/* 面板内按钮不再单独描 Apple 蓝：与全站（同小程序）.btn / .ghost / .primary 完全一致，
+   主题切换自动跟随 sky ramp，深色下不再出现 #0066cc 文字 3.02:1 的低对比 */
+.activity-select:focus-visible, .dash-current .btn:focus-visible, .activity-inspector .btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
 .schedule-workspace { display: grid; grid-template-columns: minmax(0, 1fr) 308px; gap: 20px; align-items: start; }
 .schedule-days { min-width: 0; }
-.schedule-workspace .day-card { border-radius: 8px; box-shadow: none; border: 1px solid var(--panel-line); background: var(--panel-surface); }
+.schedule-workspace .day-card { border-radius: var(--panel-radius); box-shadow: none; border: 1px solid var(--panel-line); background: var(--panel-surface); }
 .activity-select { display: inline; max-width: 100%; border: 0; padding: 2px 0; border-radius: 980px; background: transparent; color: inherit; font: inherit; text-align: left; cursor: pointer; overflow-wrap: anywhere; }
 .activity-select:hover { text-decoration: underline; }
-.activity-select:focus-visible, .dash-current .btn:focus-visible, .activity-inspector .btn:focus-visible { outline: 2px solid #0071e3; outline-offset: 3px; }
-.activity-inspector { position: sticky; top: 88px; padding: 24px; min-width: 0; border: 1px solid var(--panel-line); border-radius: 8px; background: var(--panel-surface); max-height: calc(100dvh - 108px); overflow: auto; }
+.activity-inspector { position: sticky; top: 88px; padding: 24px; min-width: 0; border: 1px solid var(--panel-line); border-radius: var(--panel-radius); background: var(--panel-surface); max-height: calc(100dvh - 108px); overflow: auto; }
 .inspector-heading { display: flex; flex-wrap: wrap; gap: 8px; justify-content: space-between; font-size: 12px; color: var(--panel-muted); }
 .activity-inspector h3 { margin: 16px 0 12px; font-size: 21px; font-weight: 600; overflow-wrap: anywhere; }
 .inspector-fields { margin: 20px 0; }
@@ -1896,9 +1910,10 @@ html[data-theme="dark"] .dash-current, html[data-theme="dark"] .schedule-workspa
 }
 .activity-inspector { scroll-margin-top: 136px; }
 /* 列表保留摘要，完整长文本在详情里阅读。 */
-.schedule-workspace .act-row, .schedule-workspace .act-row:hover { border-radius: 8px; box-shadow: none; background: var(--panel-surface); border-color: var(--panel-line); }
-.schedule-workspace .act-row.selected { border-color: #0071e3; background: var(--panel-wash); }
-.schedule-workspace .day-head, .schedule-workspace .day-acts { border-radius: 8px; background: var(--panel-surface); }
+.schedule-workspace .act-row, .schedule-workspace .act-row:hover { border-radius: var(--panel-radius); box-shadow: none; background: var(--panel-surface); border-color: var(--panel-line); }
+/* 选中态对齐小程序 .st-opt.on / .place-item.is-target：sky400 描边 + sky50 底 */
+.schedule-workspace .act-row.selected { border-color: var(--sky400); background: var(--sel-bg); }
+.schedule-workspace .day-head, .schedule-workspace .day-acts { border-radius: var(--panel-radius); background: var(--panel-surface); }
 .schedule-workspace .act-time, .schedule-workspace .act-cost { color: var(--panel-secondary); font-weight: 400; }
 .schedule-workspace .act-title { color: var(--panel-ink); font-weight: 600; }
 .schedule-workspace .act-place, .schedule-workspace .act-notes { color: var(--panel-muted); }

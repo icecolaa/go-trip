@@ -281,7 +281,11 @@ export default function MapTab({ bundle, reload, weather, canEdit }: TabCtx) {
           const open = openGroups.includes(g.key);
           return (
             <details className="place-group" key={g.key} open={open}
-              onToggle={e => setOpenGroups(prev => (e.currentTarget as HTMLDetailsElement).open ? [...new Set([...prev, g.key])] : prev.filter(k => k !== g.key))}>
+              onToggle={e => {
+                // open 必须在 updater 外取：StrictMode 双调用 updater 时 e.currentTarget 已为 null（同 ItineraryTab 的修复）
+                const isOpen = (e.currentTarget as HTMLDetailsElement).open;
+                setOpenGroups(prev => isOpen ? [...new Set([...prev, g.key])] : prev.filter(k => k !== g.key));
+              }}>
               <summary>{g.icon} {g.label} <span className="cnt">{list.length}</span></summary>
               <div className="place-list">
                 {list.map((p, i) => (

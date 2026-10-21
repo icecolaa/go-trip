@@ -25,13 +25,13 @@ function shortDate(s: string): string {
   const [, m, d] = s.split('-');
   return `${Number(m)}.${Number(d)}`;
 }
-/** 行程阶段：进行中（第 N 天）/ 即将出发 / 已结束 */
+/** 行程阶段：进行中（第 N 天）/ 即将出发 / 已结束；开始日期未填不冒充进行中 */
 function heroPhase(t: TripCardInfo): { label: string; cls: 'live' | 'up' | 'done' } {
   const today = localToday();
-  if (t.startDate && today < t.startDate) return { label: '即将出发', cls: 'up' };
+  if (!t.startDate) return { label: '日期待定', cls: 'up' };
   if (t.endDate && today > t.endDate) return { label: '已结束', cls: 'done' };
-  const n = t.startDate ? Math.max(1, daysBetween(t.startDate, today) + 1) : 1;
-  return { label: `进行中 · 第 ${n} 天`, cls: 'live' };
+  if (today < t.startDate) return { label: '即将出发', cls: 'up' };
+  return { label: `进行中 · 第 ${Math.max(1, daysBetween(t.startDate, today) + 1)} 天`, cls: 'live' };
 }
 
 export default function DashboardPage() {
@@ -67,11 +67,11 @@ export default function DashboardPage() {
 
   const shown = useMemo(() => {
     if (filter === 'mine') return trips; // 单主人架构：列表即自己发起的
-    if (filter === 'upcoming') return trips.filter(t => countdownText(t) !== '已结束');
+    if (filter === 'upcoming') return trips.filter(t => t.startDate && countdownText(t) !== '已结束');
     return trips;
   }, [trips, filter]);
 
-  const upcoming = trips.filter(t => countdownText(t) !== '已结束').length;
+  const upcoming = trips.filter(t => t.startDate && countdownText(t) !== '已结束').length;
 
   /** 工作台当前行程（w2 稿 hero 面板）：最近打开的记忆优先，否则进行中的，否则最近的即将出发，否则第一条 */
   const currentTrip = useMemo(() => {
@@ -81,8 +81,9 @@ export default function DashboardPage() {
     if (byMemory) return byMemory;
     const live = trips.find(t => heroPhase(t).cls === 'live');
     if (live) return live;
+    // 无日期行程不是「即将出发」：不参与最近出发排序（空 startDate 排序恒最前），只作最后的兜底
     const nextUp = trips
-      .filter(t => heroPhase(t).cls === 'up')
+      .filter(t => t.startDate && heroPhase(t).cls === 'up')
       .sort((a, b) => a.startDate.localeCompare(b.startDate));
     return nextUp[0] || trips[0];
   }, [trips]);
@@ -253,6 +254,7 @@ function TripCard({ t, onClick, onEdit, onDelete }: { t: TripCardInfo; onClick: 
   const [imgSrc, setImgSrc] = useState('');
   useEffect(() => {
     setImgSrc('');
+    setImgFailed(false);
     if (t.coverImage && !t.coverImage.startsWith('data:')) {
       tempUrls([t.coverImage]).then(m => setImgSrc(m[t.coverImage!] || '')).catch(() => undefined);
     } else if (t.coverImage) setImgSrc(t.coverImage);
@@ -284,9 +286,8 @@ function TripCard({ t, onClick, onEdit, onDelete }: { t: TripCardInfo; onClick: 
             🗑️
           </button>
         )}
-        <div className="cover-date">
-          {t.startDate}<br />~ {t.endDate}
-        </div>
+        {/* 无日期行程不渲染日期角标：两侧为空时只剩一个孤立的「~」 */}
+        {t.startDate && <div className="cover-date">{t.startDate}<br />~ {t.endDate}</div>}
       </div>
       <div className="trip-body">
         <div className="trip-title">{t.title}</div>

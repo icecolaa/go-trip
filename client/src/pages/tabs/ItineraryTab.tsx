@@ -121,6 +121,15 @@ export default function ItineraryTab({ bundle, reload, weather, canEdit, goTab }
     return first ? first.dayNumber : null;
   });
 
+  // 跨行程切换时重置默认展开：重挂载瞬间的 bundle 可能还是上一段行程的，等新行程数据到位再算一次
+  const tripIdKey = bundle.trip.id;
+  useEffect(() => {
+    const hit = days.find(d => d.date === todayStr());
+    const first = [...days].sort((a, b) => a.dayNumber - b.dayNumber)[0];
+    setOpenDay(hit ? hit.dayNumber : first ? first.dayNumber : null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tripIdKey]);
+
   // 从最新聚合数据取详情，修改/删除/换天后不保留旧对象。
   const visibleDay = days.find(d => d.dayNumber === openDay);
   const visibleActs = visibleDay ? actsByDay.get(visibleDay.id) || [] : [];
@@ -350,7 +359,7 @@ export default function ItineraryTab({ bundle, reload, weather, canEdit, goTab }
             <button className="btn sm" onClick={() => goTab('map')}>查看地图</button>
             {hasCoords && <a className="btn sm ghost" href={`https://uri.amap.com/navigation?to=${selected.lng},${selected.lat},${encodeURIComponent(selected.place || selected.title)}&mode=car&coordinate=gaode&callnative=0`} target="_blank" rel="noopener noreferrer">高德导航 ↗</a>}
           </div>
-        </> : <div className="inspector-empty"><h3>安排详情</h3><p>{visibleDay ? '这一天还没有安排，添加后可查看详情。' : '展开一天，选择安排查看详情。'}</p></div>}
+        </> : <div className="inspector-empty"><h3>安排详情</h3><p>{visibleDay ? '这一天还没有安排，添加后可查看详情。' : days.length ? '展开一天，选择安排查看详情。' : '还没有行程日，添加行程日或用 AI 助手生成后，这里会展示详情。'}</p></div>}
       </aside>
       </div>
 

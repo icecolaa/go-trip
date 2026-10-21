@@ -240,8 +240,8 @@ export default function TripPage() {
           </div>
         </nav>
 
-        {/* 内容区：scroll-margin-top 显式留出顶栏+吸顶导航的高度，跳转不会遮住板块标题 */}
-        <div className="tab-pane" key={tab} ref={paneTop}>
+        {/* 内容区：key 带上 tripId——切换旅程时整体重挂载，避免行程体检/展开天/选中站等板块状态跨行程残留 */}
+        <div className="tab-pane" key={`${tripId}·${tab}`} ref={paneTop}>
           {tab === 'itinerary' && <ItineraryTab {...ctx} />}
           {tab === 'transport' && <TransportStayTab {...ctx} />}
           {tab === 'places' && <PlacesTab {...ctx} />}
