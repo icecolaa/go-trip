@@ -8,9 +8,20 @@ const api = require('../../utils/api')
 const DAY_BG = { 1: '#2BB8A8', 2: '#2E92ED', 3: '#FF8A5C', 4: '#7B8CFF' }
 const MARKER_ICON = '/assets/marker-pin.png'
 
-/* 已编码过的站点（2026-10-21 资源点优化）：同一次会话内不再重复编码同一站点，
-   避免反复进出地图页时重复打容器 + 重复写库；新站点不在集合内，仍会被正常编码。 */
-const geoAttempted = new Set()
+/* 已编码过的站点（2026-10-21 资源点优化，同日修复；10-22 补 city/tripId）：
+   键=行程id+城市+站点id+查询词+名称——**所有影响编码结果的参数都必须进键**（CLAUDE 红线 2）：
+   city 会随行程目的地变化直接影响高德 POI 结果，若只按 id/名称缓存，改了城市仍被旧负缓存屏蔽。
+   同内容站点最多尝试 GEO_MAX_TRIES 次（负缓存有界，服务端偶发漏报下次进页还能自愈），
+   改过名称/地点/城市后键变化即视为新键；请求级失败直接删键，不把站点永久挡在编码门外。
+   调用方必须传入**本次请求捕获的** tripId/city，不得在键计算里再读可变的 store.trip。 */
+const geoAttempted = new Map() // key -> 已尝试次数
+const GEO_MAX_TRIES = 2
+function geoQuery(s) {
+  return (s.place || s.name || '').replace(/^(穿越|游览|前往|到达|入住|返回|集合)/, '').slice(0, 30)
+}
+function geoKey(s, tripId, city) {
+  return [tripId || '', city || '', s.id, geoQuery(s), s.name || ''].join('|')
+}
 
 function dayBg(d) { return DAY_BG[d] || DAY_BG[(((d - 1) % 4) + 4) % 4 + 1] || '#51637A' }
 function hasCoord(s) { return s && s.lat != null && s.lng != null }
@@ -51,35 +62,49 @@ Page({
     this.setData({ themeClass: theme.currentClass() })
     this.boot()
   },
+  onUnload() { this._unloaded = true },
   /** 无坐标时批量地理编码一次（容器高德 POI，限流内）：成功即落库并刷新 */
   async autoGeocodeOnce() {
     if (this._geocoding) return
     this._geocoding = true
+    const tripId = (store.trip && store.trip.id) || ''
+    // 与本次请求同源捕获城市：键必须与请求参数一致，之后不再读可变的 store.trip
+    const city = (store.trip && store.trip.city) || ''
+    const marked = [] // 本批已标记的键：请求级失败回滚，避免站点被永久跳过
     try {
       let pending = store.stops.filter(s2 => (s2.lat == null || s2.lng == null) && (s2.name || s2.place))
-      // 本会话已编码过的（含上次未命中的）跳过，只编码新增站点
-      pending = pending.filter(s2 => !geoAttempted.has(s2.id))
-      if (!pending.length || this.data.hasCoords) return
+      // 同内容站点已尝试满上限的跳过（含上次未命中的）；新增/内容/城市有变的仍会编码
+      pending = pending.filter(s2 => (geoAttempted.get(geoKey(s2, tripId, city)) || 0) < GEO_MAX_TRIES)
+      // 只按「待编码站点」判空：原实现 `|| this.data.hasCoords` 会在已有任一坐标时
+      // 直接跳过——新增/未命中站点从此再也不编码（2026-10-21 复现：A 站命中后 B 站永不重试）
+      if (!pending.length) return
       wx.showLoading({ title: '坐标解析中…' })
       const batch = pending.slice(0, 20)
-      batch.forEach(s2 => geoAttempted.add(s2.id))
+      batch.forEach(s2 => { const k = geoKey(s2, tripId, city); geoAttempted.set(k, (geoAttempted.get(k) || 0) + 1); marked.push(k) })
       const items = batch.map(s2 => ({
         id: s2.id,
-        query: (s2.place || s2.name || '').replace(/^(穿越|游览|前往|到达|入住|返回|集合)/, '').slice(0, 30),
+        query: geoQuery(s2),
         alt: s2.name || '',
-        city: store.trip.city || '',
+        city, // 用捕获值：与负缓存键同源，避免键与请求参数漂移
       }))
       const geo = await api.post('/api/poi/geocode', { items })
       const coords = geo.coords || {}
       let hit = 0
       for (const [id, c] of Object.entries(coords)) {
-        const row = store.stops.find(x => x.id === id)
-        if (row) { hit++; await entities.updateRow('gt_activities', id, { lat: c.lat, lng: c.lng }) }
+        // 按活动 id 直写云端：即使响应期间已切到别的行程也写对行，不丢返回的坐标
+        hit++
+        await entities.updateRow('gt_activities', id, { lat: c.lat, lng: c.lng })
       }
       wx.hideLoading()
-      if (hit > 0) { wx.showToast({ title: '已定位 ' + hit + ' 个地点', icon: 'none' }); await store.reload(); this.boot() }
-      else { wx.showToast({ title: '没定位到，去日程补地点名称再试', icon: 'none' }) }
+      // 响应期间切走行程或页面已销毁：数据已落库，toast/刷新只属原行程，不再打扰新上下文
+      if (this._unloaded || !store.trip || store.trip.id !== tripId) return
+      if (hit > 0) {
+        wx.showToast({ title: '已定位 ' + hit + ' 个地点', icon: 'none' })
+        await store.reload()
+        this.applyFilter() // 只刷视图：不再走 boot()，避免同一轮里对未命中站点立刻二次编码
+      } else { wx.showToast({ title: '没定位到，去日程删除重加该地点再试', icon: 'none' }) }
     } catch (e) {
+      marked.forEach(k => geoAttempted.delete(k))
       try { wx.hideLoading() } catch (e2) { /* ignore */ }
     } finally {
       this._geocoding = false
@@ -105,8 +130,9 @@ Page({
         dateLabel
       })
       this.applyFilter()
-      // 站点缺坐标时自动批量编码一次（容器高德 POI）；成功会落库并刷新
-      if (!this.data.hasCoords) this.autoGeocodeOnce()
+      // 站点缺坐标时自动批量编码一次（容器高德 POI）；成功会落库并刷新。
+      // 不按 hasCoords 提前拦截：只要有站点缺坐标就要编码，否则新增站点在有坐标的行程里永远不定位。
+      this.autoGeocodeOnce()
     } catch (e) {
       this.setData({ loading: false })
       wx.showToast({ title: (e && e.message) || '加载失败', icon: 'none' })

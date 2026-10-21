@@ -2,7 +2,19 @@ const store = require('../../utils/store')
 const theme = require('../../utils/theme')
 
 const LABELS = { auto: '跟随系统', light: '浅色', dark: '深色' }
-const VERSION = 'v1.5.0'
+/* 版本号：优先取小程序正式版版本号，开发版/体验版/取不到时回落本地兜底。
+   教训：曾长期写死 'v1.5.0'，而正式版已迭代到 1.5.32+，关于页显示的版本与实际运行版本
+   长期不一致；每次发版靠人记得改一次，必然漂移——改为读正式版本，兜底只服务开发期。 */
+const FALLBACK_VERSION = 'v1.5.33'
+function currentVersion() {
+  try {
+    const info = wx.getAccountInfoSync && wx.getAccountInfoSync()
+    const v = info && info.miniProgram && info.miniProgram.version
+    // 正式版返回 x.y.z；开发版为 'develop'、体验版为 'trial' → 一律走兜底
+    if (v && /^\d+\.\d+\.\d+/.test(v)) return 'v' + v
+  } catch (e) { /* 基础库不支持或异常：回落兜底 */ }
+  return FALLBACK_VERSION
+}
 
 Page({
   data: { themeClass: '', themeSetting: 'auto', themeLabel: '跟随系统', shareTitle: '出发吧 · 行程（只读）' },
@@ -27,7 +39,7 @@ Page({
   showAbout() {
     wx.showModal({
       title: '关于出发吧',
-      content: '出发吧 GoTrip ' + VERSION + '\n协作行程 · 记账结算 · 打包清单 · 旅行锦囊\n和同行人一起把旅行安排明白',
+      content: '出发吧 GoTrip ' + currentVersion() + '\n协作行程 · 记账结算 · 打包清单 · 旅行锦囊\n和同行人一起把旅行安排明白',
       showCancel: false,
       confirmText: '知道了'
     })

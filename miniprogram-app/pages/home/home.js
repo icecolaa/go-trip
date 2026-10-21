@@ -48,7 +48,6 @@ Page({
     refreshing: false,
     greet: greetWord(),
     sub: '',
-    trips: [],
     emojis: EMOJIS,
     colors: COLORS,
     editShow: false,

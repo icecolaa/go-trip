@@ -26,7 +26,7 @@ const mode = argv[0] === 'preview' ? 'preview' : 'upload'
 const version = mode === 'upload' ? argv[0] : undefined
 const desc = mode === 'upload' ? (argv[1] || '') : (argv[1] || 'GoTrip 小程序预览')
 
-if (mode === 'upload' && (!version || !/^\d+\.\d+\.\d+/.test(version))) {
+if (require.main === module && mode === 'upload' && (!version || !/^\d+\.\d+\.\d+/.test(version))) {
   console.error('✗ 请提供语义化版本号：npm run upload -- 1.0.0 "描述"')
   process.exit(1)
 }
@@ -63,6 +63,25 @@ function devtoolsRequest(port, apiPath, timeoutMs) {
   })
 }
 
+/** 通道 A 上传成功判定（纯函数，可离线单测）：只有响应体明确给出成功标记才算成功。
+    200 + 非 JSON（如网关 HTML 错误页）/缺 success 标记一律按失败处理，
+    交由 main() 降级 miniprogram-ci——宁可失败重试，不可伪报成功。
+    显式 success:false 一票否决（即使同时带 code:0 也判失败）。 */
+function judgeUploadResponse(up) {
+  let parsed = null
+  try { parsed = JSON.parse(up.body) } catch (e) { parsed = null }
+  // 成功响应形如 {"info":{...},"success":true}（无 code 字段）；失败才是 {"code":N,"message":...}
+  if (parsed && parsed.success === false) {
+    return { ok: false, reason: `工具上传失败：${String(parsed.message || up.body).slice(0, 160)}` }
+  }
+  if (parsed && parsed.success === true) return { ok: true }
+  if (parsed && parsed.code === 0) return { ok: true }
+  if (parsed && parsed.code != null && Number(parsed.code) !== 0) {
+    return { ok: false, reason: `工具上传失败：${String(parsed.message || up.body).slice(0, 160)}` }
+  }
+  return { ok: false, reason: `工具接口响应无法确认成功（无 success 标记）：${String(up.body).slice(0, 160)}` }
+}
+
 async function uploadViaDevtools() {
   const port = devtoolsPort()
   if (!port) return { ok: false, reason: '未找到开发者工具服务端口（工具未运行或服务端口未开启）' }
@@ -92,14 +111,7 @@ async function uploadViaDevtools() {
     const stillPolling = (up.status === 301 || up.status === 302 || up.status === 303 || up.status === 307)
     return { ok: false, reason: stillPolling ? '工具上传轮询超时（任务未在 5 分钟内完成）' : `工具接口返回异常：${up.status} ${up.body.slice(0, 120)}` }
   }
-  let parsed
-  try { parsed = JSON.parse(up.body) } catch { parsed = null }
-  // 成功响应形如 {"info":{...},"success":true}（无 code 字段）；失败才是 {"code":N,"message":...}
-  if (parsed && parsed.success === true) return { ok: true }
-  if (parsed && parsed.code != null && Number(parsed.code) !== 0) {
-    return { ok: false, reason: `工具上传失败：${(parsed.message || up.body).slice(0, 160)}` }
-  }
-  return { ok: true }
+  return judgeUploadResponse(up)
 }
 
 /* ---------- 通道 B：miniprogram-ci ---------- */
@@ -156,7 +168,10 @@ async function main() {
   await uploadViaCi()
 }
 
-main().catch((e) => {
-  console.error('✗ 失败：', (e && e.message) || e)
-  process.exit(1)
-})
+if (require.main === module) {
+  main().catch((e) => {
+    console.error('✗ 失败：', (e && e.message) || e)
+    process.exit(1)
+  })
+}
+module.exports = { judgeUploadResponse }
