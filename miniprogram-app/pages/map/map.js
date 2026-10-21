@@ -8,6 +8,10 @@ const api = require('../../utils/api')
 const DAY_BG = { 1: '#2BB8A8', 2: '#2E92ED', 3: '#FF8A5C', 4: '#7B8CFF' }
 const MARKER_ICON = '/assets/marker-pin.png'
 
+/* 已编码过的站点（2026-10-21 资源点优化）：同一次会话内不再重复编码同一站点，
+   避免反复进出地图页时重复打容器 + 重复写库；新站点不在集合内，仍会被正常编码。 */
+const geoAttempted = new Set()
+
 function dayBg(d) { return DAY_BG[d] || DAY_BG[(((d - 1) % 4) + 4) % 4 + 1] || '#51637A' }
 function hasCoord(s) { return s && s.lat != null && s.lng != null }
 /* callout 显示名截断：超长名称气泡横穿屏幕且相邻遮挡（显示层截断，不碰数据） */
@@ -52,10 +56,14 @@ Page({
     if (this._geocoding) return
     this._geocoding = true
     try {
-      const pending = store.stops.filter(s2 => (s2.lat == null || s2.lng == null) && (s2.name || s2.place))
+      let pending = store.stops.filter(s2 => (s2.lat == null || s2.lng == null) && (s2.name || s2.place))
+      // 本会话已编码过的（含上次未命中的）跳过，只编码新增站点
+      pending = pending.filter(s2 => !geoAttempted.has(s2.id))
       if (!pending.length || this.data.hasCoords) return
       wx.showLoading({ title: '坐标解析中…' })
-      const items = pending.slice(0, 20).map(s2 => ({
+      const batch = pending.slice(0, 20)
+      batch.forEach(s2 => geoAttempted.add(s2.id))
+      const items = batch.map(s2 => ({
         id: s2.id,
         query: (s2.place || s2.name || '').replace(/^(穿越|游览|前往|到达|入住|返回|集合)/, '').slice(0, 30),
         alt: s2.name || '',

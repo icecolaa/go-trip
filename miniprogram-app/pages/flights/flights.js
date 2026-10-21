@@ -2,7 +2,12 @@ const api = require('../../utils/api')
 const store = require('../../utils/store')
 const theme = require('../../utils/theme')
 
-const POLL_MS = 2500 // 轮询间隔
+/* 轮询节奏（2026-10-21 资源点优化）：飞猪 job 通常 20~60s 才出结果，
+   前 15s 用快轮询给反馈，之后放慢一档——一次查询的轮询次数从 ~24 次降到 ~12 次，
+   网关调用与容器算力同步减半。 */
+const POLL_FAST_MS = 3000
+const POLL_SLOW_MS = 6000
+const POLL_FAST_UNTIL_MS = 15000
 const POLL_MAX_MS = 120000 // 轮询上限
 
 function isoDate(offsetDays) {
@@ -126,6 +131,8 @@ Page({
   },
   poll(jobId) {
     this.clearTimer()
+    // 已等待时长决定下一次间隔：前期快、后期慢（退避）
+    const gap = (Date.now() - this._start) >= POLL_FAST_UNTIL_MS ? POLL_SLOW_MS : POLL_FAST_MS
     this._timer = setTimeout(() => {
       const waited = Math.round((Date.now() - this._start) / 1000)
       if (Date.now() - this._start >= POLL_MAX_MS) {
@@ -144,7 +151,7 @@ Page({
           this.setData({ searching: false })
           wx.showToast({ title: (e && e.message) || '查询失败，请重试', icon: 'none' })
         })
-    }, POLL_MS)
+    }, gap)
   },
 
   // ---------- 结果映射到页面字段 ----------

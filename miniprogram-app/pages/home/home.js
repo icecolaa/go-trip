@@ -63,6 +63,19 @@ Page({
     this.boot()
   },
   async boot() {
+    /* 防抖（2026-10-21 资源点优化）：Tab 来回切会连续触发 onShow，
+       1.5s 内且数据已就绪时直接复用内存态渲染，省掉一轮云读与临时链接请求。
+       需要强制刷新走下拉刷新（onPullDownRefresh → store.refreshTrips）。 */
+    const now = Date.now()
+    if (this._booting || (store._ready && now - (this._bootAt || 0) < 1500)) {
+      if (store._ready) {
+        this.applyTrips()
+        this.setData({ loading: false })
+      }
+      return
+    }
+    this._bootAt = now
+    this._booting = true
     try {
       await store.ready()
       this.applyTrips()
@@ -70,6 +83,8 @@ Page({
     } catch (e) {
       this.setData({ loading: false, trips: [] })
       wx.showToast({ title: (e && e.message) || '加载失败，请下拉重试', icon: 'none' })
+    } finally {
+      this._booting = false
     }
   },
   applyTrips() {
