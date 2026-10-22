@@ -1,6 +1,7 @@
 # 交接文档（HANDOFF）
 
-> 最新开发：2026-10-12 条目 83，工作台概况面板 + 时间轴详情卡已完成本地验证（浏览器 24/24、冒烟 10/10），尚未部署生产；500 detail 回显已在 e67470f 收回。
+> 最新开发：**2026-10-22 条目 84（WorkBuddy 接管轮 · 双包收口 + 提交推送 + 1.5.33 上传）**——codex 与 zcode 同达 5 小时上限期间，由 WorkBuddy 接管主持方并本地直执：mp 修 `geoKey` 漏 city（红线 2）与 settings 版本号写死、Web 设计对齐小程序晴空基准并修掉深色描边 1.26:1 可用性硬伤；**提交 `a2d93b0`(web) + `c9341e2`(mp) 已推 Gitee/GitHub 双远端，小程序 1.5.33 已上传待提审**。⚠️ **剩余两项交回 codex 主持 + zcode 执行**：① W6 真机批次（需微信工具开服务端口）② PocketBay Web 部署（需配对确认）。详见文末「条目 84」与「交接：剩余任务清单」。
+> 上一条：2026-10-12 条目 83，工作台概况面板 + 时间轴详情卡已完成本地验证（浏览器 24/24、冒烟 10/10），尚未部署生产；500 detail 回显已在 e67470f 收回。
 
 > 面向下一个接手的开发者或 AI 会话。先读根目录 `CLAUDE.md`（规则手册），再读本文（现状、过程与经验）。
 > 更新：2026-10-12（条目 82 附记一：**线上天气/PDF/飞哪儿/POI 回归 7/7 全绿**——脚本 work/regress-online-1012.mjs；AI 真调实锤 GLM 仍 429 余额不足、lastError=none 不可作 AI 可用证据；⚠️PocketBay 唤醒机制平台侧升级为**开页自动唤醒**无需手动点，部署文档已修正）
@@ -42,7 +43,21 @@
 > 上一条：2026-09-26（条目 45：Web 账密注册通道证实不可用并移除——平台 501 + SDK 吞错双实锤；登录页改登录+游客双通道）。
 > 上一条：2026-09-25（条目 42：第三个环境 + SQL 库接通 + H5 双端）。
 
-## 当前状态一览（2026-09-29 晚，幻觉会话收口+双远端同点）
+## 当前状态快照（2026-10-22 08:5x — 交接给 codex 前，先读这一节）
+
+| 项 | 值 |
+|---|---|
+| **分支 / HEAD** | `feat/miniprogram` @ **c9341e2**；**工作区干净**（未跟踪只剩用户材料 `.workbuddy/`、`submission/` 与两份验收报告 `acceptance/REPORT-{native,web}-1021.md`） |
+| **本轮提交** | `a2d93b0` fix(web)、`c9341e2` fix(mp) —— **已推送 Gitee + GitHub 双远端** |
+| **小程序** | **1.5.33 已上传**（开发者工具通道成功），状态=**开发版本，待公众平台提审**；线上正式版仍为 1.5.32 |
+| **Web** | 验收全绿：audit **114/0**、boards **43/43**（控件 68：点击 59 / GAP 9 / 异常 0）、smoke **10/0**、check/build 通过；**尚未部署**——部署包已就绪，卡在 PocketBay 配对确认 |
+| **待办（交回 codex/zcode）** | ① **W6 真机批次**（54 项按钮遍历 + 三态 + iPhone 14 390×844 真实截图）——卡在微信工具 9420 服务端口未开 ② **Web 部署**（PocketBay 配对，免配对窗口已关闭）③ **1.5.33 提审发布**（需人工在公众平台操作） |
+| **本轮协作证据** | `.work-together/`：`web-audit.verification.md`、`mp-audit.verification.md`、`review-1022.md`、`STATUS.md`、`PLAN.md`、`verify-map-city.cjs`(5/5)、`verify-settings-version.cjs`(6/6) |
+| **⚠️ 环境硬约束** | WorkBuddy 会话沙箱把 `reg.exe` 列入黑名单 → **无法自行启动微信开发者工具**；`miniprogram-automator@0.12.1` 是**全局**安装，跑脚本要带 `NODE_PATH="D:\nodeJs\node_global\node_modules"` |
+
+> 下一节是 2026-09-29 的历史存档，保留用于追溯；**当前状态以上表为准**。
+
+## 当前状态一览（2026-09-29 晚存档，幻觉会话收口+双远端同点）
 
 | 项 | 值 |
 |---|---|
@@ -317,6 +332,7 @@
 
 ## 新窗口开场指南
 
+0. **2026-10-22 起接手者先看这里**：顶部「当前状态快照」→ 文末「条目 84」→ 「84.3 未闭环 / 84.4 操作手册」（W6 真机批次、Web 部署、1.5.33 提审的现成命令与环境坑都在里面）。
 1. 读 `CLAUDE.md`（规则红线）→ 本文件（现状）→ 需要部署细节再读 `docs/deployment-pocketbay.md`。
 2. 常用命令：小程序上传=`cd miniprogram-app && node scripts/upload.js x.y.z "描述"`（工具通道优先/CI 降级）；Web 本地=`npm run dev`；冒烟=`bash scripts/smoke.sh`。
 3. **Web/H5 版决策（2026-10-05 冻结）**：H5 静态托管仍在但**暂不投入**（9 月底后所有迭代在小程序侧）；恢复前提=容器公网+一轮 Web 回归。小程序是唯一活跃端。
@@ -329,3 +345,83 @@
 时间轴新增右侧 sticky 详情卡，点标题选择站点；默认当前展开日第一站，展示时间/地点/费用/负责人/坐标/脱敏备注，复用修改弹窗并支持地图和高德导航。详情按 id 从最新 bundle 派生，修改/删除/换天后同步；修复 details 旧天关闭事件清空新天展开态的问题。<=1200px 详情置于列表下方，点站点自动滚到详情；手机行改网格避免操作按钮挤压正文，列表长文本两行摘要、详情保留全文。新增界面按 DESIGN.md 中性表面/8px 卡片/药丸按钮/无阴影，适配深浅主题。
 
 验证：浏览器专项 24/24（真实本地 API、天气浏览器请求隔离），类型检查与构建通过，API/shared 冒烟 10/10；报告 acceptance/REPORT-web-panels-1012.md，脚本 work/verify-panels-1012.cjs，截图 work/panels-1012/。测试旅程已级联清场，会话登出。**尚未部署生产；线上仍为此前版本**。工作台天气/动态整套稿未纳入本次选择的两块开发范围。
+
+---
+
+## 84. WorkBuddy 接管轮：双包收口 + 提交推送 + 1.5.33 上传（2026-10-21 夜 ~ 10-22 晨）
+
+### 84.1 背景与协作形态
+
+- codex（主持方）与 zcode（执行器）**同达 5 小时额度上限**（zcode 报 1308，10-22 03:12:56 重置），用户指令 WorkBuddy 接管 coordinator。
+- 原计划执行器用 `qoder` / `deepseek-flash`，**实测无法桥接**：Qoder CN（`E:\Qoder CN\Qoder CN.exe`）无 CLI、无任何 LISTEN 端口，`--remote-debugging-port` 与 `--help` 均返回 `bad option`（启动参数白名单）；work-together 桌面桥只实现 zcode/workbuddy 两家 renderer 的私有接口（`core.mjs` engine 白名单仅这两个）。按 skill 规矩不伪造会话、不写桌面数据库 → 用户改选**主持方本地直执 + 两个子任务对话**（web-audit / mp-audit 按文件归属并行）。
+- 旧调度器 pid 20948（`--resume` 空转、state.json 膨胀到 14.18MB）已停止并释放 `runner.lock`，三轮状态归档在 `work/wt-20261021-zcode`、`work/wt-20261021-workbuddy`、`work/wt-20261021-zcode-r3`。
+
+### 84.2 已完成（均有主持方独立复跑证据，未采信执行者自测）
+
+| 项 | 内容 | 证据 |
+|---|---|---|
+| mp·`geoKey` 漏 city | 编码请求体带 `city`，但负缓存键只有 `id+query+name` → 改目的地城市后仍被旧负缓存屏蔽，**违反 CLAUDE 红线 2**。键改为 `tripId\|city\|id\|query\|name`，且键与请求体统一用**本次请求捕获的** tripId/city，不再读可变的 `store.trip` | `.work-together/verify-map-city.cjs` **5/5 PASS**（修复前第 5 组 `0 !== 1` 复现失败） |
+| mp·版本号写死 | `settings.js` 长期写死 `v1.5.0`，落后正式版 30+ 版本。改 `currentVersion()`：优先 `wx.getAccountInfoSync().miniProgram.version`，开发版/体验版/异常回落 `v1.5.33` | 新建 `.work-together/verify-settings-version.cjs` **6/6 PASS** |
+| mp·上传判定 | `judgeUploadResponse` 显式 `success:false` 一票否决（即使带 `code:0`） | `work/native-1021/test-upload-judge.js` **13/13 PASS** |
+| web·既有修复 | 无日期行程不冒充进行中、跨行程重挂载、坏封面重置、0 天空态、MapTab `onToggle` 的 StrictMode pageerror | 均经浏览器复验 |
+| web·设计对齐小程序 | 深色主题对齐小程序晴空令牌；**修掉深色按钮描边对比仅 1.26:1 的可用性硬伤**（新增 `--ctl-line`/`--ctl-line-strong`，现 **3.54:1**）；顶栏 logo 白底白字修为 `--ink` | 差异清单 `work/web-1021/design-diff-1022.md` |
+| 验收复跑 | audit **114/0 exit 0**、boards **43/43**（控件 68：点击 59 / GAP 9 / 异常 0）、smoke **10/0**、check/build 通过 | `web-audit-verify2.log`、`web-boards-verify.log`、`smoke-verify.log` |
+| 提交推送 | `a2d93b0` fix(web) + `c9341e2` fix(mp) → Gitee + GitHub 双远端 | `git log` |
+| 小程序上传 | **1.5.33 上传成功**（开发者工具通道） | 状态=开发版本 |
+
+**设计基准的重要裁决（后续沿用）**：`DESIGN.md` 只有 light theme、无深色规范；HEAD 原本就是深空蓝夜航（`#0D1626/#14202F`），只有 `.dash-current`/`.activity-inspector` 两块是 `#1d1d1f` 孤岛；用户明确「小程序为基准」。故保留小程序晴空深色，并把 5 条「死盯色值」的深色断言改为**对比度断言**（面板文字 ≥4.5:1、控件描边 ≥3:1）。取舍已写入 `work/web-1021/design-diff-1022.md` §5。
+
+### 84.3 未闭环（三项，交回 codex 主持 + zcode 执行）
+
+| # | 任务 | 卡点 | 交接操作 |
+|---|------|------|---------|
+| T1 | **W6 真机批次**：54 项按钮遍历、正常/空值/超长三态、iPhone 14（390×844）真实截图、错误与复现进报告 | 微信开发者工具**自动化端口 9420 未监听**（工具在跑但服务端口未开）。WorkBuddy 会话沙箱把 `reg.exe` 列入 Program Blacklist，**无法自行启动工具**（不可批准/不可绕过） | 见下「84.4 操作手册」 |
+| T2 | **Web 部署**（PocketBay） | 免配对部署返回 **409 `pairing_required`**（距上次部署 >6h，窗口关闭）；配对码连开三枚（PPU9-9CPP / 89D8-4UKB / JNBY-4WW3）**均因无人点击超时**。已诊断排除技术故障：本机 device token 有效（`GET /api/ai/projects` 200，项目 gotrip id=1496、framework=dockerfile、status=**sleeping**） | 见下「84.4 操作手册」 |
+| T3 | **1.5.33 提审发布** | 已上传为**开发版本**，正式发布需在微信公众平台人工操作 | 人工：公众平台 → 版本管理 → 开发版本 → 提交审核 |
+
+### 84.4 操作手册（codex 主持 + zcode 执行，命令可直接复制）
+
+**T1 · W6 真机批次**
+
+1. 先在微信开发者工具里打开「服务端口」：设置 → 安全 → 服务端口（打开）。确认监听：
+   ```
+   netstat -ano | findstr ":9420"
+   ```
+2. 端口起来后跑（**`miniprogram-automator` 是全局安装，必须带 NODE_PATH**）：
+   ```
+   cd E:/code/go-trip
+   ONLY=W6 NODE_PATH="D:\nodeJs\node_global\node_modules" node work/native-1021/accept-1021.js
+   ```
+   其余段同理：`ONLY=W1` / `W4` / `W5` / `W7`。
+3. **不要再让脚本触发工具重启**：`accept-1021.js` 的 `ensureDevtools()` 见 9420 不通会执行 `cli.bat auto` 重启，实测会把原本可用的桥弄断（本轮就栽在这里）。9420 已监听时脚本不会触发重启。
+4. 移动端规格：用户已授权移动端验收，**例行切换模拟器机型不需要再征求同意**；要求用真实 DevTools **GUI 选择 iPhone 14（390×844）**，不得仅 mock 系统尺寸伪造截图；若 GUI 确无可用控制能力才保留缺口。
+5. 纪律：callMethod 直驱与真实点击**分开标注**（driver 字段）；测试数据只建专用行程并**按 id 精确清理**；本包**不上传/不提交/不发布**（提交与发布由主持方统一）。
+
+**T2 · Web 部署**
+
+```
+cd E:/code/go-trip
+node .work-together/prepare-deploy.mjs                     # 生成 tracked 白名单（92 文件，排除 .env/私钥）
+tar -czf .work-together/gotrip-deploy.tar.gz -T .work-together/deploy-files.txt
+node scripts/pocketbay-deploy.mjs .work-together/gotrip-deploy.tar.gz gotrip        # 免配对（6h 窗口内）
+node scripts/pocketbay-pairing-deploy.mjs .work-together/gotrip-deploy.tar.gz gotrip # 免配对失效时走配对
+```
+- 配对通道会打印 `pairing_url`，**必须在 10 分钟内由人点击**（过期即作废，重跑脚本重开一枚）。开链接前先确认浏览器已登录 pocketbay.com 且与 `~/.pocketbay/credentials.json` 的 device 同账号。
+- 已就绪的包可直接复用：`.work-together/gotrip-deploy-1022.tar.gz`（92 文件 / 10.12MB，已预检不含 `.env` 与私钥）。
+
+**T3 · 提审**：人工在微信公众平台操作，勿把「上传成功」说成「已发布」。
+
+### 84.5 本机环境坑（交接必读）
+
+- **`reg.exe` 被沙箱黑名单拦截** → 本会话无法启动微信开发者工具；codex/zcode 桌面若同样受限，需用户手动打开工具。
+- **`miniprogram-automator@0.12.1` 全局安装**（`D:\nodeJs\node_global\node_modules`），项目内不可解析 → 必须带 `NODE_PATH`。
+- **Vite 只监听 IPv6 `[::1]`** → 用 `http://localhost:5174`，不要 `127.0.0.1`。
+- **本机 HTTP_PROXY 会劫持 localhost** → curl 必须加 `--noproxy '*'`。
+- 改样式时 Vite 热重载会造成瞬时 `ERR_CONNECTION_REFUSED`，可能让浏览器断言偶发失败（本轮误判过一次），**重跑即可**，不是代码问题。
+- 本地服务常态：后端 8787、前端 5174（跑测试前确认 `/health` 返回 `{"ok":true,"db":"sqlite","mode":"fullstack"}`）。
+
+### 84.6 交接结论
+
+- **可以宣布完成**：web-audit 包（独立验收全绿）+ mp 的静态复核与离线回归 + 提交推送 + 1.5.33 上传。
+- **不能宣布完成**：mp-audit 的运行时验收（按钮清单 54 项、三态、移动端真实截图）——本轮卡在端口，非代码问题。按用户第 4 项要求「只有全部通过才标记完成」，**mp-audit 仍为未完成**。
+- 工作区当前**干净**（HEAD `c9341e2`），新会话可直接开工，无需先清理。
