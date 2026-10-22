@@ -148,7 +148,8 @@ Page({
     const title = ((t && t.title) || '出发吧 GoTrip') + ' · 和朋友一起把旅行计划成真'
     return {
       title,
-      path: '/pages/home/home'
+      path: '/pages/home/home',
+      imageUrl: '/assets/share-cover.jpg'
     }
   },
   goHome() {

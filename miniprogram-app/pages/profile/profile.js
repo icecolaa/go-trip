@@ -89,7 +89,7 @@ Page({
     return {
       title: '出发吧 GoTrip · 协作旅行规划',
       path: '/pages/home/home',
-      imageUrl: '/assets/sanya.jpg'
+      imageUrl: '/assets/share-cover.jpg'
     }
   }
 })

@@ -52,7 +52,7 @@
               hover-class="press" bindtap="pickMood" data-i="{{index}}">{{item}}</view>
       </view>
       <textarea class="j-input" value="{{form.text}}" placeholder="今天的心情、见闻、梗图素材…" placeholder-class="ph" show-confirm-bar="{{false}}" adjust-position="{{true}}"
-                bindinput="onText" maxlength="300" />
+                bindinput="onText" maxlength="256" />
       <view class="j-pick" hover-class="press" bindtap="chooseImages">
         <view class="ic ic-camera" style="color:var(--sky500)"></view>
         <text>添加图片（已选 {{form.images.length}}/9）</text>

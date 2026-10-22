@@ -246,7 +246,7 @@ Page({
     return {
       title: '出发吧 GoTrip · 一起规划每一段旅程',
       path: '/pages/home/home',
-      imageUrl: '/assets/sanya.jpg'
+      imageUrl: '/assets/share-cover.jpg'
     }
   },
   async importDemo() {

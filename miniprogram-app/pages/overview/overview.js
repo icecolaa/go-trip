@@ -354,7 +354,7 @@ Page({
     return {
       title: (t ? t.title : '一起去旅行') + ' · 行程只读分享',
       path: '/pages/overview/overview?ro=1',
-      imageUrl: '/assets/yichun-road.jpg'
+      imageUrl: '/assets/share-cover.jpg'
     }
   },
   noop() {},

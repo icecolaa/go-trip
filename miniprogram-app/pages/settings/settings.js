@@ -65,7 +65,7 @@ Page({
     return {
       title: this.data.shareTitle,
       path: '/pages/home/home',
-      imageUrl: '/assets/yichun-road.jpg'
+      imageUrl: '/assets/share-cover.jpg'
     }
   }
 })

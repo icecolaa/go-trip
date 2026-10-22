@@ -76,6 +76,6 @@ Page({
   export() { wx.showToast({ title: '导出功能准备中', icon: 'none' }) },
   remind() { wx.showToast({ title: '提醒功能准备中', icon: 'none' }) },
   onShareAppMessage() {
-    return { title: '行程账单 · 结算方案', path: '/pages/settle/settle', imageUrl: '/assets/yichun-lake.jpg' }
+    return { title: '行程账单 · 结算方案', path: '/pages/settle/settle', imageUrl: '/assets/share-cover.jpg' }
   }
 })
