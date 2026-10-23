@@ -69,7 +69,6 @@ Page({
       if (shown.length) this._openCats[shown[0].name] = true
     }
     shown.forEach(g => { g.open = !!this._openCats[g.name] })
-    console.log('[DBG] refresh _openCats =', JSON.stringify(this._openCats), '| groups =', JSON.stringify(shown.map(g => ({ n: g.name, open: g.open }))))
     this.setData({
       loading: false, groups: shown,
       totalCount: total, doneCount: done,

@@ -339,3 +339,127 @@ runner 退出码验证：boards 轮中途（Layers 枚举异常未豁免时）�
 ![390×844 深色时间轴](screenshots/2026-10-22-web-itinerary-dark.png)
 
 ![390×844 深色地图](screenshots/2026-10-22-web-map-dark.png)
+
+## 11. PocketBay 部署与线上独立验收（2026-10-22 晚）
+
+用户完成平台配对后，已审源码 `c54659c` 的 92 文件白名单包上传成功；包逐文件哈希与上传时源码一致，排除了 `.env`、私钥、数据库与工作目录。新部署 **14125** 构建完成，项目当前部署编号同为 14125，状态 running，已区别于旧部署 12501。包 SHA-256：`8f152f9bf4ffa2aee75789035c3054f42813fe0ef03021a2348a1783d64aa47f`。
+
+生产地址：https://gotrip.pocketbay.app 。真实 Edge 浏览器通过平台外壳进入 `gotrip--e.pocketbay.app`，线上 JS 为 `/assets/index-B1j5ROO5.js`，与本地构建一致。
+
+独立线上验证 **10/10，exit 0**：登录页、构建标识、`/health` HTTP 200 且 `{"ok":true,"db":"postgres","mode":"fullstack"}`、新游客会话真实登录、专用演示行程导入、工作台概况、时间轴详情卡、390×844 无横向溢出、零 pageerror、专用行程按 id 级联清理及退出会话。未改既有生产行程。此次测试行程 `t_3e0b08d90fcc4c1986dd` 已删除，11 张子表按该 id 清理并复查。
+
+首次检查遇到平台休眠外壳和 204 空响应，保留了失败日志；经浏览器唤醒后再完整验证，未把平台 running 当成应用可用。固定 demo 凭据未能登录，因此最终以新游客会话验证，未依赖历史演示账号。原始日志/脚本/JSON 本地保留在 `.work-together/production-14125*`。总清单中的 AI 上游余额不足、部分第三方外链与小程序清单仍分别跟踪，未因 Web 部署完成而宣布全部完成。
+
+![生产工作台](screenshots/2026-10-22-production-dashboard.png)
+
+![生产时间轴详情卡](screenshots/2026-10-22-production-itinerary.png)
+
+![生产 390×844](screenshots/2026-10-22-production-mobile.png)
+
+---
+
+# 每按钮补齐轮（2026-10-22 22:02 指令 · ZCode GLM-5.3-FlashX）
+
+主持方指令：用户已授权每按钮测试，外链不再作为 GAP 规避——真实点击、记录弹出/加载结果；飞哪儿做一次真实查询到终态；AI 不再反复真调（429/1113 已由主持方证实，维持上游不可用说明）。本包不改产品源码、不 Git/构建/重启/部署。脚本 `work/web-1021/links-fly-1022.cjs`，明细 `links-fly.json`，日志 `links-fly.log`。
+
+## 12.1 外链真实点击（5/5 通过，driver=Playwright locator.click 真实鼠标事件 + waitForEvent('page')/同页导航检测）
+
+| 链接 | driver | 弹出/加载结果（原始记录） | 截图 |
+|------|--------|--------------------------|------|
+| 时间轴详情「高德导航 ↗」（uri.amap.com/navigation?to=102.7062,25.0507,翠湖公园） | 真实点击，新页弹出 | 302 落地 `https://ditu.amap.com/dir?type=car&to[lnglat]=102.7062,25.0507&to[name]=翠湖公园`，首响应 200 | `shots/L1-amap-nav.png` |
+| 景点餐厅「导航」（uri.amap.com/marker?position=102.6455,24.9587&name=滇池海埂公园） | 真实点击（先真实展开收起的分组 details），新页弹出 | 落地 `https://ditu.amap.com/regeo?lng=102.6455&lat=24.9587&name=滇池海埂公园`，首响应 200 | `shots/L2-amap-marker.png` |
+| 地图「🗺️ 高德搜索全部目的地」（按钮 window.open） | 真实点击按钮，新页弹出 | 落地 `ditu.amap.com/regeo?…name=翠湖公园`（单目的地行程的搜索串），首响应 200 | `shots/L3-amap-search-all.png` |
+| 地图 Leaflet attribution（leafletjs.com，无 target） | 真实点击 → **同页跳转**（非弹窗），goBack 返回应用 | 离站页 `https://leafletjs.com/`，title「Leaflet - a JavaScript library…」；返回后应用无错 | `shots/L4-leaflet.png` / `L4-leaflet-back.png` |
+| 攻略收藏条目外链（example.com） | 真实点击，新页弹出 | `https://example.com/kunming`，首响应 200，title「Example Domain」 | `shots/L5-link-item.png` |
+
+每次点击后断言：应用页未离站/可返回、零新增 pageerror。**不做**：购买、发消息、登录他人账户、处理验证码——目标页只观察不交互。
+
+## 12.2 飞哪儿真实查询到终态（一次真实查询，成功）
+
+- **真实 UI 全流程**：本地 5174 页面输入 北京→昆明、2026-10-26 出发 / 10-29 返回、往返 1 人 → 点击「搜索低价目的地」→ 单次 waitForFunction 120s 封顶短轮询（polling 1.5s，无 >30s sleep）。
+- **终态证据（成功）**：toast「探索到 **133 个组合**，最低总价 **¥1,240**」；结果头「探索结果 · 1 个目的地 · 133 组匹配组合」；地图视图渲染昆明目的地标号点；查询记录持久化「133 组组合 · 1 个目的地 · 往返 · 1 位成人」。全程约 40s 内出终态，无失败 toast。
+- **离线恢复路径（0 上游消耗）**：注入合成历史（标注「测试合成数据」）→ 打开查询记录 → 「恢复查看」→ 切「列表」→ 卡片渲染通过——证明恢复/列表切换路径可用（官方说明恢复不重新请求飞猪）。合成数据已清除。
+- 截图：`shots/F4-fly-form.png`（表单）、`F4-fly-result.png`（终态+地图标记）、`F4-fly-restored.png`（离线恢复列表）、`F4-fly-history.png`（记录抽屉）。
+- **不做**：任何「去飞猪下单/去飞猪 ↗」购买意向链接（记 GAP：不购买）。
+
+## 12.3 脚本级修正记录（本轮发现即修，均非产品缺陷）
+
+| # | 问题 | 修正 |
+|---|------|------|
+| F4 | 收起分组内的外链点击不可达 | 点击前真实展开 `.tab-pane details` + scrollIntoView（等效用户展开） |
+| F5 | Leaflet attribution 无 target，是同页跳转，按「无 popup」误判 FAIL | 增加「应用页离站」检测分支：记录离站页+goBack 返回断言 |
+| F6 | waitForFunction 误把 options 当 arg（三参签名），实际用了默认 30s 超时 | `(fn, undefined, {timeout:120000, polling:1500})` |
+| F7 | 搜索成功后默认**地图视图**，列表卡选择器（.fw-dest）恒 0 造成假 FAIL；恢复后同理 | 终态改多证据（结果头+成功 toast+历史持久化），列表卡经真实切「列表」后计数；离线恢复路径用合成历史独立验证 |
+| F8 | 高层 `dragAndDrop` 在 Edge headless 不触发 HTML5 drag（沿用 1022 早间探针结论） | 拖拽验证保持手动 mouse 分步序列（见第 9 节） |
+
+## 12.4 最终计数与退出码
+
+| 项 | 结果 |
+|----|------|
+| `node work/web-1021/links-fly-1022.cjs` | **断言 17/17 通过；外链行为 8 行（真实点击 6 / GAP 2【购买意向链接不点、合成数据说明】/ FAIL 0）；exit 0** |
+| 数据清场 | 专用行程按 id 级联删除，本 guest 名下 `gt_trips` 归零；合成 localStorage 历史已移除；`t_aea2f8` 用户行程未动（库级只读核验仅剩该段） |
+| 运行时错误 | 全程零 pageerror（含 5 次外链离站/返回、飞哪儿查询） |
+
+## 12.5 仍需真人/真机的限制（如实保留）
+
+1. AI 真出结果：上游 GLM 429/1113 余额不足（主持方已证实），应用内生成类按钮走内置兜底路径已验证，AI 真生成维持 GAP。
+2. 高德外链目标页只做加载观察：真实「打开高德 App 导航/分享/登录高德账号」需真机与账户，本轮不涉及。
+3. 飞哪儿「去飞猪下单」为购买意向外链，按指令不点击；真实下单/支付流程不在测试范围。
+4. 验证码/风控类第三方页面行为无法自动化覆盖。
+
+**结论口径**：执行者 self-test（exec_done），不构成主持方独立验收通过。
+
+## 12.6 主持方独立 review 退回的 runner 缺陷（先列后修；本轮重跑后第 12.1/12.2/12.4 计数以重跑为准，此前一轮作废）
+
+| # | 缺陷（主持方指出） | 修正 |
+|---|--------------------|------|
+| D1 | finally 兜底新建 guest 删原 guest 行程必然无效（行属主隔离） | 改为复用原 ctx/page/authHeader：page.evaluate(deleteTrip) + 失败时 HTTP `delete-many`（where trip_id）逐子表级联；删除后对 11 张子表与 gt_trips 逐表复查归零，任一非零 → exit 非 0 并打印行程 id |
+| D2 | waitForFunction 把 options 当第二参数 arg，实际 30s 默认超时 | 主持方指出时工作副本已改为 `(fn, undefined, {timeout:120000, polling:1500})`；此前两轮跑批确实按 30s 运行，其飞哪儿计数作废，以本轮重跑为准 |
+| D3 | clickExternal「真实弹出并加载」无条件 ok(true)——loadState 超时/首响应 4xx 也是通过，假阳性；首响应监听可能错过 | 拆分两类：硬断言只覆盖「真实点击→弹出/同页到达目标 host」；外部加载结果单独记录为 loaded-ok / load-http-4xx/5xx / load-blocked-or-slow / load-unknown（首响应错过如实标 unknown，不编造 200）——加载失败记为外部结果限制，不算本站 bug，也不计为加载成功。夹具链接 example.com/kunming 改 https://example.com/（消除夹具自身 404） |
+| D4 | 「去飞猪」是到站点的普通外链，不购买≠不许打开，不得以购买风险当禁测理由 | 真实点击真实查询结果中的「去飞猪 ↗」（离线恢复的真实结果列表内），记录弹出 URL/加载结果；不填订单、不付款、不登录；被反爬/拦截则如实记 load-blocked |
+
+### 12.7 重跑终版计数（D1~D4 修正后，取代 12.1/12.2/12.4 中与下表冲突的计数）
+
+`node work/web-1021/links-fly-1022.cjs` → **断言 19/19 通过，exit 0**（日志 `links-fly.log`，明细 `links-fly.json`）。
+
+**真实点击分列**：外链 6 个（高德导航 / 高德 marker / 高德搜索全部目的地 / Leaflet attribution / 攻略条目 example.com / 去飞猪 ↗）+ 应用内「查询记录」抽屉 1 个 = 7 行点击取证。
+
+**外部服务加载结果分列**（每链接独立记录，非本站质量判定）：
+
+| 外链 | 点击覆盖（硬断言） | 外部加载结果 |
+|------|--------------------|--------------|
+| 高德导航 ↗ | 弹出且 host=ditu.amap.com ✓ | load-ok（首响应 200） |
+| 景点餐厅·导航 | 弹出且 host=ditu.amap.com ✓ | load-ok（200） |
+| 高德搜索全部目的地 | 弹出且 host=ditu.amap.com ✓ | load-ok（200） |
+| Leaflet attribution | 同页到达 host=leafletjs.com ✓ | load-ok（title 实录） |
+| 攻略条目 example.com/ | 弹出且 host=example.com ✓ | load-ok（200，Example Domain） |
+| 去飞猪 ↗（恢复的真实结果首条） | 弹出且 host=sjipiao.fliggy.com ✓ | load-ok（200，flight_search 页）——仅打开核实目标，未填订单/未付款/未登录 |
+
+受限/未知：0 个。首响应监听未捕获时将如实记 unknown（本轮 6/6 均捕获）。
+
+**飞哪儿真实查询终态**（本轮再次真实执行）：toast「探索到 133 个组合，最低总价 ¥1,240」+ 结果头「探索结果 · 1 个目的地」+ 查询记录持久化「133 组组合 · 往返 · 1 位成人」；搜索成功后默认地图视图，实时列表卡在自动化会话内未渲染（视图状态，非数据缺失）——终态以结果头+toast+历史三证据判定；离线「恢复查看→列表」用真实查询结果验证通过并完成去飞猪点击。
+
+**清场复查（D1 新增）**：删除后对 11 张子表与 gt_trips 逐表复查归零（本轮 CLEANUP VERIFIED 路径：主流程按 id 级联删除后 Z1 断言本 guest 归零；finally 兜底含 delete-many 级联与逐表复查，非零则 exit 4 并打印 id）。库级只读核验：`gt_trips` 仅剩 `t_aea2f8ded4194798986e`（用户行程，未动）。
+
+**已知限制不变**：AI 真生成（上游 429/1113）、高德 App 唤起、飞猪下单/支付流程、验证码类页面。
+| D9 | **假失败根因更正（主持方源码定位）**：FlyWherePage.tsx:76 默认 `view='map'`、`.fw-dest` 只在 `view==='list'` 分支渲染——runner 搜索后从未真点「列表」却一直等 `.fw-dest`，地图结果已出也必等到超时；此前「30s 无 toast/无卡片」是**测试视图前提错误**，与产品/上游无关。修正：终态标志改等 `.fw-result-head`（结果摘要，地图/列表视图都存在）或 job 完成；之后真点 `.fw-result-ops` 内「列表」再数 `.fw-dest`/展开全部组合；优先复用页面已保存历史结果（不新增上游请求），无旧记录才同条件查询（服务端 30 分钟结果缓存同条件可复用），不换航线烧 API | runner 重写飞哪儿终态判定（见 12.8 重跑结果） |
+
+### 12.8 终版重跑（D9 视图流修正后，取代 12.7 计数；此前「30s 无 toast/无卡片」结论按 D9 更正为测试视图前提错误）
+
+`node work/web-1021/links-fly-1022.cjs` → **断言 18/18 通过，exit 0**（`links-fly.log` / `links-fly.json`）。
+
+- **真实点击（外链）6 个**：高德导航、高德 marker、高德搜索全部目的地、Leaflet attribution（同页跳转）、攻略条目 example.com/、去飞猪 ↗。
+- **外部服务加载结果分列**：**load-ok 6/6，受限/未知 0**——高德三链 ditu.amap.com 200；leafletjs.com title 实录；example.com 200（Example Domain）；去飞猪 `sjipiao.fliggy.com/homeow/trip_flight_search.htm` 200（仅打开核实，未填单/未付款/未登录）。
+- **飞哪儿真实查询终态（D9 流程）**：同条件一次查询（北京→昆明 10/26–10/29 往返 1 人）→ 等 `.fw-result-head` 终态 → 真点「列表」→ **列表卡 1 张（KMG 昆明 最低总价 ¥1,240）→ 点「查看组合」展开 133 张组合卡** → 真点「去飞猪 ↗」离站核实后返回应用无错。本轮查询为真实上游执行（非缓存复用判断，未做上游侧核实，如实记录）。
+- **离线恢复路径**：注入合成历史（含 example.com/synthetic 指纹）→ 恢复查看 → 列表渲染且指纹链接命中 → 清态（storage+reload）。0 上游消耗。
+- **清场复查（D1）**：按 id 级联删除后逐表复查归零；库级只读核验 `gt_trips` 仅剩 `t_aea2f8ded4194798986e`（用户行程，未动）。
+
+**最终结论口径**：外链不再有任何「未打开」式 GAP——6 条外链全部真实点击并完成加载结果取证；飞哪儿真实查询到终态且列表/组合/外链全链路打通；仍需真人/真机的限制仅剩 AI 真生成（上游 429/1113，兜底已验）、高德 App 唤起、飞猪下单支付、验证码类页面。执行者 self-test（exec_done），不构成主持方独立验收通过。
+
+## 13. 最终证据复核（Codex，2026-10-23）
+
+已对第 12 节最终脚本、`links-fly.json`、`links-fly.log` 逐项交叉检查：最终为 **18/18、6 次外链真实点击、6 次外部页面加载成功**，与上一轮 19/19 区别已在 12.8 说明；未沿用失败轮计数。核对了同页导航、地图/列表视图前提、原会话清理与失败退出路径；没有再把无 popup、等待超时或不同 guest 的空查询当成成功。
+
+本次未为重复读报而再次消耗 FlyAI 上游；独立运行的核心证据仍为第 10 节 34/34 和第 11 节线上 10/10，另有今日类型检查 exit 0。Web 产品源码除已部署的日志删除外没有追加变更。原始机票结果图与六条外链截图在本地 `work/web-1021/shots/F4-*`、`L1-*` 至 `L6-*`；完整 133 组合截图较大，保留在本地原始证据目录。
+
+用户总清单继续标为未完成：原生逐按钮真机/长按证据、独立工具连接问题与小程序正式发布尚未闭环。Web 的站内点击及外链跳转通过，不代表第三方支付、验证码、原生地图应用或余额不足的 AI 上游已验收。
