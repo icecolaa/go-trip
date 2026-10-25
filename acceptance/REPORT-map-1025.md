@@ -75,3 +75,9 @@
 - 脚本：`work/accept-map-1025.mjs`（ONLY=M1/M2）、图标生成 `work/gen-map-markers.mjs`
 - 结果 JSON：`work/verify-map-1025/accept-M1.json`、`accept-M2.json`（真实退出码 M1=0 M2=0）
 - 截图：`work/verify-map-1025/m1-01-all.png`、`m1-02-selected.png`、`m2-01-empty.png`、`m3-01-long-smoke.png`（automator 截图仅 DOM 层可见，画布空白=上述 GAP1）、`devtools-map.png`（OS 级窗口抓图证据）
+
+## 发布记录
+
+- 2026-10-25：1.5.34 过审上线（10-22 快照，不含地图改版）
+- 2026-10-25：地图改版以 1.5.35 上传开发版两笔（ci机器人1 早笔 / **冰可乐工具通道晚笔含 FALLBACK 修复，以冰可乐笔为准**）；提交 f596989 已双远端
+- 2026-10-25：**1.5.35 已提交审核（用户在 mp 后台自行操作）**，在审=外部等待；审核通过后发布即含地图改版
