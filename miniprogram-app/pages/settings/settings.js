@@ -5,7 +5,7 @@ const LABELS = { auto: '跟随系统', light: '浅色', dark: '深色' }
 /* 版本号：优先取小程序正式版版本号，开发版/体验版/取不到时回落本地兜底。
    教训：曾长期写死 'v1.5.0'，而正式版已迭代到 1.5.32+，关于页显示的版本与实际运行版本
    长期不一致；每次发版靠人记得改一次，必然漂移——改为读正式版本，兜底只服务开发期。 */
-const FALLBACK_VERSION = 'v1.5.33'
+const FALLBACK_VERSION = 'v1.5.35'
 function currentVersion() {
   try {
     const info = wx.getAccountInfoSync && wx.getAccountInfoSync()
