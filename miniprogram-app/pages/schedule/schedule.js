@@ -3,6 +3,7 @@ const engine = require('../../utils/engine')
 const theme = require('../../utils/theme')
 const api = require('../../utils/api')
 const entities = require('../../utils/rdb/entities')
+const daypick = require('../../utils/daypick')
 
 const TYPE_ICONS = {
   '餐饮': 'food', '住宿': 'bed', '门票': 'ticket', '交通': 'car',
@@ -167,25 +168,20 @@ Page({
     }
     this.refresh()
   },
-  moveDay(id) {
+  async moveDay(id) {
     const s = store.stops.find(x => x.id === id)
     if (!s) return
     const others = this.data.days.filter(d => d.d !== s.day)
     if (!others.length) { wx.showToast({ title: '没有其他天可移动', icon: 'none' }); return }
-    wx.showActionSheet({
-      itemList: others.map(d => 'D' + d.d + ' · ' + d.date),
-      success: async res => {
-        const target = others[res.tapIndex]
-        if (!target) return
-        try {
-          await store.moveActivityToDay(id, target.d) // 写穿透（内部已重拉）
-          wx.showToast({ title: '已移至 ' + target.date, icon: 'success' })
-        } catch (e) {
-          wx.showToast({ title: '移动失败，请重试', icon: 'none' })
-        }
-        this.refresh()
-      }
-    })
+    const target = await daypick.pickDay(others)
+    if (!target) return
+    try {
+      await store.moveActivityToDay(id, target.d) // 写穿透（内部已重拉）
+      wx.showToast({ title: '已移至 ' + target.date, icon: 'success' })
+    } catch (e) {
+      wx.showToast({ title: '移动失败，请重试', icon: 'none' })
+    }
+    this.refresh()
   },
   // 「＋安排」：底部弹层表单（名称 / 分类 / 地点 / 地图选点）
   addPlan() {
@@ -265,7 +261,6 @@ Page({
       }
     } catch (e) { /* 兜底失败静默：地图页进入时会再自动编码一次 */ }
   },
-  goTripMode() { wx.switchTab({ url: '/pages/trip-mode/trip-mode' }) },
   goMap() { wx.navigateTo({ url: '/pages/map/map' }) },
   addPlace() { wx.navigateTo({ url: '/pages/places/places' }) }
 })

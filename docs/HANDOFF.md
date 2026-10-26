@@ -1,5 +1,7 @@
 # 交接文档（HANDOFF）
 
+> 最新状态（2026-10-26，用户确认）：**小程序 1.5.35 已发布**。发布事项已闭环；原生独立底栏复核、真机权限与长按手势验收仍待补齐，不能据发布状态推定全项验收通过。1.5.35 对应源码提交及变更范围尚未独立核对。
+
 > 最新开发：**2026-10-23 条目 86（最终产物复核与报告收口，仍未标完成）**——ZCode GLM-5.3-FlashX 原会话完成原生 W6 **9/9**、Web 外链/机票补测 **18/18**；Codex 核对真实日志、脚本、图片，并记录今日原生独立运行的工具超时/连接失败。Web **#14125** 已上线且线上独立 **10/10**；小程序 **1.5.34** 最后由用户于 10-22 确认已提审、审核中，未取得正式发布证据。剩余真机权限/长按手势与独立底栏复核未完成。图库等并行改动保持原样；详见报告最新章节与条目 86。
 > 上一条：2026-10-12 条目 83，工作台概况面板 + 时间轴详情卡已完成本地验证（浏览器 24/24、冒烟 10/10），尚未部署生产；500 detail 回显已在 e67470f 收回。
 
@@ -43,15 +45,15 @@
 > 上一条：2026-09-26（条目 45：Web 账密注册通道证实不可用并移除——平台 501 + SDK 吞错双实锤；登录页改登录+游客双通道）。
 > 上一条：2026-09-25（条目 42：第三个环境 + SQL 库接通 + H5 双端）。
 
-## 当前状态快照（2026-10-23 — 先读这一节）
+## 当前状态快照（2026-10-26 — 先读这一节）
 
 | 项 | 值 |
 |---|---|
 | **分支 / 已发布源码** | `feat/miniprogram`；Web 部署源码为 **c54659c**。工作区有本轮原生验收及并行图库改动，不能称干净；以实时 `git status` 为准 |
 | **已推送提交** | `a2d93b0`、`c9341e2`、`b57bf3d`、`4faff91`、`c54659c` 已推 Gitee/GitHub |
-| **小程序** | 下午 **1.5.34 已上传**（分享封面 + 日志 maxlength=256 + 减包）；用户在本对话确认 **已提交，正在审核**。不重复上传覆盖在审版本，正式版未在本轮核实 |
+| **小程序** | **1.5.35 已发布**，用户于 2026-10-26 在本对话确认；对应源码提交和本轮验收覆盖范围尚未独立核对 |
 | **Web** | **已部署 #14125，线上独立 10/10**；本地独立补测34/34、smoke10/0、check/build通过；AI真调/部分外链仍有缺口 |
-| **待办** | 原生执行者 W6 已9/9；Codex今日独立三Tab运行受工具连接阻塞，未计通过。真机授权面板与7类真长按仍需补证；核实1.5.34新审核结果并单独正式发布。总清单未全部通过 |
+| **待办** | 原生执行者 W6 已9/9；Codex 10-23 独立三Tab运行受工具连接阻塞，未计通过。真机授权面板与7类真长按仍需补证。发布事项已由用户确认闭环，总清单未全部通过 |
 | **证据** | `acceptance/REPORT-web-1021.md` 第10/11节与随报告提交的截图；`REPORT-native-1021.md`；`.work-together/PLAN-1022.md` 与线上14125验证JSON/日志 |
 | **环境** | 10-22 GUI实际390×844且W6全绿；10-23 CLI auto初始化/桥响应再次阻塞，见原始失败日志，不把监听等同AppService就绪。全局 automator需 `NODE_PATH="D:\nodeJs\node_global\node_modules"`，不可并行抢桥 |
 
@@ -465,3 +467,52 @@ node scripts/pocketbay-pairing-deploy.mjs .work-together/gotrip-deploy.tar.gz go
 - 仍未通过的明确范围：7类真长按手势、系统相册/定位/地图/分享/反馈等真机面板与权限链、独立三Tab复核。AI上游仍有429/1113余额限制（应用内兜底已验证）。**整体不标完成**。
 - 发布状态：用户于10-22确认 **1.5.34已提交、正在审核**；10-23未取得新审核状态或正式发布凭证。不要重复上传覆盖在审版，过审后仍需单独发布。当前日志清理只提交源码，不改动在审包。
 - 提交范围限定为本轮清单日志、两份验收报告、报告截图与本交接文档。`.gitignore`、`CLAUDE.md`、`package.json`、`tuku/`、`.workbuddy*`、`submission/` 等并行工作/用户材料保持原样，不 `git add -A`、不回退、不混装。
+
+## 87. 删除旅程「获取连接失败」诊断与删除链路加固（2026-10-27）
+
+- 用户 10-27 00:55 首页长按删除旅程报错「【错误】获取连接失败，未知错误com.mysql.cj.jdbc.ex…」。定性：**平台数据模型服务连接池层面的瞬时失败**（serverless CynosDB 集群 0.25–0.5 CPU 闲置自动休眠，`ServerlessStatus: resume`，唤醒窗口内 JDBC 取连接超时），不是前端代码 bug；报错文案由 `@cloudbase/wx-cloud-client-sdk` 透传。
+- 已实测核实：环境 gotrip 状态 NORMAL 未隔离；MySQL 实例 running、`SELECT 1` 通；**数据零残留**——用户两条「小兴安岭七日」12 张子表行数完好（30/29 活动、7 天、4 成员），删除在第一步 `deleteMany(gt_activities)` 就失败，无级联删一半。首页列表每次真查库无缓存兜底（读通→删挂，佐证为瞬时抖动而非集群未唤醒）。
+- 加固两处（未提交未上传，随下一版本走）：`miniprogram-app/utils/rdb/entities.js` 新增 `retryConn`——连接类错误（/获取连接|jdbc|communications|connection|econn|etimedout|timeout|request:fail/i）对**幂等操作** `updateRow`/`deleteRow`/`deleteRows` 退避重试 3 次（0.8s×i）；**create/createMany 故意不重试**（响应丢失重发会重复插入）。`miniprogram-app/pages/home/home.js` `doDelete` 把裸 jdbc 报错映射为「数据库连接繁忙，请稍后重试」。重试语义 4 断言单测通过（连错重试成功/权限错直抛/耗尽抛出/request:fail 也重试）。
+- 顺手发现隐患已修（用户 10-27 授权）：**11 张子表全都没有 `trip_id` 索引**（仅 PRIMARY(_id)），list/deleteMany 按 trip_id 全表扫。已全部 `ALTER TABLE ... ADD INDEX idx_<表短名>_trip_id (trip_id)`（gt_activities/days/expenses/packing_items/journal_notes/activity_log/guide_cards/travel_links/trip_places/trip_cash_items/trip_members），information_schema 复核 11/11 落地（NON_UNIQUE=1）。表量小 DDL 即时完成，未影响线上读写。
+- `miniprogram-app/utils/store.ts` 是陈年参考源（`useCompilerPlugins: false`，devtools 不编译 TS，全部 `.js` 为手写活码）——改 rdb/*.js 直接生效，别去找 TS 源。
+
+## 88. 「高德规划全天」跳转落空修复（2026-10-27）
+
+- 用户反馈：高德分享粘贴导入的行程（小兴安岭七日），点「高德规划全天」复制链接打开后落在高德默认落地页（北京「发现好去处」，不是伊春路线）。**根因：`uri.amap.com/navigation` 的 `via` 官方只支持 1 个途经点**（lbs.amap.com URI API 文档原话「最多只支持添加一个途径点」），代码却把 3 个中间站用竖线串成 `via=lng,lat|lng,lat|lng,lat`——高德把整串按「经度,纬度,名称」解析成一个坏坐标（302 落点实锤：`via[0][lnglat]=128.87,47.72|128.8424`），路线页起不来退回默认页。站点坐标本身全部正常（库里 D1 五站 gcj02 坐标与卡片 haversine 距离吻合）。
+- 修复（trip-mode.js `amapRoute` + map.js `navAll` 两处同款）：官方格式 `from+to+via(1 个中间站=list 中位索引)`；**删掉按 time 重排**——loadTripBundle 已按 `sort: 'asc'` 排好（=界面展示顺序），粘贴导入数据 time 全空、旧比较器失真；弹窗文案如实告知「高德网页版最多带 1 个途经点，已含起终点和中间站，其余站逐站导航」。5 站链接含 3 站（机场→酒店 via 木雕园）。
+- 验证：把修复后 URL 喂给 uri.amap.com，302 落点 `via[0][lnglat]=128.8424,47.7296` 干净无竖线（修复前同路径解析出坏值），高德解析器层面端到端通过；真机 H5 渲染待用户验证（桌面浏览器验证撞 ditu.amap.com 登录墙，且桌面 302 路径≠手机 H5，不以下推手机）。
+- 排除的备选：`ditu.amap.com/dir` 的 `via[i][lnglat]` 数组格式是 uri 服务 302 的私有落点（未文档化+桌面实测带登录墙），已放弃，engine.js 短暂引入的 `amapDayUrl` 助手已回退删除，无残留。
+- 经验：**外部平台 URI/深链参数先查官方文档再拼**，和 [[平台问题先读官方文档]] 同一条纪律；「参数看起来能拼」≠「平台支持」。
+
+## 89. 候选库「加入行程」无反应修复（2026-10-27）
+
+- 用户反馈：候选地点卡（places 页）点「+ 加入行程」毫无反应。**根因两层**：①`wx.showActionSheet` 的 `itemList` 官方上限 **6 项**，行程 7 天 → 传 7 项直接 fail，代码没写 fail 回调 → 静默无反应；②候选标记 `candidate:true` 只在创建时写入，全库无处置回 false——就算弹层能出，加入后卡片仍显示「候选/待安排」且可重复加入，「已排入行程/查看日程」状态永远不可达。
+- 修复：新增 `miniprogram-app/utils/daypick.js` `pickDay(days)`——≤6 天单层直选，>6 天按 6 个一组两跳选择，取消/失败 resolve(null)，**所有分支带 fail 回调**；places.js `onAddToTrip` 与 schedule.js `moveDay`（「移动到其他天」，8+ 天行程同样必炸的隐性点）都换用；加入成功后 `store.markPlaceInTrip(id)` 置 `candidate:false` 并重拉列表（卡片切换到「已排入行程」态）；`if (!p) return` 静默分支补 toast。
+- 验证：mock wx.showActionSheet 全场景断言——5/6 天单层、7 天两跳（首层 D1–D6/D7–D7 → 次层选中）、13 天三组两跳、fail 返回 null，全部正确；四文件 `node --check` 通过。真机复验待用户（选天弹层为原生 UI，automator 无法合成）。
+- 经验：**wx.showActionSheet itemList 上限 6 是硬约束**，动态天列表（行程天数用户可设）必须走分组或自绘选择器；静默 fail 回调缺失=「点击无反应」类反馈的优先排查项（与条目 11「wxml 传参静态对账」并列）。
+
+## 90. 日程页底栏改版：去罗盘/地图加字/候选库改名（2026-10-27）
+
+- 用户四点指令：去掉罗盘按钮、地图按钮加文字、+安排不变、「添加地点」改「候选库」。已按指令落地（未提交未上传）。
+- schedule.wxml 底栏：删罗盘（goTripMode=switchTab 出发模式 tab，该页本就是 tabBar 主页签，无入口损失）；地图改 `.btn.ghost.map-pill`（图标+「地图」文字药丸，flex:none）；「添加地点」→「候选库」；空状态提示文案同步改。schedule.wxss 删 .map-btn 两规则加 .map-pill；schedule.js 删已无引用的 goTripMode。grep 复核 goTripMode/map-btn/ic-compass 零残留。
+- ai.wxml/messages.wxml 里的「添加地点」是泛指动作的描述文案，非按钮名，保留未动。
+
+## 91. 夜间模式状态栏时间看不清修复（2026-10-27）
+
+- 用户反馈：夜间模式下有时看不清时间。排查：页面内时间文字（schedule .tl-time / messages .time / trip-mode .time）全走令牌会正常翻转；真凶=**系统状态栏的时间**——theme.json `@navTxt` 只在「跟随系统」档生效（darkmode:true），**手动夜间/浅色覆盖完全不走它**，而写好的 `theme.syncChrome()`（setNavigationBarColor 前景白/黑）**全项目零调用**（仅 setSetting 间接调一次，页面切换还会被配置重置）→ 手动夜间+系统浅色时深色顶页（trip-mode/map/welcome）黑字打黑底，「有时」=按页面与档位组合而定。
+- 修复三个挂载点：①nav-bar 组件加 `pageLifetimes.show(){ theme.syncChrome() }`（全 21 页都挂 nav-bar，每次页面显示重设，赢回页面切换的重置）；②app.js onLaunch 调 `theme.syncChrome()` + `wx.onThemeChange(()=>syncChrome())`（跟随系统档系统切换实时重设；onThemeChange 有存在性守卫）；③theme.js 本体未改（无 require 无循环依赖）。node --check 通过。
+- 状态栏前景色三通道口径（此后勿再踩）：**跟随系统=theme.json @navTxt（平台自动）**；**手动覆盖+页面显示=nav-bar pageLifetimes.show → syncChrome**；**系统切换=app.js onThemeChange → syncChrome**。真机复验：手动夜间进地图/出发模式页看顶部时间是否白字。
+
+## 92. 清单验收轮 + review 三修 + mock 伪影定案（2026-10-27）
+
+- 用户三连指令：①按清单验收（逐按钮/正常空值超长/移动端/报告/全过才标完成）②review 工作区改动 ③发布新版+提交。
+- **Review 三修**：P1 places onAddToTrip 加活动成功但清候选失败会误报并诱导重复添加 → markPlace 失败静默自愈；P2 store.deleteTripById 级联成功但末尾 refreshTrips 失败误报删除失败 → 刷新尽力而为；P3 daypick 单天分组标签「D7–D7（1 天）」→ 单天组只显「D7」。
+- **验收**：work/accept-1027.mjs 五段（A1 候选库 7 天档 9/10、A2 底栏 15/16、A3 高德链接 8/8、A4 建删 6/6、A5 ≤6 天端到端 5/7）+ **混合真链路（automator 真点按钮 + CUA 真点原生面板 D1）→ DB 终审活动落库 1 条 + 候选清零**。报告=acceptance/REPORT-1027.md，工件=work/native-1027/（12 PNG+5 JSON+hybrid.log）。
+- **⚠️ 重大工具定案（mock 伪影）**：`mockWxMethod('showActionSheet')` 同步应答 success 后，回调续链里的 `wx.cloud` 写请求**静默不发**（DB 五轮零落库，而 showModal mock 驱动的删除链正常落库）→ 之前多轮「加入行程失败」全部是工具伪影，**产品代码无恙**。两条铁律：**automator 验收云写必须 DB 终审（勿信 store/页面数据）**；**mock 驱动多步原生面板链路一律改 CUA 真点混合验证**。
+- 验收脚本顽疾沉淀：桥劣化（2.5–4min）→ tryUntil「尝试→效果验证→重试」+ 段级重启；boot 需 evaluate 就绪探测（端口通≠桥可用）；welcome 吞首次 reLaunch → goto 带路径验证；跨 reLaunch 持页柄会 page destroyed → 每次尝试重取页；重试建数据会出同名重复 → 清场按标题循环清到零；效果断言勿绑 count 恒等（重试清场会连历史残留一起清）。
+- 数据卫生：测试全程 devtools 账号域，用户手机账号数据未触碰；验收垃圾 SQL 精确清场零残留（EC38 用户行程只剩其原有「花海」，日志仅一条用户收藏）。
+
+
+
+
+

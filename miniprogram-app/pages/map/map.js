@@ -334,18 +334,18 @@ Page({
     })
   },
   navAll() {
-    // 与出发模式一致的全天多途经点方案
+    // 与出发模式一致的全天路线方案
     const f = this.data.filter === 0 ? (this.data.days[0] ? this.data.days[0].d : 0) : this.data.filter
     if (!f) { wx.showToast({ title: '暂无行程日', icon: 'none' }); return }
-    const list = store.stops
-      .filter(s => s.day === f && hasCoord(s))
-      .sort((a, b) => (a.time < b.time ? -1 : 1))
+    // store.stops 已按 sort 升序，勿按 time 重排（粘贴导入的 time 常为空）；官方 URI via 最多 1 个途经点
+    const list = store.stops.filter(s => s.day === f && hasCoord(s))
     if (list.length < 2) { wx.showToast({ title: '当天带坐标的站点不足', icon: 'none' }); return }
     const first = list[0], last = list[list.length - 1]
-    const via = list.slice(1, -1).map(s => s.lng + ',' + s.lat).join('|')
+    const mid = list[Math.floor((list.length - 1) / 2)]
     const url = 'https://uri.amap.com/navigation?from=' + first.lng + ',' + first.lat +
-      '&to=' + last.lng + ',' + last.lat + (via ? '&via=' + via : '') +
+      '&to=' + last.lng + ',' + last.lat +
+      (list.length > 2 ? '&via=' + mid.lng + ',' + mid.lat : '') +
       '&mode=car&policy=&src=gotrip&coordinate=gaode&callnative=0'
-    wx.setClipboardData({ data: url, success: () => wx.showToast({ title: '全天路线链接已复制', icon: 'none' }) })
+    wx.setClipboardData({ data: url, success: () => wx.showToast({ title: '全天路线链接已复制（高德网页版限 1 途经点）', icon: 'none' }) })
   }
 })

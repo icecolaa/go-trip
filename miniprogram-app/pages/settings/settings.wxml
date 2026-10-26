@@ -23,9 +23,9 @@
         <view class="cell-main"><text class="h">功能指南</text><text class="p">常见问题</text></view>
         <view class="cell-right"><view class="ic ic-right"></view></view>
       </view>
-      <view class="cell" hover-class="press" bindtap="shareReadonly">
+      <view class="cell" hover-class="press" bindtap="showShareGuide">
         <view class="cell-ic" style="background:var(--sky100)"><view class="ic ic-link" style="color:#2E92ED"></view></view>
-        <view class="cell-main"><text class="h">对外分享</text><text class="p">只读链接</text></view>
+        <view class="cell-main"><text class="h">分享行程</text><text class="p">导出 PDF 后分享</text></view>
         <view class="cell-right"><view class="ic ic-right"></view></view>
       </view>
       <!-- 转发行：view.cell 呈现视觉，透明 cover button 铺满做 open-type=share 触发层
@@ -45,7 +45,7 @@
 
     <view class="ver">
       <image src="/assets/logo.png" mode="aspectFill" />
-      <text>出发吧 GoTrip · v1.5.0</text>
+      <text>出发吧 GoTrip · {{versionText}}</text>
     </view>
     <view style="height:60rpx"></view>
   </scroll-view>

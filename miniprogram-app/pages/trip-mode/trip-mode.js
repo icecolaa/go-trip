@@ -133,20 +133,21 @@ Page({
     const days = this.data.days
     if (!days.length) return
     const day = days[this.data.dayIdx].d
-    const list = store.stops
-      .filter(s => s.day === day && hasCoord(s))
-      .sort((a, b) => (a.time < b.time ? -1 : 1))
+    // store.stops 已按 sort 升序（loadTripBundle），即界面展示顺序；勿按 time 重排（粘贴导入的 time 常为空，比较器失真）
+    const list = store.stops.filter(s => s.day === day && hasCoord(s))
     if (list.length < 2) { wx.showToast({ title: '当天带坐标的站点不足', icon: 'none' }); return }
+    // 官方 URI 文档：via 最多 1 个途经点——多个竖线串会被高德解析成一个坏坐标，路线页直接打不开（10-27 实测）
     const first = list[0], last = list[list.length - 1]
-    const via = list.slice(1, -1).map(s => s.lng + ',' + s.lat).join('|')
+    const mid = list[Math.floor((list.length - 1) / 2)]
     const url = 'https://uri.amap.com/navigation?from=' + first.lng + ',' + first.lat +
       '&to=' + last.lng + ',' + last.lat +
-      (via ? '&via=' + via : '') + '&mode=car&policy=&src=gotrip&coordinate=gaode&callnative=0'
+      (list.length > 2 ? '&via=' + mid.lng + ',' + mid.lat : '') +
+      '&mode=car&policy=&src=gotrip&coordinate=gaode&callnative=0'
     wx.setClipboardData({
       data: url,
       success: () => wx.showModal({
-        title: '高德全天路线链接已复制',
-        content: '粘贴到浏览器或发给同车伙伴即可打开全程导航（多途经点）。',
+        title: '高德路线链接已复制',
+        content: '粘贴到浏览器即可打开全天导航。高德网页版最多带 1 个途经点，链接已含起点、终点和中间站；其余站点可在本页逐站点导航。',
         showCancel: false
       })
     })

@@ -238,7 +238,10 @@ Page({
       this.applyTrips()
     } catch (e) {
       wx.hideLoading()
-      wx.showToast({ title: (e && e.message) || '删除失败', icon: 'none' })
+      // 平台偶发连接类错误（serverless 库唤醒窗口）重试后仍失败时，给可读文案而非裸 jdbc 堆栈
+      const raw = (e && e.message) || ''
+      const msg = /获取连接|jdbc|connection/i.test(raw) ? '数据库连接繁忙，请稍后重试' : (raw || '删除失败')
+      wx.showToast({ title: msg, icon: 'none' })
     }
   },
   goCreate() { wx.navigateTo({ url: '/pages/create/create' }) },

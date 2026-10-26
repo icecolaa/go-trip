@@ -51,13 +51,31 @@ async function createRows(name, data) {
     const res = await (0, client_1.model)(name).createMany({ data: (0, case_1.toSnake)(data) });
     return (res?.data?.idList || []);
 }
+/** 平台偶发连接类错误（serverless 库休眠唤醒窗口的「获取连接失败」、网络抖动）。
+ * 仅幂等操作（update / 按条件 delete）可安全重试；create 不重试——响应丢失时重发会重复插入。 */
+function isConnErr(e) {
+    const msg = String((e && (e.message || e.errMsg)) || e || '');
+    return /获取连接|jdbc|communications|connection|econn|etimedout|timeout|request:fail/i.test(msg);
+}
+async function retryConn(fn) {
+    for (let i = 0; ; i++) {
+        try {
+            return await fn();
+        }
+        catch (e) {
+            if (i >= 2 || !isConnErr(e))
+                throw e;
+            await new Promise(r => setTimeout(r, 800 * (i + 1)));
+        }
+    }
+}
 async function updateRow(name, id, data) {
-    await (0, client_1.model)(name).update({ data: (0, case_1.toSnake)(data), filter: { where: { _id: { $eq: id } } } });
+    await retryConn(() => (0, client_1.model)(name).update({ data: (0, case_1.toSnake)(data), filter: { where: { _id: { $eq: id } } } }));
 }
 async function deleteRow(name, id) {
-    await (0, client_1.model)(name).delete({ filter: { where: { _id: { $eq: id } } } });
+    await retryConn(() => (0, client_1.model)(name).delete({ filter: { where: { _id: { $eq: id } } } }));
 }
 /** 按条件批量删（如删某行程全部活动）。 */
 async function deleteRows(name, where) {
-    await (0, client_1.model)(name).deleteMany({ filter: { where } });
+    await retryConn(() => (0, client_1.model)(name).deleteMany({ filter: { where } }));
 }

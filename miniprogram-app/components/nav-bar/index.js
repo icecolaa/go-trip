@@ -1,3 +1,5 @@
+const theme = require('../../utils/theme')
+
 Component({
   options: {
     // 页面/全局样式（app.wxss 的 .ic 图标类、.press）穿透进组件
@@ -23,6 +25,11 @@ Component({
         navH: (mb.top - sbH) * 2 + mb.height
       })
     }
+  },
+  pageLifetimes: {
+    // 手动夜间/浅色覆盖不经 theme.json（那只在跟随系统时生效），且页面切换会把
+    // 状态栏前景色重置回配置值——每次页面显示都重设，否则顶部时间偶尔看不清
+    show() { theme.syncChrome() }
   },
   methods: {
     goBack() {

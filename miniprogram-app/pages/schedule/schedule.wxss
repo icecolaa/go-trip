@@ -65,11 +65,7 @@
   display: flex; gap: 20rpx;
   background: linear-gradient(180deg, transparent, var(--bg) 40%);
 }
-.map-btn {
-  width: 96rpx; height: 96rpx; border-radius: 50%; background: var(--card);
-  border: 3rpx solid var(--sky200); display: flex; align-items: center; justify-content: center; flex: none;
-}
-.map-btn .ic { width: 40rpx; height: 40rpx; color: var(--sky600); }
+.map-pill { flex: none; padding: 0 30rpx; }
 .grow { flex: 1; }
 
 /* 数据驱动新增样式 */

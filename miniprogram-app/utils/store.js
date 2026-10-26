@@ -321,7 +321,8 @@ async function deleteTripById(id) {
         store.trip = null;
         store._warmId = '';
     }
-    await refreshTrips();
+    // 级联删除已成功；末尾刷新失败若外抛会让 doDelete 误报「删除失败」——尽力刷新即可
+    try { await refreshTrips(); } catch (e) { /* ignore */ }
 }
 async function readyProfile() {
     if (!store.profile)
@@ -461,6 +462,11 @@ async function deletePlaceById(id) {
     await ops.deletePlace(store.trip.id, id);
     await reloadPlaces();
 }
+/** 加入行程成功后清除候选标记（卡片从「候选/待安排」切到「已排入行程」） */
+async function markPlaceInTrip(id) {
+    await ops.updatePlace(store.trip.id, id, { candidate: false });
+    await reloadPlaces();
+}
 async function reloadFeedOnly() {
     const logs = await entities.listRows('gt_activity_log', { trip_id: { $eq: store.trip.id } }, [{ created_at: 'desc' }], 60);
     store.feed = logs.map((f) => ({
@@ -547,6 +553,7 @@ store.deleteLinkById = deleteLinkById;
 store.reloadPlaces = reloadPlaces;
 store.addPlace = addPlace;
 store.deletePlaceById = deletePlaceById;
+store.markPlaceInTrip = markPlaceInTrip;
 store.reloadFeedOnly = reloadFeedOnly;
 store.updateNickname = updateNickname;
 store.minimalTransfers = minimalTransfers;

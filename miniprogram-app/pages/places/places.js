@@ -1,5 +1,6 @@
 const theme = require('../../utils/theme')
 const store = require('../../utils/store')
+const daypick = require('../../utils/daypick')
 
 const KIND_TXT = {
   attraction: '景点', food: '美食', hotel: '住宿', shop: '购物', other: '地点'
@@ -105,26 +106,23 @@ Page({
     })
   },
   // 加入行程：选天 → 写入日程（sight + place）
-  onAddToTrip(e) {
+  async onAddToTrip(e) {
     const id = e.currentTarget.dataset.id
     const p = store.places.find(x => x.id === id)
-    if (!p) return
+    if (!p) { wx.showToast({ title: '地点不存在，请刷新', icon: 'none' }); return }
     const days = this.data.days
     if (!days.length) { wx.showToast({ title: '行程还没有日期', icon: 'none' }); return }
-    wx.showActionSheet({
-      itemList: days.map(d => 'D' + d.d + ' · ' + d.date),
-      success: async res => {
-        const target = days[res.tapIndex]
-        if (!target) return
-        try {
-          await store.addActivity(target.d, { title: p.name, kind: 'sight', place: p.name })
-          wx.showToast({ title: '已加入 D' + target.d, icon: 'success' })
-        } catch (err) {
-          wx.showToast({ title: '加入失败，请重试', icon: 'none' })
-        }
-        this.refresh()
-      }
-    })
+    const target = await daypick.pickDay(days)
+    if (!target) return
+    try {
+      await store.addActivity(target.d, { title: p.name, kind: 'sight', place: p.name })
+      // 清候选标记失败不进失败分支：活动已写入，误报会诱导重复添加（角标下次进页自愈）
+      try { await store.markPlaceInTrip(id) } catch (e2) { /* ignore */ }
+      wx.showToast({ title: '已加入 D' + target.d, icon: 'success' })
+    } catch (err) {
+      wx.showToast({ title: '加入失败，请重试', icon: 'none' })
+    }
+    this.refresh()
   },
   goSchedule() { wx.navigateBack({ delta: 1 }) }
 })
