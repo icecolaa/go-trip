@@ -511,6 +511,7 @@ node scripts/pocketbay-pairing-deploy.mjs .work-together/gotrip-deploy.tar.gz go
 - **⚠️ 重大工具定案（mock 伪影）**：`mockWxMethod('showActionSheet')` 同步应答 success 后，回调续链里的 `wx.cloud` 写请求**静默不发**（DB 五轮零落库，而 showModal mock 驱动的删除链正常落库）→ 之前多轮「加入行程失败」全部是工具伪影，**产品代码无恙**。两条铁律：**automator 验收云写必须 DB 终审（勿信 store/页面数据）**；**mock 驱动多步原生面板链路一律改 CUA 真点混合验证**。
 - 验收脚本顽疾沉淀：桥劣化（2.5–4min）→ tryUntil「尝试→效果验证→重试」+ 段级重启；boot 需 evaluate 就绪探测（端口通≠桥可用）；welcome 吞首次 reLaunch → goto 带路径验证；跨 reLaunch 持页柄会 page destroyed → 每次尝试重取页；重试建数据会出同名重复 → 清场按标题循环清到零；效果断言勿绑 count 恒等（重试清场会连历史残留一起清）。
 - 数据卫生：测试全程 devtools 账号域，用户手机账号数据未触碰；验收垃圾 SQL 精确清场零残留（EC38 用户行程只剩其原有「花海」，日志仅一条用户收藏）。
+- **发布（用户指令③）**：提交 **e585e60**（限定路径 16 文件：本轮 14 + settings P18 + 报告；helper.js/overview.js 为并行工作改动未混入）——GitHub 已推（f9a8cde..e585e60），**Gitee push 权限错两次未通=挂待推**；**1.5.36 dev 已上传成功**（工具通道，发布者=工具登录账号，04:31），提审需用户在 mp 后台手动操作。
 
 
 
